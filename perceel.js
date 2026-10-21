@@ -5,6 +5,7 @@
 //   Perceel.zoekOpPunt(lon, lat)                                // zelfde, met een bekende positie
 //   Perceel.oppervlakteHa(geometry), Perceel.bevatPunt(geometry, lon, lat)
 //   Perceel.zijden(geometry), Perceel.rechteZijde(zijden, key)   // randstukjes en lengtes, voor bufferstroken
+//   Perceel.zoekWater(geometry) + Perceel.waterLangsZijden(geometry, water)   // randen langs BGT-water
 //
 // Fouten zijn Error-objecten met .code: "geen-gps", "gps-geweigerd", "gps-timeout", "gps-onbekend",
 // "offline" (geen verbinding en niks opgeslagen op deze plek), "server", "geen-perceel". De .message is Nederlands.
@@ -99,6 +100,70 @@
         uit.push(z.key);
       }
     }
+    return uit;
+  }
+
+  /* ---------- Water langs het perceel (BGT waterdeel) ---------- */
+  const BGT_WATER = "https://api.pdok.nl/lv/bgt/ogc/v1/collections/waterdeel/items";
+  // Greppel of droge sloot? BGT-veldnamen staan niet vast, dus alle tekstwaarden doorzoeken
+  const isDroog = f => Object.values(f.properties || {}).some(v => typeof v === "string" && /greppel|droge sloot/i.test(v));
+
+  // Haal de BGT-waterdelen op rond een perceel (bbox + marge in graden, ~25 m)
+  async function zoekWater(geometry, o) {
+    o = opts(o);
+    const f = o.fetch || (typeof fetch !== "undefined" ? fetch : null);
+    if (!f) throw fout("offline", "Geen internet beschikbaar in deze omgeving.");
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    polygonen(geometry).forEach(rings => rings[0].forEach(c => { x1 = Math.min(x1, c[0]); y1 = Math.min(y1, c[1]); x2 = Math.max(x2, c[0]); y2 = Math.max(y2, c[1]); }));
+    const m = 0.0004;
+    const url = BGT_WATER + "?f=json&limit=1000&bbox=" + [x1 - m, y1 - m, x2 + m, y2 + m].map(v => v.toFixed(6)).join(",");
+    const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const t = ac ? setTimeout(() => ac.abort(), o.timeout * 2) : null;
+    let res;
+    try { res = await f(url, { signal: ac ? ac.signal : undefined, headers: { Accept: "application/geo+json, application/json" } }); }
+    catch (e) { throw fout("offline", "Geen verbinding met PDOK (BGT)."); }
+    finally { if (t) clearTimeout(t); }
+    if (!res.ok) throw fout("server", "PDOK (BGT) gaf een fout (" + res.status + ").");
+    let data;
+    try { data = await res.json(); } catch (e) { throw fout("server", "Onverwacht antwoord van PDOK (BGT)."); }
+    return Array.isArray(data && data.features) ? data.features.filter(x => x && x.geometry && polygonen(x.geometry).length) : [];
+  }
+
+  // Welke randstukjes lopen langs water? Geeft { key: { droog: bool } } voor elk stukje waarvan
+  // het grootste deel binnen `tol` meter van een waterdeel ligt.
+  function waterLangsZijden(geometry, water, tol) {
+    tol = tol == null ? 6 : tol;
+    const alle = zijden(geometry), uit = {};
+    if (!alle.length || !water.length) return uit;
+    // Lokaal vlak in meters rond het perceel
+    const lat0 = alle[0].a[1], kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
+    const xy = c => [c[0] * kx, c[1] * ky];
+    const wd = water.map(w => ({ droog: isDroog(w), polys: polygonen(w.geometry).map(rings => rings.map(r => r.map(xy))) }));
+    const binnen = (rings, p) => inRing(rings[0], p[0], p[1]) && !rings.slice(1).some(h => inRing(h, p[0], p[1]));
+    const totLijn = (p, a, b) => {
+      const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+      const t = l2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+      return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+    };
+    // Dichtstbijzijnde water bij een punt: { d, droog }
+    const naast = p => {
+      let best = { d: Infinity, droog: false };
+      wd.forEach(w => w.polys.forEach(rings => {
+        if (binnen(rings, p)) { if (best.d > 0 || (!w.droog && best.droog)) best = { d: 0, droog: w.droog }; return; }
+        rings.forEach(r => { for (let i = 0; i < r.length - 1; i++) { const d = totLijn(p, r[i], r[i + 1]); if (d < best.d) best = { d, droog: w.droog }; } });
+      }));
+      return best;
+    };
+    alle.forEach(z => {
+      if (z.m < 0.5) return;
+      const a = xy(z.a), b = xy(z.b), n = Math.max(2, Math.ceil(z.m / 5));
+      let nat = 0, droog = 0;
+      for (let i = 0; i < n; i++) {
+        const f = (i + 0.5) / n, r = naast([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
+        if (r.d <= tol) { if (r.droog) droog++; else nat++; }
+      }
+      if ((nat + droog) / n >= 0.6) uit[z.key] = { droog: droog > nat };
+    });
     return uit;
   }
 
@@ -214,5 +279,5 @@
     return r;
   }
 
-  return { zoekOpMijnLocatie, zoekOpPunt, positie, oppervlakteHa, oppervlakteM2, bevatPunt, zijden, rechteZijde, afstandM, wisCache, aantalOpgeslagen, API };
+  return { zoekOpMijnLocatie, zoekOpPunt, positie, oppervlakteHa, oppervlakteM2, bevatPunt, zijden, rechteZijde, afstandM, zoekWater, waterLangsZijden, wisCache, aantalOpgeslagen, API };
 });

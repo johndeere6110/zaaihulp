@@ -83,7 +83,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 </head>
 <body>
 <header>
-  <h1>Perceelkaart</h1><span class="tag">test 6, los van de app</span>
+  <h1>Perceelkaart</h1><span class="tag">test 7, los van de app</span>
 </header>
 <div id="map" role="application" aria-label="Kaart, tik op een perceel"></div>
 <div class="panel">
@@ -96,7 +96,10 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
   <div class="advice" id="info" aria-live="polite" hidden>
     <div class="tot"><span id="totLbl"></span><span class="adv-main num" id="totHa"></span></div>
     <div class="meta" id="totSub"></div>
-    <button type="button" class="btn toggle" id="bOever" aria-pressed="false">Oevers aanwijzen</button>
+    <div class="row" style="margin-top:10px">
+      <button type="button" class="btn" id="bWater">Water zoeken</button>
+      <button type="button" class="btn" id="bOever" aria-pressed="false">Oevers aanwijzen</button>
+    </div>
     <div id="typeBox" hidden>
       <div class="lbl2">Type waterloop, kies vóór het tikken</div>
       <div class="seg4" role="group" aria-label="Type waterloop" id="typeSeg"></div>
@@ -316,6 +319,33 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
     say(aan ? "Tik op de randen langs het water. Nog eens tikken haalt een oever weg." : "Tik op een perceel om het toe te voegen. Nog eens tikken haalt het weg.");
   }
   $("bOever").addEventListener("click", () => setOever(!oeverModus));
+  // Water zoeken: randen langs BGT-water automatisch markeren; zelf aangewezen randen blijven staan
+  $("bWater").addEventListener("click", async e => {
+    const btn = e.currentTarget, old = btn.textContent;
+    if (btn.disabled || !sel.length) return;
+    btn.disabled = true; btn.textContent = "Water zoeken…";
+    const regels = [], ruwData = [];
+    let fout = null;
+    for (const [i, q] of sel.entries()) {
+      try {
+        const water = await Perceel.zoekWater(q.geometry);
+        const hits = Perceel.waterLangsZijden(q.geometry, water);
+        const alle = Perceel.zijden(q.geometry);
+        let nat = 0, droog = 0;
+        Object.entries(hits).forEach(([k, h]) => {
+          if (q.oever[k] != null) return;
+          q.oever[k] = h.droog ? 0 : 3;
+          const m = alle.find(z => z.key === k).m; if (h.droog) droog += m; else nat += m;
+        });
+        regels.push("Perceel " + (i + 1) + ": " + (nat || droog ? [nat ? mTxt(nat) + " water" : "", droog ? mTxt(droog) + " greppel/droge sloot" : ""].filter(Boolean).join(", ") : "geen (nieuw) water langs de rand"));
+        ruwData.push({ perceel: i + 1, waterdelen: water.length, voorbeeld: water.slice(0, 3).map(w => w.properties) });
+      } catch (er) { fout = er; regels.push("Perceel " + (i + 1) + ": " + er.message); }
+    }
+    bewaar(); teken();
+    btn.disabled = false; btn.textContent = old;
+    say(regels.join(" · ") + (fout ? "" : ". Water staat op 3 m: zet KRW (5 m) en lang droogvallend (1 m) zelf om via Oevers aanwijzen."), !!fout);
+    ruw.textContent = JSON.stringify(ruwData, null, 2);
+  });
   // Keuze type waterloop
   function renderTypes() {
     const box = $("typeSeg"); box.innerHTML = "";
