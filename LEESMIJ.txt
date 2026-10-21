@@ -6,7 +6,8 @@ Hij moet één keer op een website staan, daarna installeer je hem als app.
 1. ONLINE ZETTEN (één keer)
    Makkelijkst: GitHub Pages
    - Maak een (gratis) repository aan, bijvoorbeeld "zaaihulp".
-   - Upload alle bestanden uit deze map (index.html, perceel.js, sw.js, manifest.webmanifest, de twee iconen).
+   - Upload alle bestanden uit deze map (index.html, perceel.js, sw.js, manifest.webmanifest, de twee iconen,
+     en de mappen fonts en vendor).
    - Settings > Pages > Branch: main, map: / (root) > Save.
    - Na een minuut staat hij op https://<jouwnaam>.github.io/zaaihulp/
    Alternatief: Cloudflare Pages of Netlify (map erin slepen).
