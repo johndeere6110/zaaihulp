@@ -14,6 +14,9 @@ Hij moet één keer op een website staan, daarna installeer je hem als app.
 2. INSTALLEREN OP DE TELEFOON
    Android (Chrome): open de link > menu (⋮) > "App installeren" of "Toevoegen aan startscherm".
    iPhone (Safari): open de link > deel-knop > "Zet op beginscherm".
+   Iemand anders laten installeren? Stuur de link naar installeren.html
+   (https://<jouwnaam>.github.io/zaaihulp/installeren.html). Die pagina
+   herkent Android, iPhone of computer en toont alleen de stappen die nodig zijn.
 
 3. GOED OM TE WETEN
    - Alles wat je invult blijft op je eigen telefoon.

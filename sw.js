@@ -1,5 +1,5 @@
 // Zaaihulp service worker: werkt offline, haalt updates op zodra er internet is.
-const CACHE = "zaaihulp-v14";
+const CACHE = "zaaihulp-v15";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./perceel.js"];
 
 self.addEventListener("install", e => {
