@@ -140,6 +140,7 @@ h2 .sum.warn { color: var(--warn); }
 .shitems .chk { padding: 5px 0; font-size: 15px; }
 .shitems .chk input { width: 20px; height: 20px; }
 .sharetext { width: 100%; min-height: 90px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px; font: 13px ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
+.hint.bkwarn { color: var(--warn); font-weight: 600; }
 .empty { color: var(--muted); font-size: 15px; padding: 12px 0; display: block !important; }
 
 /* Components */
@@ -236,6 +237,21 @@ h2 .sum.warn { color: var(--warn); }
     </div>
     <div class="row"><button type="button" class="btn" id="shImport">Importeren</button></div>
     <div class="hint" id="shInHint" style="margin-top:6px"></div>
+
+    <h2>Back-up</h2>
+    <p class="small" style="margin-top:0">Alles uit de app, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf of in je mail. Telefoon kapot of een nieuwe? Dan zet je hem hier terug.</p>
+    <div class="hint" id="bkLast"></div>
+    <div class="row"><button type="button" class="btn primary" id="bkMake">Back-up maken</button></div>
+    <div class="row" style="margin-top:8px"><button type="button" class="btn" id="bkCopy">Kopieer als tekst</button></div>
+    <textarea id="bkOut" class="sharetext" readonly hidden aria-label="Back-up als tekst"></textarea>
+    <div class="hint" id="bkHint"></div>
+    <div class="field wide" style="margin-top:14px">
+      <label for="bkIn">Back-up terugzetten</label>
+      <textarea id="bkIn" class="sharetext" placeholder="Plak hier je back-up (begint met ZAAIHULP-BACKUP1:), of kies het bestand"></textarea>
+    </div>
+    <input type="file" id="bkFileIn" accept=".txt,text/plain" hidden>
+    <div class="row"><button type="button" class="btn" id="bkPick">Kies bestand</button><button type="button" class="btn" id="bkRestore">Terugzetten</button></div>
+    <div class="hint" id="bkInHint" style="margin-top:6px"></div>
   </div>
   </section>
   <div id="appHead" hidden>
@@ -1469,7 +1485,7 @@ h2 .sum.warn { color: var(--warn); }
     document.body.classList.toggle("m-kop", mc === "kop");
     $("pHome").hidden = !!mc;
     $("appHead").hidden = !mc;
-    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); return; }
+    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); renderBackup(); return; }
     $("mName").textContent = { apv: "APV 5.2", zoc: "Zocon Z300", kop: "Kopeg-zaaier" }[mc];
     $("weegLabel").textContent = mc === "apv" ? "Invullen op kast" : "Netto afgedraaid";
     loadWeeg();
@@ -1657,6 +1673,73 @@ h2 .sum.warn { color: var(--warn); }
     hint.style.color = "";
     hint.textContent = res.length ? "Toegevoegd: " + res.join(", ") + ". Bestaande eigen proeven zijn niet overschreven." : "Er zat niks in om te importeren.";
     $("shIn").value = "";
+  });
+
+  // ---------- Back-up: alles uit localStorage, terug te zetten op elke telefoon ----------
+  const BK_PREFIX = "ZAAIHULP-BACKUP1:";
+  // Niet meenemen: opgehaalde PDOK-percelen (groot, komen vanzelf terug) en de datum van de back-up zelf
+  const BK_SKIP = ["perceelCache", "laatsteBackup"];
+  function backupData() {
+    const data = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (!BK_SKIP.includes(key)) data[key] = localStorage.getItem(key); } } catch (e) {}
+    return { v: 1, ts: Date.now(), data };
+  }
+  const bkNaam = () => "zaaihulp-backup-" + new Date().toISOString().slice(0, 10) + ".txt";
+  function renderBackup() {
+    const el = $("bkLast"), ts = store.get("laatsteBackup", null);
+    const heeftData = zocItems().length || kCustom.length || zaadCustom.length || log.length;
+    const dagen = ts ? Math.floor((Date.now() - ts) / 864e5) : null;
+    el.textContent = ts ? "Laatste back-up: " + dateTxt(ts) + (dagen >= 1 ? " (" + dagen + (dagen === 1 ? " dag" : " dagen") + " geleden)" : " (vandaag)") : "Nog nooit een back-up gemaakt.";
+    el.className = "hint" + ((heeftData && (dagen === null || dagen > 30)) ? " bkwarn" : "");
+  }
+  const bkGemaakt = () => { store.set("laatsteBackup", Date.now()); renderBackup(); };
+  $("bkMake").addEventListener("click", async () => {
+    const code = BK_PREFIX + enc(backupData()), hint = $("bkHint");
+    const file = typeof File === "function" ? new File([code], bkNaam(), { type: "text/plain" }) : null;
+    // 1. Als bestand delen (WhatsApp, mail, Drive). 2. Anders downloaden.
+    try {
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Zaaihulp back-up" });
+        bkGemaakt(); hint.textContent = "Back-up gedeeld. Bewaar hem goed."; return;
+      }
+    } catch (e) { if (e && e.name === "AbortError") { hint.textContent = "Delen geannuleerd."; return; } }
+    try {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([code], { type: "text/plain" })); a.download = bkNaam();
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      bkGemaakt(); hint.textContent = "Back-up opgeslagen als " + bkNaam() + ". Zet hem ergens buiten je telefoon.";
+    } catch (e) { hint.textContent = "Bestand maken lukt hier niet. Gebruik Kopieer als tekst."; }
+  });
+  $("bkCopy").addEventListener("click", async () => {
+    const code = BK_PREFIX + enc(backupData()), out = $("bkOut"), hint = $("bkHint");
+    out.value = code; out.hidden = false;
+    try { await navigator.clipboard.writeText(code); bkGemaakt(); hint.textContent = "Gekopieerd. Plak hem in een WhatsApp-bericht aan jezelf of in je mail."; }
+    catch (e) { out.focus(); out.select(); bkGemaakt(); hint.textContent = "Houd de tekst ingedrukt om hem te kopiëren."; }
+  });
+  $("bkPick").addEventListener("click", () => $("bkFileIn").click());
+  $("bkFileIn").addEventListener("change", async e => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try { $("bkIn").value = await f.text(); $("bkInHint").textContent = "Bestand ingelezen. Tik op Terugzetten."; $("bkInHint").style.color = ""; }
+    catch (er) { $("bkInHint").textContent = "Bestand lezen lukte niet."; $("bkInHint").style.color = "var(--warn)"; }
+    e.target.value = "";
+  });
+  $("bkRestore").addEventListener("click", e => {
+    const hint = $("bkInHint"), bad = t => { hint.textContent = t; hint.style.color = "var(--warn)"; };
+    const mt = $("bkIn").value.match(/ZAAIHULP-BACKUP1:\s*([A-Za-z0-9+/]+={0,2})/);
+    if (!mt) { bad($("bkIn").value.includes("ZAAIHULP1:") ? "Dit is een deelcode, geen back-up. Plak hem hierboven bij Importeren." : "Geen back-up gevonden. Die begint met ZAAIHULP-BACKUP1:"); return; }
+    let b = null;
+    try { b = dec(mt[1]); } catch (er) {}
+    if (!b || typeof b.data !== "object" || !b.data || Object.values(b.data).some(v => typeof v !== "string")) { bad("De back-up is beschadigd of niet compleet geplakt."); return; }
+    // Bevestigen zonder pop-up: alles wordt vervangen
+    if (!armed(e.currentTarget, "Tik nog eens: alles vervangen")) return;
+    try {
+      const houd = {}; BK_SKIP.forEach(k => { const v = localStorage.getItem(k); if (v !== null) houd[k] = v; });
+      localStorage.clear();
+      Object.entries(houd).forEach(([k, v]) => localStorage.setItem(k, v));
+      Object.entries(b.data).forEach(([k, v]) => localStorage.setItem(k, v));
+      localStorage.setItem("laatsteBackup", JSON.stringify(b.ts || Date.now()));
+    } catch (er) { bad("Terugzetten lukte niet (opslag vol of geblokkeerd)."); return; }
+    hint.style.color = ""; hint.textContent = "Teruggezet (back-up van " + dateTxt(b.ts) + "). De app start opnieuw…";
+    setTimeout(() => location.reload(), 900);
   });
 
   setMachine(machine);
