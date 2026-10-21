@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zaaihulp</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2F5A2B">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zaaihulp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #E9EDE6; --surface: #F8FAF6; --ink: #1C2318; --muted: #5B6653; --line: #C9D1C2;
+  --accent: #2F5A2B; --accent-ink: #F3F7EF; --lcd-bg: #B7C59E; --lcd-ink: #1A2214;
+  --lcd-ghost: rgba(26,34,20,.12); --warn: #A3401F;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141912; --surface: #1D241A; --ink: #E6ECE0; --muted: #9BA892; --line: #34402F;
+    --accent: #8DBA6A; --accent-ink: #12180F; --lcd-bg: #22301C; --lcd-ink: #C9E59A;
+    --lcd-ghost: rgba(201,229,154,.08); --warn: #F08A5F; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141912; --surface: #1D241A; --ink: #E6ECE0; --muted: #9BA892; --line: #34402F;
+  --accent: #8DBA6A; --accent-ink: #12180F; --lcd-bg: #22301C; --lcd-ink: #C9E59A;
+  --lcd-ghost: rgba(201,229,154,.08); --warn: #F08A5F; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 17px; line-height: 1.4; -webkit-tap-highlight-color: transparent;
+}
+main { max-width: 480px; margin: 0 auto; padding: 12px 16px 32px; }
+.num { font-family: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Tabs */
+.tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); margin-bottom: 14px; }
+.tabs button { border: 0; background: transparent; color: var(--muted); font: 600 18px "Barlow", system-ui, sans-serif; min-height: 52px; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+
+body:not(.m-zoc) #tabZoc { display: none; }
+body:not(.m-kop) #tabKop { display: none; }
+body.m-zoc #tabZoc, body.m-kop #tabKop { order: -1; }
+.home h1 { font-size: 26px; font-weight: 600; margin: 12px 0 12px; }
+.home { display: grid; gap: 14px; }
+.mach { text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 16px; padding: 22px 20px; min-height: 130px; font-family: inherit; }
+.mach .mn { display: block; font: 700 38px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; line-height: 1.05; }
+.mach .md { display: block; font-size: 16px; color: var(--muted); margin-top: 6px; }
+.mach:active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.apphead { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.apphead .mname { font: 700 26px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; }
+.apphead button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; min-height: 46px; padding: 0 14px; font: 600 15px "Barlow", system-ui, sans-serif; }
+
+.tools { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-bottom: 10px; }
+.tools button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; min-height: 42px; font: 600 14px "Barlow", system-ui, sans-serif; }
+.tools button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* Display */
+.lcd { background: var(--lcd-bg); color: var(--lcd-ink); border-radius: 14px; padding: 14px 18px 16px;
+  box-shadow: inset 0 2px 0 rgba(0,0,0,.08), inset 0 -1px 0 rgba(255,255,255,.15); }
+.lcd-top { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 500; opacity: .8; }
+.lcd-value { font-size: clamp(58px, 19vw, 96px); line-height: 1; text-align: right; margin-top: 6px; letter-spacing: -0.01em; position: relative; }
+.lcd-value .ghost { position: absolute; right: 0; top: 0; color: var(--lcd-ghost); pointer-events: none; }
+.lcd-value .live { position: relative; }
+.lcd-unit { font-size: .36em; margin-left: .15em; font-weight: 500; }
+.lcd-note { min-height: 1.4em; font-size: 15px; text-align: right; margin-top: 4px; white-space: pre-line; }
+.lcd-note.warn { color: var(--warn); font-weight: 600; }
+
+/* Fields */
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.field { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 12px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.field label { display: block; font-size: 15px; color: var(--muted); font-weight: 500; }
+.field input { width: 100%; border: 0; background: transparent; color: var(--ink); font-size: 32px; padding: 2px 0 0; outline: none; }
+.field input.text { font: 600 22px "Barlow", system-ui, sans-serif; padding-top: 8px; }
+.field input::placeholder { color: var(--line); }
+.field select { width: 100%; border: 0; background: transparent; color: var(--ink); font: 600 20px "Barlow", system-ui, sans-serif; padding: 8px 0 2px; outline: none; }
+.field select option { color: #1C2318; background: #fff; }
+.field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.field.gross input { font-size: 44px; }
+.hint { font-size: 14px; color: var(--muted); margin-top: 2px; min-height: 1.2em; }
+
+/* Controls */
+.row { display: flex; gap: 10px; margin-top: 14px; align-items: center; }
+.row .lbl { font-size: 15px; color: var(--muted); font-weight: 500; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; color: var(--muted); font: 600 17px "Barlow", system-ui, sans-serif; padding: 0 18px; min-height: 52px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg.full { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
+.seg.full button { padding: 0 6px; }
+.btn { flex: 1; min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 17px "Barlow", system-ui, sans-serif; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .45; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Lists */
+h2 { font-size: 19px; font-weight: 600; margin: 26px 0 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+h2 button { border: 0; background: none; color: var(--muted); font: 500 15px "Barlow", system-ui, sans-serif; padding: 8px 0 8px 12px; }
+h2 .sum { font-size: 16px; font-weight: 600; }
+h2 .sum.warn { color: var(--warn); }
+.log { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.log li { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.log .name { font-weight: 500; overflow-wrap: anywhere; }
+.log .meta { font-size: 14px; color: var(--muted); }
+.log .w { font-size: 22px; }
+.armed { color: var(--warn) !important; font-weight: 700 !important; }
+.del.armed { width: auto; min-width: 44px; padding: 0 6px; font: 700 15px "Barlow", system-ui, sans-serif; border: 1px solid var(--warn); }
+.del { border: 0; background: none; color: var(--muted); font-size: 24px; width: 44px; height: 44px; border-radius: 8px; }
+.log li.match { box-shadow: inset 4px 0 0 var(--accent); padding-left: 12px; }
+.log li.sel { box-shadow: inset 4px 0 0 var(--accent); padding-left: 12px; }
+.tabw { font-size: 17px !important; text-align: right; }
+.newsoort { display: flex; gap: 8px; margin-top: 8px; }
+.comp select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); min-height: 46px; padding: 0 4px; font: 500 16px "Barlow", system-ui, sans-serif; }
+.comp .newsoort { margin-top: 0; gap: 4px; }
+.comp .newsoort input { min-height: 46px; font-size: 16px !important; padding: 0 6px !important; }
+.comp .newsoort .btn { min-height: 46px; padding: 0 8px; }
+.newsoort input { flex: 1; min-width: 0; border: 1px solid var(--line) !important; border-radius: 8px; padding: 0 10px !important; min-height: 48px; font-size: 18px !important; }
+.newsoort .btn { flex: none; padding: 0 16px; }
+.sharebox { margin-top: 4px; }
+.chk { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; font-size: 16px; color: var(--ink) !important; }
+.chk input { width: 22px; height: 22px; margin-top: 1px; accent-color: var(--accent); flex: none; }
+.chk .cnt { color: var(--muted); font-size: 14px; }
+.shitems { margin: 0 0 6px 34px; border-left: 2px solid var(--line); padding-left: 10px; }
+.shitems:empty { display: none; }
+.shitems .chk { padding: 5px 0; font-size: 15px; }
+.shitems .chk input { width: 20px; height: 20px; }
+.sharetext { width: 100%; min-height: 90px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px; font: 13px ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
+.empty { color: var(--muted); font-size: 15px; padding: 12px 0; display: block !important; }
+
+/* Components */
+.comp { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.comp li { display: grid; grid-template-columns: minmax(0,1fr) 84px 100px 40px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.comp input { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); min-height: 46px; padding: 0 10px; outline: none; }
+.comp input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.comp input.cname { font: 500 17px "Barlow", system-ui, sans-serif; }
+.comp input.cpct { font-size: 20px; text-align: right; }
+.pctwrap { position: relative; }
+.pctwrap input { padding-right: 10px; }
+.pctwrap span { display: none !important; }
+.comphead { display: grid; grid-template-columns: minmax(0,1fr) 84px 100px 40px; gap: 8px; font-size: 14px; color: var(--muted); font-weight: 500; padding: 4px 0; }
+.comphead span:nth-child(2), .comphead span:nth-child(3) { text-align: right; }
+.seg.two { grid-template-columns: 1fr 1fr; margin: 0 0 8px; }
+.comphead.have, .comp.have li { grid-template-columns: minmax(0,1fr) 96px 110px; }
+.comp.have .hname { font-weight: 500; overflow-wrap: anywhere; }
+.comp.have input { font-size: 20px; text-align: right; }
+.comp.have .over { text-align: right; }
+.comp.have .over .kg { display: block; font-size: 19px; }
+.comp.have .over .g { display: block; font-size: 13px; color: var(--muted); font-family: "Barlow", system-ui, sans-serif; font-weight: 500; }
+.comp.have .over.short .kg { color: var(--warn); }
+.pctwrap span { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
+.res { border: 0; background: none; color: var(--ink); text-align: right; padding: 4px 2px; min-width: 84px; font-family: inherit; }
+.res .kg { display: block; font-size: 21px; }
+.res .g { display: block; font-size: 13px; color: var(--muted); font-family: "Barlow", system-ui, sans-serif; font-weight: 500; }
+.res.done .kg { text-decoration: line-through; opacity: .5; }
+.res.done .g::before { content: "✓ "; color: var(--accent); }
+.add { margin-top: 12px; width: 100%; }
+.seg.six { grid-template-columns: repeat(5, 1fr); margin-top: 8px; }
+.seg.six button { padding: 0; min-height: 50px; font: 700 22px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; }
+.seg.rolseg { grid-template-columns: repeat(5, 1fr); margin-top: 8px; }
+.seg.rolseg button { padding: 6px 0; min-height: 60px; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.seg.rolseg .dot { width: 16px; height: 16px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(128,128,128,.5); }
+.frac { display: flex; align-items: center; gap: 10px; font-size: 32px; padding-top: 2px; }
+.frac input { flex: 1; min-width: 0; width: auto; border-bottom: 2px solid var(--line) !important; text-align: center; }
+.frac span { color: var(--muted); }
+.toggle { width: 100%; margin-top: 10px; }
+.toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.advice { margin-top: 12px; background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px; font-size: 15px; }
+.advice .adv-main { font-size: 36px; line-height: 1.1; }
+.advice .steps { margin-top: 10px; display: grid; gap: 6px; }
+.advice .steps strong { font-weight: 600; }
+.vakhead { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) 64px 40px; gap: 8px; font-size: 14px; color: var(--muted); font-weight: 500; padding: 0 0 4px; }
+.vak li { grid-template-columns: minmax(0,1fr) minmax(0,1fr) 64px 40px; row-gap: 4px; }
+.vak input { font-size: 20px; text-align: right; }
+.vak .info { grid-column: 1 / -1; font-size: 14px; color: var(--muted); min-height: 1.2em; white-space: pre-line; }
+.small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: no-preference) {
+  .bump { animation: bump .25s ease-out; }
+  @keyframes bump { from { opacity: .4; } to { opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="tools">
+    <button type="button" id="themeBtn">◐ Auto</button>
+    <button type="button" id="wakeBtn" aria-pressed="false">Scherm blijft aan: uit</button>
+  </div>
+  <section id="pHome" hidden>
+    <h1>Welke zaaimachine?</h1>
+    <div class="home">
+      <button type="button" class="mach" id="mApv"><span class="mn">APV 5.2</span><span class="md">Afdraaien met emmer, mengen, vakken en bijstellen in stappen van 5 %</span></button>
+      <button type="button" class="mach" id="mZoc"><span class="mn">Zocon Z300</span><span class="md">BASIC-kastje: afdraaiproef met timer, zaaistand 1–24 op rijsnelheid, mengen</span></button>
+      <button type="button" class="mach" id="mKop"><span class="mn">Kopeg-zaaier</span><span class="md">Mechanisch: afdraaien met de slinger en variatorstand bijstellen</span></button>
+    </div>
+
+    <h2>Delen en overzetten</h2>
+    <p class="small" style="margin-top:0">Deel je bewaarde proeven, tabellen en soorten, of zet ze over naar een andere telefoon. Wegingen en lopende mengsels blijven altijd privé.</p>
+    <div class="field wide sharebox">
+      <label class="chk"><input type="checkbox" id="shZoc" checked> <span>Zocon: bewaarde proeven <span class="cnt" id="cntZoc"></span></span></label>
+      <div class="shitems" id="itZoc"></div>
+      <label class="chk"><input type="checkbox" id="shKop" checked> <span>Kopeg: eigen tabelregels <span class="cnt" id="cntKop"></span></span></label>
+      <div class="shitems" id="itKop"></div>
+      <label class="chk"><input type="checkbox" id="shSoort" checked> <span>Zelf toegevoegde soorten <span class="cnt" id="cntSoort"></span></span></label>
+      <div class="shitems" id="itSoort"></div>
+      <label class="chk"><input type="checkbox" id="shInst"> <span>Mijn instellingen <span class="cnt">(emmergewichten, werkbreedte Zocon, restant machine; alleen voor je eigen telefoon)</span></span></label>
+    </div>
+    <div class="row"><button type="button" class="btn primary" id="shExport">Delen / kopiëren</button></div>
+    <textarea id="shOut" class="sharetext" readonly hidden aria-label="Code om te delen"></textarea>
+    <div class="hint" id="shOutHint"></div>
+
+    <div class="field wide" style="margin-top:14px">
+      <label for="shIn">Code van iemand anders plakken</label>
+      <textarea id="shIn" class="sharetext" placeholder="Plak hier de code (begint met ZAAIHULP1:)"></textarea>
+    </div>
+    <div class="row"><button type="button" class="btn" id="shImport">Importeren</button></div>
+    <div class="hint" id="shInHint" style="margin-top:6px"></div>
+  </div>
+  </section>
+  <div id="appHead" hidden>
+  <div class="apphead"><span class="mname" id="mName"></span><button type="button" id="mSwitch">Andere machine</button></div>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tabWeeg" aria-selected="true" aria-controls="pWeeg">Wegen</button>
+    <button type="button" role="tab" id="tabMeng" aria-selected="false" aria-controls="pMeng">Mengen</button>
+    <button type="button" role="tab" id="tabZoc" aria-selected="false" aria-controls="pZoc">Afdraaien</button>
+    <button type="button" role="tab" id="tabKop" aria-selected="false" aria-controls="pKop">Afdraaien</button>
+  </div>
+  </div>
+
+  <!-- WEGEN -->
+  <section id="pWeeg" role="tabpanel" aria-labelledby="tabWeeg">
+    <div class="lcd" aria-live="polite">
+      <div class="lcd-top"><span id="weegLabel">Invullen op kast</span><span id="tareShow">emmer –</span></div>
+      <div class="lcd-value num"><span class="live" id="net">0</span><span class="lcd-unit">kg</span></div>
+      <div class="lcd-note" id="note">Vul het emmergewicht in en weeg.</div>
+    </div>
+
+    <div class="row">
+      <span class="lbl">Weegschaal in</span>
+      <div class="seg" role="group" aria-label="Eenheid weegschaal">
+        <button type="button" id="uG" aria-pressed="true">g</button>
+        <button type="button" id="uKg" aria-pressed="false">kg</button>
+      </div>
+    </div>
+
+    <div class="fields">
+      <div class="field">
+        <label for="tare">Emmer leeg (<span class="uLbl">g</span>)</label>
+        <input id="tare" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+        <div class="hint">wordt onthouden</div>
+      </div>
+      <div class="field">
+        <label>Mengsel / soort</label>
+        <input id="mix" type="hidden">
+        <div id="mixPick"></div>
+        <div class="hint">optioneel</div>
+      </div>
+      <div class="field wide gross">
+        <label for="gross">Emmer met zaad (<span class="uLbl">g</span>)</label>
+        <input id="gross" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </div>
+    </div>
+
+    <div class="row">
+      <button type="button" class="btn" id="clear">Wis weging</button>
+      <button type="button" class="btn primary" id="save" disabled>Bewaar weging</button>
+    </div>
+
+    <h2>Wegingen <button type="button" id="clearLog">Lijst legen</button></h2>
+    <ul class="log" id="log"></ul>
+  </section>
+
+  <!-- MENGEN -->
+  <section id="pMeng" role="tabpanel" aria-labelledby="tabMeng" hidden>
+    <div class="lcd" aria-live="polite">
+      <div class="lcd-top"><span>Totaal af te wegen</span><span id="mBase"></span></div>
+      <div class="lcd-value num"><span class="live" id="mTotal">0</span><span class="lcd-unit">kg</span></div>
+      <div class="lcd-note" id="mNote">Kies hoe je het totaal bepaalt.</div>
+    </div>
+    <div class="row" id="useRow" hidden><button type="button" class="btn primary" id="useNorm">Neem over bij Afdraaien</button></div>
+
+    <div class="row">
+      <div class="seg full" role="group" aria-label="Totaal bepalen">
+        <button type="button" id="mArea" aria-pressed="true">Oppervlakte</button>
+        <button type="button" id="mLen" aria-pressed="false">Vakken</button>
+        <button type="button" id="mWeight" aria-pressed="false">Gewicht</button>
+      </div>
+    </div>
+
+    <div class="fields">
+      <div class="field wide" id="fTot" hidden>
+        <label for="tot">Totaalgewicht (kg)</label>
+        <input id="tot" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+        <div class="hint">wat je hebt of wilt maken</div>
+      </div>
+      <div class="field" id="fHa">
+        <label for="ha">Oppervlakte (ha)</label>
+        <input id="ha" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0,25">
+        <div class="hint" id="haHint"></div>
+      </div>
+      <div class="field" id="fWidth" hidden>
+        <label for="width">Werkbreedte (m)</label>
+        <input id="width" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="1,6">
+        <div class="hint">wordt onthouden</div>
+      </div>
+      <div class="field" id="fNorm">
+        <label for="norm">Norm (kg/ha)</label>
+        <input id="norm" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="15">
+        <div class="hint" id="normHint">&nbsp;</div>
+      </div>
+      <div class="field wide" id="fExtra">
+        <label for="extra">Extra voor afdraaien en restant (%)</label>
+        <input id="extra" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </div>
+    </div>
+
+    <section id="vakSec" hidden>
+      <h2>Vakken <span class="sum" id="vakSum"></span></h2>
+      <div class="vakhead" aria-hidden="true"><span>Lengte (m)</span><span>Breedte (m)</span><span>Gangen</span><span></span></div>
+      <ul class="comp vak" id="vak"></ul>
+      <button type="button" class="btn add" id="addVak">Vak toevoegen</button>
+      <p class="small">Breedte leeg = werkbreedte. Gangen leeg = automatisch naar boven afgerond. Het zaad wordt berekend op wat de machine afgeeft, dus inclusief overlap.</p>
+    </section>
+
+    <h2>Samenstelling <span class="sum" id="pctSum">0 %</span></h2>
+    <div class="seg full two" role="group" aria-label="Invoer samenstelling">
+      <button type="button" id="cPct" aria-pressed="true">Percentage</button>
+      <button type="button" id="cKgha" aria-pressed="false">kg per ha</button>
+    </div>
+    <div class="comphead" aria-hidden="true"><span>Soort</span><span id="compUnit">%</span><span>Afwegen</span><span></span></div>
+    <ul class="comp" id="comp"></ul>
+    <button type="button" class="btn add" id="addComp">Soort toevoegen</button>
+    <section id="limSec">
+      <button type="button" class="btn toggle" id="limToggle" aria-pressed="false">Beperkte hoeveelheid zaad</button>
+      <div id="limBody" hidden>
+        <div class="seg full two" role="group" aria-label="Wat heb je" style="margin-top:10px">
+          <button type="button" id="limAll" aria-pressed="true">Hele mengsel</button>
+          <button type="button" id="limEach" aria-pressed="false">Per soort</button>
+        </div>
+        <div class="field" id="fLimAll">
+          <label for="lim">Hoeveel mengsel heb je (kg)</label>
+          <input id="lim" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+        </div>
+        <div id="haveSec" hidden>
+          <div class="comphead have" aria-hidden="true"><span>Soort</span><span>Heb ik (kg)</span><span>Houd je over</span></div>
+          <ul class="comp have" id="haveList"></ul>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label for="rest">Blijft achter in machine (kg)</label>
+          <input id="rest" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+          <div class="hint">wat er in bak, doseerwals en slangen achterblijft; wordt onthouden</div>
+        </div>
+        <div class="hint" id="limHint" style="margin-top:6px"></div>
+        <div class="advice" id="limAdvice" aria-live="polite" hidden></div>
+      </div>
+    </section>
+    <p class="small">Percentages zijn gewichtsprocenten. Tik op een gewicht om het af te vinken als afgewogen.</p>
+    <div class="row">
+      <button type="button" class="btn" id="resetChecks">Vinkjes wissen</button>
+      <button type="button" class="btn" id="resetMix">Alles leegmaken</button>
+    </div>
+  </section>
+  <!-- KOPEG -->
+  <section id="pKop" role="tabpanel" aria-labelledby="tabKop" hidden>
+    <div class="lcd" aria-live="polite">
+      <div class="lcd-top"><span>Variatorstand</span><span id="kTop"></span></div>
+      <div class="lcd-value num"><span class="live" id="kStand">–</span></div>
+      <div class="lcd-note" id="kNote">Vul je afdraaiproef in.</div>
+    </div>
+
+    <div class="fields">
+      <div class="field wide">
+        <label>Zaadsoort</label>
+        <div id="kZaadPick"></div>
+        <div class="hint" id="kZaadHint">&nbsp;</div>
+      </div>
+      <div class="field wide">
+        <label for="kNorm">Norm (kg/ha)</label>
+        <input id="kNorm" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="15">
+      </div>
+    </div>
+
+    <h2>Afdraaiproef</h2>
+    <div class="row"><span class="lbl">Afgedraaid over</span></div>
+    <div class="seg full" role="group" aria-label="Afdraaioppervlakte" style="margin-top:6px">
+      <button type="button" id="kA40" aria-pressed="true">1/40 ha</button>
+      <button type="button" id="kA10" aria-pressed="false">1/10 ha</button>
+      <button type="button" id="kAx" aria-pressed="false">1/… ha</button>
+    </div>
+    <div class="fields" style="margin-top:6px">
+      <div class="field wide" id="fKm2" hidden>
+        <label for="kDen">Zelf invullen</label>
+        <div class="frac num"><span>1 /</span><input id="kDen" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="20"><span>ha</span></div>
+        <div class="hint" id="kM2Hint">Vul in voor welk deel van een hectare je draaide, bijvoorbeeld 1/20 ha.</div>
+      </div>
+      <div class="field">
+        <label for="kPStand">Variatorstand bij proef</label>
+        <input id="kPStand" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </div>
+      <div class="field">
+        <label for="kGram">Afgedraaid (kg)</label>
+        <input id="kGram" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+        <div class="hint" id="kGHint">&nbsp;</div>
+      </div>
+    </div>
+    <div class="row"><button type="button" class="btn" id="kFromWeeg">Netto van Wegen overnemen</button></div>
+    <div class="advice" id="kAdvice" aria-live="polite" hidden></div>
+
+    <h2>Ervaringstabel</h2>
+    <p class="small" style="margin-top:0">Praktijkwaarden en je eigen bewaarde proeven. Kies je een zaadsoort die erin staat, dan krijg je een startstand. Na een afdraaiproef kun je hem zelf toevoegen.</p>
+    <ul class="log" id="kTabList"></ul>
+    <p class="small">Hoeveel slingeromwentelingen bij 1/40 of 1/10 ha horen staat in de handleiding of op de sticker van je machine. De nieuwe stand gaat ervan uit dat de afgifte recht evenredig is met de variatorstand. Dat klopt bij de meeste variatoren ongeveer, maar niet altijd precies. Doe daarom op de nieuwe stand een controleproef.</p>
+  </section>
+
+  <!-- ZOCON -->
+  <section id="pZoc" role="tabpanel" aria-labelledby="tabZoc" hidden>
+    <div class="lcd" aria-live="polite">
+      <div class="lcd-top"><span>Zaaistand</span><span id="zTop"></span></div>
+      <div class="lcd-value num"><span class="live" id="zStand">–</span></div>
+      <div class="lcd-note" id="zNote">Vul de gegevens en je afdraaiproef in.</div>
+    </div>
+
+    <h2>Rol, borstel en zaad</h2>
+    <div class="fields">
+      <div class="field wide">
+        <label>Zaairol</label>
+        <div class="seg full rolseg" role="group" aria-label="Zaairol" id="zRolSeg">
+          <button type="button" data-v="Groen" aria-pressed="false"><span class="dot" style="background:#3f9d4c"></span>Groen</button><button type="button" data-v="Blauw" aria-pressed="false"><span class="dot" style="background:#3a6fd1"></span>Blauw</button><button type="button" data-v="Geel" aria-pressed="false"><span class="dot" style="background:#f2c52b"></span>Geel</button><button type="button" data-v="Rood" aria-pressed="false"><span class="dot" style="background:#d4402f"></span>Rood</button><button type="button" data-v="Zwart" aria-pressed="false"><span class="dot" style="background:#1b1b1b"></span>Zwart</button>
+        </div>
+        <div class="hint" id="zRolHint">&nbsp;</div>
+      </div>
+      <div class="field wide">
+        <label>Borstelstand</label>
+        <div class="seg full six" role="group" aria-label="Borstelstand" id="zBorstelSeg">
+          <button type="button" data-v="-1" aria-pressed="false">−1</button><button type="button" data-v="0" aria-pressed="false">0</button><button type="button" data-v="1" aria-pressed="false">1</button><button type="button" data-v="2" aria-pressed="false">2</button><button type="button" data-v="3" aria-pressed="false">3</button>
+        </div>
+      </div>
+      <div class="field wide">
+        <label for="zZaadSel">Zaadsoort</label>
+        <select id="zZaadSel"></select>
+        <div id="zNewWrap" class="newsoort" hidden>
+          <input id="zNewZaad" class="text" type="text" autocomplete="off" enterkeyhint="done" placeholder="Naam nieuwe soort">
+          <button type="button" class="btn primary" id="zAddZaad">Toevoegen</button>
+        </div>
+        <div class="hint" id="zProfHint">&nbsp;</div>
+      </div>
+    </div>
+
+    <h2>Zaaien</h2>
+    <div class="fields">
+      <div class="field">
+        <label for="zNorm">Norm (kg/ha)</label>
+        <input id="zNorm" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="15">
+      </div>
+      <div class="field">
+        <label for="zWidth">Werkbreedte (m)</label>
+        <input id="zWidth" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="3">
+      </div>
+      <div class="field wide">
+        <label for="zSpeed">Rijsnelheid (km/h)</label>
+        <input id="zSpeed" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="8">
+        <div class="hint" id="zNeed">&nbsp;</div>
+      </div>
+    </div>
+
+    <h2>Afdraaiproef</h2>
+    <div class="seg full two" role="group" aria-label="Proeftijd">
+      <button type="button" id="zT30" aria-pressed="false">30 seconden</button>
+      <button type="button" id="zT60" aria-pressed="true">60 seconden</button>
+    </div>
+    <div class="fields" style="margin-top:6px">
+      <div class="field">
+        <label for="zPStand">Stand bij proef</label>
+        <input id="zPStand" class="num" type="text" inputmode="numeric" autocomplete="off" placeholder="1–24">
+      </div>
+      <div class="field">
+        <label for="zGram">Afgedraaid (g)</label>
+        <input id="zGram" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </div>
+    </div>
+    <div class="row"><button type="button" class="btn" id="zFromWeeg">Netto van Wegen overnemen</button></div>
+    <div class="advice" id="zAdvice" aria-live="polite" hidden></div>
+
+    <h2>Bewaarde proeven</h2>
+    <ul class="log" id="zProfList"></ul>
+
+    <h2>Ervaringstabel</h2>
+    <p class="small" style="margin-top:0">Praktijkwaarden van deze Zocon, allemaal met de gele rol. Niet allemaal even zeker. Een eigen proef gaat altijd voor. Tik op een regel om hem te gebruiken.</p>
+    <ul class="log" id="zTabList"></ul>
+    <p class="small">Zonder snelheidssensor hangt de dosering af van je rijsnelheid, dus rij zo constant mogelijk. De afgifte loopt niet recht op met de stand. Met één proef rekent de app evenredig, dus hoe verder je van de proefstand af gaat, hoe grover de schatting. Bewaar je proeven op meerdere standen, dan rekent hij tussen die proeven in en wordt het steeds nauwkeuriger.</p>
+  </section>
+  <datalist id="zaadDL"></datalist>
+</main>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  let machine = store.get("machine", null);
+  if (!["apv", "zoc", "kop"].includes(machine)) machine = null;
+  // Bevestigen zonder pop-up (pop-ups werken niet overal): eerste tik vraagt "zeker?", tweede tik voert uit
+  function armed(btn, label) {
+    if (btn.dataset.armed === "1") { clearTimeout(btn._t); btn.dataset.armed = ""; btn.classList.remove("armed"); btn.textContent = btn._old; return true; }
+    btn.dataset.armed = "1"; btn._old = btn.textContent; btn.textContent = label; btn.classList.add("armed");
+    clearTimeout(btn._t); btn._t = setTimeout(() => { btn.dataset.armed = ""; btn.classList.remove("armed"); btn.textContent = btn._old; }, 3000);
+    return false;
+  }
+  // Soortkiezer: keuzelijst met "+ Nieuwe soort", gedeelde lijst voor alle machines
+  const pickers = new Set();
+  function refreshAllPickers() { pickers.forEach(pk => { if (!pk.isConnected) pickers.delete(pk); else pk._fill(); }); try { fillZaad(); } catch (e) {} }
+  function addSoort(n) {
+    const found = zaadList().find(x => x.toLowerCase() === n.toLowerCase());
+    if (found) return found;
+    zaadCustom.push(n); store.set("zaadsoorten", zaadCustom); return n;
+  }
+  function makeSoortPicker(getVal, setVal, opt) {
+    opt = opt || {};
+    const wrap = document.createElement("div"); wrap.className = "picker";
+    const sel = document.createElement("select");
+    if (opt.label) sel.setAttribute("aria-label", opt.label);
+    const nw = document.createElement("div"); nw.className = "newsoort"; nw.hidden = true;
+    const inp = document.createElement("input"); inp.type = "text"; inp.className = "text"; inp.autocomplete = "off"; inp.placeholder = opt.compact ? "Naam" : "Naam nieuwe soort";
+    const ok = document.createElement("button"); ok.type = "button"; ok.className = "btn primary"; ok.textContent = opt.compact ? "OK" : "Toevoegen";
+    nw.append(inp, ok); wrap.append(sel, nw);
+    wrap._fill = () => {
+      const list = zaadList(), v = String(getVal() || "").trim();
+      sel.innerHTML = "";
+      const add = (val, t) => { const o = document.createElement("option"); o.value = val; o.textContent = t; sel.appendChild(o); };
+      add("", opt.empty || "Kies…");
+      list.forEach(n => add(n, n));
+      add("__new", "+ Nieuwe soort…");
+      sel.value = list.includes(v) ? v : "";
+    };
+    sel.addEventListener("change", () => {
+      if (sel.value === "__new") { nw.hidden = false; if (opt.compact) sel.hidden = true; setTimeout(() => inp.focus(), 50); return; }
+      nw.hidden = true; setVal(sel.value);
+    });
+    const doAdd = () => {
+      const n = inp.value.trim();
+      if (!n) { nw.hidden = true; sel.hidden = false; wrap._fill(); return; }
+      const name = addSoort(n); inp.value = ""; nw.hidden = true; sel.hidden = false;
+      setVal(name); refreshAllPickers();
+    };
+    ok.addEventListener("click", doAdd);
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doAdd(); } });
+    pickers.add(wrap); wrap._fill();
+    return wrap;
+  }
+  function flash(btn, label) {
+    if (btn._fl) return;
+    const old = btn.textContent; btn._fl = true; btn.textContent = label; btn.classList.add("armed");
+    setTimeout(() => { btn.textContent = old; btn.classList.remove("armed"); btn._fl = false; }, 2500);
+  }
+  const parse = s => {
+    if (s === undefined || s === null || s === "") return null;
+    const n = parseFloat(String(s).replace(/\s/g, "").replace(",", "."));
+    return isFinite(n) ? n : null;
+  };
+  const kg = (k, d) => k.toLocaleString("nl-NL", { minimumFractionDigits: d === undefined ? 0 : d, maximumFractionDigits: d === undefined ? 3 : d, useGrouping: false });
+  const gStr = g => String(Math.round(g)) + " g";
+  const bump = el => { el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); };
+  const setText = (el, t) => { if (el.textContent !== t) { el.textContent = t; bump(el); } };
+
+  /* ---------- Tabs ---------- */
+  function showTab(t) {
+    [["weeg", "tabWeeg", "pWeeg"], ["meng", "tabMeng", "pMeng"], ["zoc", "tabZoc", "pZoc"], ["kop", "tabKop", "pKop"]].forEach(([k, tb, pn]) => {
+      $(tb).setAttribute("aria-selected", t === k);
+      $(pn).hidden = t !== k;
+    });
+    if (machine) store.set("tab_" + machine, t);
+  }
+  $("tabZoc").addEventListener("click", () => showTab("zoc"));
+  $("tabKop").addEventListener("click", () => showTab("kop"));
+  $("tabWeeg").addEventListener("click", () => showTab("weeg"));
+  $("tabMeng").addEventListener("click", () => showTab("meng"));
+
+  /* ---------- Wegen (intern alles in grammen) ---------- */
+  const tareEl = $("tare"), grossEl = $("gross"), mixEl = $("mix");
+  const netEl = $("net"), noteEl = $("note"), tareShow = $("tareShow"), saveBtn = $("save"), logEl = $("log");
+  const wk = key => machine && machine !== "apv" ? key + "_" + machine : key;
+  let unit = store.get(wk("unit"), "g");
+  let tareG = store.get(wk("tareG"), null);
+  let log = store.get(wk("log"), []);
+  if (!Array.isArray(log)) log = [];
+  mixEl.value = store.get(wk("mix"), "");
+
+  const toG = v => v === null ? null : (unit === "kg" ? v * 1000 : v);
+  const inUnit = g => unit === "kg" ? kg(g / 1000) + " kg" : gStr(g);
+  const fmtInput = g => {
+    if (g === null) return "";
+    const v = unit === "kg" ? +(g / 1000).toFixed(3) : +g.toFixed(1);
+    return String(v).replace(".", ",");
+  };
+
+  function setUnit(u) {
+    const tG = toG(parse(tareEl.value)), gG = toG(parse(grossEl.value));
+    unit = u; store.set(wk("unit"), u);
+    $("uG").setAttribute("aria-pressed", u === "g");
+    $("uKg").setAttribute("aria-pressed", u === "kg");
+    document.querySelectorAll(".uLbl").forEach(s => s.textContent = u);
+    tareEl.value = fmtInput(tG);
+    grossEl.value = fmtInput(gG);
+    updateWeeg();
+  }
+
+  let lastNet = null;
+  function updateWeeg() {
+    const t = toG(parse(tareEl.value)), g = toG(parse(grossEl.value));
+    tareG = t; store.set(wk("tareG"), t);
+    tareShow.textContent = t === null ? "emmer –" : "emmer " + inUnit(t);
+    noteEl.className = "lcd-note";
+    let net = null;
+    if (t === null && g === null) noteEl.textContent = "Vul het emmergewicht in en weeg.";
+    else if (t === null) noteEl.textContent = "Emmergewicht ontbreekt.";
+    else if (g === null) noteEl.textContent = "Zet de emmer met zaad op de weegschaal.";
+    else if (g < t) { noteEl.textContent = "Bruto is lichter dan de lege emmer."; noteEl.className = "lcd-note warn"; }
+    else { net = g - t; noteEl.textContent = "= " + gStr(net); }
+    setText(netEl, net === null ? "0" : kg(net / 1000));
+    lastNet = net;
+    saveBtn.disabled = !net;
+  }
+
+  function renderLog() {
+    logEl.innerHTML = "";
+    if (!log.length) {
+      const li = document.createElement("li");
+      li.className = "empty"; li.textContent = "Nog geen wegingen bewaard.";
+      logEl.appendChild(li); return;
+    }
+    log.slice().reverse().forEach(item => {
+      const li = document.createElement("li");
+      const left = document.createElement("div");
+      const name = document.createElement("div"); name.className = "name"; name.textContent = item.mix || "Zonder naam";
+      const meta = document.createElement("div"); meta.className = "meta";
+      const d = new Date(item.ts);
+      meta.textContent = d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) + ", " + d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+      left.append(name, meta);
+      const w = document.createElement("div"); w.className = "w num"; w.textContent = kg(item.netG / 1000) + " kg";
+      const del = document.createElement("button");
+      del.className = "del"; del.type = "button"; del.setAttribute("aria-label", "Verwijder weging"); del.textContent = "×";
+      del.addEventListener("click", () => { log = log.filter(x => x.ts !== item.ts); store.set(wk("log"), log); renderLog(); });
+      li.append(left, w, del);
+      logEl.appendChild(li);
+    });
+  }
+
+  tareEl.addEventListener("input", updateWeeg);
+  grossEl.addEventListener("input", updateWeeg);
+  mixEl.addEventListener("input", () => store.set(wk("mix"), mixEl.value));
+  $("uG").addEventListener("click", () => setUnit("g"));
+  $("uKg").addEventListener("click", () => setUnit("kg"));
+  $("clear").addEventListener("click", () => { grossEl.value = ""; updateWeeg(); grossEl.focus(); });
+  saveBtn.addEventListener("click", () => {
+    if (!lastNet) return;
+    log.push({ ts: Date.now(), mix: mixEl.value.trim(), netG: lastNet });
+    if (log.length > 200) log = log.slice(-200);
+    store.set(wk("log"), log);
+    grossEl.value = ""; updateWeeg(); renderLog();
+  });
+  $("clearLog").addEventListener("click", e => {
+    if (log.length && armed(e.currentTarget, "Tik nog eens om te legen")) { log = []; store.set(wk("log"), log); renderLog(); }
+  });
+
+  /* ---------- Mengen ---------- */
+  const defMix = { mode: "area", ha: "", norm: "", tot: "", extra: "", width: "1,6", limBy: "all", comps: [{ name: "", pct: "", done: false }, { name: "", pct: "", done: false }] };
+  const mixKey = () => machine === "zoc" ? "menger_zoc" : machine === "kop" ? "menger_kop" : "menger";
+  let m = Object.assign({}, defMix, store.get(mixKey(), {}));
+  if (!Array.isArray(m.comps) || !m.comps.length) m.comps = defMix.comps.map(c => Object.assign({}, c));
+  const saveMix = () => store.set(mixKey(), m);
+  const compEl = $("comp");
+  const haveEl = $("haveList");
+  if (m.limBy !== "all" && m.limBy !== "each") {
+    const idx = parseInt(m.limBy, 10);
+    if (m.comps[idx]) { m.comps[idx].have = m.limKg || ""; m.limKg = ""; m.limBy = "each"; } else m.limBy = "all";
+  }
+  function renderHave() {
+    haveEl.innerHTML = "";
+    m.comps.forEach((c, i) => {
+      const li = document.createElement("li");
+      const nm = document.createElement("div"); nm.className = "hname";
+      const inp = document.createElement("input");
+      inp.className = "num"; inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = "–"; inp.value = c.have || "";
+      inp.setAttribute("aria-label", "Voorraad soort " + (i + 1));
+      inp.addEventListener("input", () => { c.have = inp.value; saveMix(); updateMix(); });
+      const ov = document.createElement("div"); ov.className = "over num";
+      ov.innerHTML = '<span class="kg"></span><span class="g"></span>';
+      li.append(nm, inp, ov);
+      li._nm = nm; li._ov = ov;
+      haveEl.appendChild(li);
+    });
+  }
+  const vakEl = $("vak");
+  if (!Array.isArray(m.vakken) || !m.vakken.length) m.vakken = [{ l: m.len || "", b: "", g: "" }];
+
+  function renderVakken() {
+    vakEl.innerHTML = "";
+    m.vakken.forEach((v, i) => {
+      const li = document.createElement("li");
+      const mk = (key, ph, label) => {
+        const inp = document.createElement("input");
+        inp.className = "num"; inp.type = "text"; inp.inputMode = "decimal"; inp.placeholder = ph; inp.value = v[key] || "";
+        inp.setAttribute("aria-label", label + " vak " + (i + 1));
+        inp.addEventListener("input", () => { v[key] = inp.value; saveMix(); updateMix(); });
+        return inp;
+      };
+      const l = mk("l", "0", "Lengte"), b = mk("b", "1,6", "Breedte"), g = mk("g", "1", "Gangen");
+      g.inputMode = "numeric";
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder vak");
+      del.addEventListener("click", () => { m.vakken.splice(i, 1); if (!m.vakken.length) m.vakken.push({ l: "", b: "", g: "" }); saveMix(); renderVakken(); updateMix(); });
+      const info = document.createElement("div"); info.className = "info";
+      li.append(l, b, g, del, info);
+      li._b = b; li._g = g; li._info = info;
+      vakEl.appendChild(li);
+    });
+  }
+
+  function calcVakken(width) {
+    const nl = (v, d) => v.toLocaleString("nl-NL", { maximumFractionDigits: d, useGrouping: false });
+    let machHa = 0, vakHa = 0;
+    const m2 = v => nl(v, 2) + " m";
+    const plan = (b, w, gangen) => {
+      const full = Math.floor(b / w + 1e-9), rest = b - full * w;
+      if (rest < 0.005) return full === 1 ? "" : "Past precies: " + full + " × " + m2(w);
+      if (full === 0) return "Smaller dan werkbreedte: 1 gang, " + m2(w - rest) + " overlap";
+      const mark = n => gangen === n ? " (gekozen)" : "";
+      return m2(b) + " = " + full + " × " + m2(w) + " + " + m2(rest) +
+        "\n" + (full + 1) + " gangen: " + m2(w - rest) + " overlap" + mark(full + 1) +
+        "\n" + full + (full === 1 ? " gang: " : " gangen: ") + m2(rest) + " blijft liggen" + mark(full);
+    };
+    m.vakken.forEach((v, i) => {
+      const li = vakEl.children[i];
+      const l = parse(v.l), b = parse(v.b) || width, gIn = parse(v.g);
+      const auto = (b && width) ? Math.max(1, Math.ceil(b / width - 1e-9)) : null;
+      if (li) { li._b.placeholder = m.width || "1,6"; li._g.placeholder = auto ? String(auto) : "–"; }
+      const gangen = gIn && gIn > 0 ? Math.round(gIn) : auto;
+      if (!l || !b || !width || !gangen) { if (li) li._info.textContent = (b && width && gangen) ? plan(b, width, gangen) : ""; return; }
+      const va = l * b, ma = l * gangen * width;
+      vakHa += va / 10000; machHa += ma / 10000;
+      if (li) {
+        const diff = ma - va;
+        let t = nl(va, 1) + " m² vak, machine " + nl(ma, 1) + " m²";
+        if (diff > 0.01) t += " (+" + nl(diff / va * 100, 0) + " % overlap)";
+        else if (diff < -0.01) t += " (" + nl(-diff, 1) + " m² blijft liggen)";
+        const pl = plan(b, width, gangen);
+        li._info.textContent = t + (pl ? "\n" + pl : "");
+      }
+    });
+    $("vakSum").textContent = machHa ? "machine " + nl(machHa * 10000, 0) + " m²" : "";
+    return { machHa, vakHa };
+  }
+
+  const restEl = $("rest");
+  restEl.value = store.get("restKg", "");
+  restEl.addEventListener("input", () => { store.set("restKg", restEl.value); updateMix(); });
+  $("limAll").addEventListener("click", () => { m.limBy = "all"; saveMix(); updateMix(); });
+  $("limEach").addEventListener("click", () => { m.limBy = "each"; saveMix(); updateMix(); });
+  $("useNorm").addEventListener("click", () => {
+    const uv = $("useNorm")._v; if (!uv) return;
+    const v = String(+uv.toFixed(2)).replace(".", ",");
+    if (machine === "zoc") { z.norm = v; $("zNorm").value = v; saveZ(); updateZ(); showTab("zoc"); }
+    else if (machine === "kop") { k.norm = v; $("kNorm").value = v; saveK(); updateK(); showTab("kop"); }
+    try { window.scrollTo(0, 0); } catch (e) {}
+  });
+  $("limToggle").addEventListener("click", () => { m.lim = !m.lim; saveMix(); updateMix(); });
+  $("addVak").addEventListener("click", () => {
+    m.vakken.push({ l: "", b: "", g: "" }); saveMix(); renderVakken(); updateMix();
+    const ls = vakEl.querySelectorAll("li"); ls[ls.length - 1].querySelector("input").focus();
+  });
+
+  function setMode(mode) {
+    m.mode = mode; saveMix();
+    $("mArea").setAttribute("aria-pressed", mode === "area");
+    $("mLen").setAttribute("aria-pressed", mode === "length");
+    $("mWeight").setAttribute("aria-pressed", mode === "weight");
+    $("fHa").hidden = mode !== "area";
+    $("vakSec").hidden = mode !== "length";
+    $("fWidth").hidden = mode === "area";
+    $("fTot").hidden = mode !== "weight";
+    $("fExtra").hidden = mode === "weight";
+    updateMix();
+  }
+
+  function renderComps() {
+    compEl.innerHTML = "";
+    renderHave();
+    const km = m.compMode === "kgha";
+    compEl.classList.toggle("kgha", km);
+    $("cPct").setAttribute("aria-pressed", !km);
+    $("cKgha").setAttribute("aria-pressed", km);
+    $("compUnit").textContent = km ? "kg/ha" : "%";
+    m.comps.forEach((c, i) => {
+      const li = document.createElement("li");
+      const name = makeSoortPicker(() => c.name, v => { c.name = v; saveMix(); updateMix(); }, { compact: true, empty: "Soort " + (i + 1), label: "Soort " + (i + 1) });
+      const wrap = document.createElement("div"); wrap.className = "pctwrap";
+      const pct = document.createElement("input");
+      pct.className = "cpct num"; pct.type = "text"; pct.inputMode = "decimal"; pct.placeholder = "0"; pct.value = (km ? c.kgha : c.pct) || "";
+      pct.setAttribute("aria-label", (km ? "kg per ha soort " : "Percentage soort ") + (i + 1));
+      pct.addEventListener("input", () => { if (km) c.kgha = pct.value; else c.pct = pct.value; saveMix(); updateMix(); });
+      const pctSign = document.createElement("span"); pctSign.textContent = km ? "kg/ha" : "%";
+      wrap.append(pct, pctSign);
+      const res = document.createElement("button");
+      res.type = "button"; res.className = "res num" + (c.done ? " done" : "");
+      res.setAttribute("aria-label", "Afvinken als afgewogen");
+      res.innerHTML = '<span class="kg">–</span><span class="g"></span>';
+      res.addEventListener("click", () => { c.done = !c.done; res.classList.toggle("done", c.done); saveMix(); });
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder soort");
+      del.addEventListener("click", () => { m.comps.splice(i, 1); if (!m.comps.length) m.comps.push({ name: "", pct: "", done: false }); saveMix(); renderComps(); updateMix(); });
+      li.append(name, wrap, res, del);
+      li._res = res;
+      compEl.appendChild(li);
+    });
+  }
+
+  function updateMix() {
+    const kghaMode = m.compMode === "kgha";
+    const kghaSum = m.comps.reduce((a, c) => a + (parse(c.kgha) || 0), 0);
+    const pctOf = c => kghaMode ? (kghaSum ? (parse(c.kgha) || 0) / kghaSum * 100 : 0) : (parse(c.pct) || 0);
+    const ha = parse(m.ha), tot = parse(m.tot);
+    const norm = kghaMode ? (kghaSum || null) : parse(m.norm);
+    $("fNorm").hidden = kghaMode;
+    const width = parse(m.width);
+    const nl = (v, d) => v.toLocaleString("nl-NL", { maximumFractionDigits: d, useGrouping: false });
+    const n2 = v => v.toLocaleString("nl-NL", { maximumFractionDigits: 2, useGrouping: false });
+    $("haHint").textContent = ha ? "= " + nl(ha * 10000, 0) + " m²" : "";
+    const vk = calcVakken(width);
+
+    let fieldHa = null, machHa = null;
+    if (m.mode === "area") { fieldHa = ha || null; machHa = fieldHa; }
+    else if (m.mode === "length") { fieldHa = vk.vakHa || null; machHa = vk.machHa || null; }
+    const extraIn = m.mode === "weight" ? 0 : (parse(m.extra) || 0);
+    let extra = extraIn, base = null, limited = false;
+    if (m.mode === "weight") base = tot || null;
+    else base = (machHa && norm) ? machHa * norm : null;
+
+    // Beperkte hoeveelheid zaad
+    const limOn = m.mode !== "weight" && !!m.lim;
+    $("fExtra").hidden = m.mode === "weight";
+    $("limSec").hidden = m.mode === "weight";
+    $("limBody").hidden = !limOn;
+    $("limToggle").setAttribute("aria-pressed", limOn);
+    const limEach = m.limBy === "each";
+    $("limAll").setAttribute("aria-pressed", !limEach);
+    $("limEach").setAttribute("aria-pressed", limEach);
+    $("fLimAll").hidden = limEach;
+    $("haveSec").hidden = !limEach;
+    const cName = (c, i) => c.name.trim() || "Soort " + (i + 1);
+    const avail = parse(m.limKg);
+    const autoAvail = !limEach && m.mode === "length" && fieldHa && norm ? fieldHa * norm : null;
+    $("lim").placeholder = autoAvail ? kg(autoAvail) : "0";
+    $("limHint").textContent = limEach ? "Vul in wat je per soort hebt. Leeg = genoeg. De krapste soort bepaalt hoeveel mengsel je kunt maken."
+      : autoAvail ? "Leeg = precies genoeg voor de vakoppervlakte, zonder overlap." : "Hoeveel mengsel je in totaal hebt.";
+
+    let mixAvail = null, limIdx = -1;
+    if (limOn) {
+      if (!limEach) mixAvail = avail || autoAvail;
+      else m.comps.forEach((c, i) => {
+        const h = parse(c.have), p = pctOf(c);
+        if (h && h > 0 && p > 0) { const ma = h / (p / 100); if (mixAvail === null || ma < mixAvail) { mixAvail = ma; limIdx = i; } }
+      });
+    }
+
+    let useVal = null;
+    const rest = parse($("rest").value) || 0;
+    const adv = $("limAdvice");
+    adv.hidden = true;
+    const limName = limIdx >= 0 ? cName(m.comps[limIdx], limIdx) : "mengsel";
+    if (false) {
+    } else if (limOn && mixAvail && base && machHa && norm) {
+      const normal = base;
+      if (mixAvail - rest < normal - 1e-9) {
+        limited = true; extra = 0; base = mixAvail;
+        const usable = Math.max(0, mixAvail - rest);
+        const need = usable / machHa, pct = (need / norm - 1) * 100;
+        const restTxt = rest ? ', bovenop de ' + (rest >= 1 ? kg(rest) + ' kg' : gStr(rest * 1000)) + ' die in de machine blijft' : '';
+        const KAST_MIN = -50;
+        const near = Math.round(pct / 5) * 5, exact = Math.abs(pct - near) < 0.05;
+        const sd = exact ? near : Math.floor(pct / 5 + 1e-9) * 5, su = sd + 5;
+        const sDown = norm * (1 + sd / 100), sUp = norm * (1 + su / 100);
+        const left = usable - sDown * machHa, short = sUp * machHa - usable;
+        const sg = p => (p > 0 ? "+" : p < 0 ? "−" : "±") + Math.abs(p) + " %";
+        const amt = v => v >= 1 ? kg(v) + " kg" : gStr(v * 1000);
+        const pctTxt = "−" + Math.abs(pct).toLocaleString("nl-NL", { maximumFractionDigits: 1 }) + " %";
+        let h;
+        if (sd < KAST_MIN) {
+          const sMin = norm * (1 + KAST_MIN / 100), tek = sMin * machHa - usable;
+          h = '<div class="adv-main">Te weinig zaad</div>' +
+            '<div>Zelfs op ' + sg(KAST_MIN) + ' (' + n2(sMin) + ' kg/ha) kom je ongeveer ' + amt(tek) + ' tekort.</div>' +
+            '<div class="steps"><div>Je zou ' + n2(need) + ' kg/ha nodig hebben (' + pctTxt + '). Verlaag de norm op de kast zelf, of zaai een kleiner stuk.</div></div>';
+        } else if (exact) {
+          h = '<div>Norm op ' + n2(norm) + ' kg/ha laten staan, en de kast instellen op</div>' +
+            '<div class="adv-main num">' + sg(sd) + '</div>' +
+            '<div>Dat is ' + n2(sDown) + ' kg/ha en komt precies uit' + restTxt + '.</div>';
+        } else {
+          h = '<div>Norm op ' + n2(norm) + ' kg/ha laten staan, en de kast instellen op</div>' +
+            '<div class="adv-main num">' + sg(sd) + '</div>' +
+            '<div>Dat is ' + n2(sDown) + ' kg/ha. Je houdt ongeveer ' + amt(left) + ' over' + restTxt + '.</div>' +
+            '<div class="steps">';
+          if (su < 0) h += '<div>Of ' + sg(su) + ' (' + n2(sUp) + ' kg/ha): dan kom je ongeveer ' + amt(short) + ' tekort.</div>';
+          h += '<div>Precies uitkomen zou ' + n2(need) + ' kg/ha zijn (' + pctTxt + '), maar dat kan de kast niet in stappen van 5 %.</div></div>';
+        }
+        if (machine !== "apv") {
+          useVal = need;
+          h = '<div>Zaai op</div><div class="adv-main num">' + n2(need) + ' kg/ha</div>' +
+            '<div>Gebruik dit als norm bij Afdraaien' + (rest ? ', het restant in de machine is er al af' : '') + '. Met de knop bovenaan neem je hem over.</div>';
+        }
+        adv.innerHTML = h;
+      } else if (mixAvail < normal * (1 + extraIn / 100)) {
+        limited = true; extra = 0; base = mixAvail;
+        adv.innerHTML = '<div class="adv-main">Genoeg zaad</div><div>' + (machine === "apv" ? 'Kast' : 'Norm') + ' op ' + n2(norm) + ' kg/ha laten. Je houdt maar ongeveer ' + gStr((mixAvail - normal) * 1000) + ' restant, minder dan je extra %.</div>';
+      } else {
+        adv.innerHTML = '<div class="adv-main">Genoeg zaad</div><div>' + (machine === "apv" ? 'Kast' : 'Norm') + ' op ' + n2(norm) + ' kg/ha laten. Je hebt ' + (limEach ? "van alles " : "") + 'meer dan nodig, inclusief extra %.</div>';
+      }
+      adv.hidden = false;
+    }
+    const total = base === null ? null : base * (1 + extra / 100);
+    const uv = useVal != null ? useVal : norm;
+    $("useRow").hidden = machine === "apv" || !uv;
+    if (uv) { $("useNorm").textContent = "Neem " + n2(uv) + " kg/ha over bij Afdraaien"; $("useNorm")._v = uv; }
+
+    let reach = "";
+    if (m.mode === "weight" && tot && norm) {
+      const rHa = tot / norm;
+      reach = "Genoeg voor " + nl(rHa, 3) + " ha" + (width ? " of " + nl(rHa * 10000 / width, 0) + " m strook" : "");
+    }
+    $("normHint").textContent = m.mode === "weight" ? "optioneel, voor bereik" : "\u00a0";
+    let ovl = "";
+    if (!limited && m.mode === "length" && norm && vk.vakHa && vk.machHa > vk.vakHa * 1.0001) ovl = "Op de vakken " + nl(norm * vk.machHa / vk.vakHa, 1) + " kg/ha door overlap";
+
+    const note = $("mNote"); note.className = "lcd-note";
+    if (total === null) {
+      note.textContent = m.mode === "area" ? "Vul oppervlakte en norm in." : m.mode === "length" ? "Vul lengte, werkbreedte en norm in." : "Vul het totaalgewicht in.";
+      $("mBase").textContent = "";
+    } else {
+      note.textContent = "= " + gStr(total * 1000) + (reach ? "\n" + reach : "") + (ovl ? "\n" + ovl : "");
+      $("mBase").textContent = limited ? "beperkt door " + limName : extra ? kg(base) + " kg + " + kg(extra, extra % 1 ? 1 : 0) + " %" : "";
+    }
+    setText($("mTotal"), total === null ? "0" : kg(total));
+
+    let sum = 0;
+    m.comps.forEach((c, i) => {
+      const p = pctOf(c); sum += p;
+      const li = compEl.children[i]; if (!li) return;
+      const k = li._res.querySelector(".kg"), g = li._res.querySelector(".g");
+      if (total === null || !p) { k.textContent = "–"; g.textContent = ""; }
+      else { const v = total * p / 100; k.textContent = kg(v) + " kg"; g.textContent = gStr(v * 1000) + (kghaMode ? ", " + p.toLocaleString("nl-NL", { maximumFractionDigits: 1 }) + " %" : ""); }
+    });
+    if (limOn && limEach) {
+      m.comps.forEach((c, i) => {
+        const li = haveEl.children[i]; if (!li) return;
+        li._nm.textContent = cName(c, i);
+        const k = li._ov.querySelector(".kg"), g = li._ov.querySelector(".g");
+        const h = parse(c.have), p = pctOf(c);
+        li._ov.classList.remove("short");
+        if (h === null || total === null || !p) { k.textContent = "–"; g.textContent = ""; return; }
+        const left = h - total * p / 100;
+        if (left < -0.0005) { li._ov.classList.add("short"); k.textContent = kg(-left) + " kg"; g.textContent = "tekort"; }
+        else { k.textContent = kg(Math.max(0, left)) + " kg"; g.textContent = (limited && i === limIdx) ? "krapste soort" : (left < 1 ? gStr(Math.max(0, left) * 1000) : ""); }
+      });
+    } else if (limOn && !limEach && mixAvail && total !== null && !adv.hidden) {
+      const left = mixAvail - total;
+      if (left > 0.0005) adv.insertAdjacentHTML("beforeend", "<div style=\"margin-top:6px\">Na afwegen houd je " + kg(left) + " kg mengsel over.</div>");
+    }
+    const sumEl = $("pctSum");
+    const rounded = Math.round(sum * 100) / 100;
+    const off = !kghaMode && sum > 0 && Math.abs(sum - 100) > 0.01;
+    const diffTxt = Math.abs(Math.round((sum - 100) * 100) / 100).toLocaleString("nl-NL") + " %";
+    const offTxt = sum > 100 ? diffTxt + " te veel" : "nog " + diffTxt + " te verdelen";
+    sumEl.textContent = kghaMode ? "samen " + kghaSum.toLocaleString("nl-NL", { maximumFractionDigits: 2, useGrouping: false }) + " kg/ha" : off ? offTxt : rounded.toLocaleString("nl-NL") + " %";
+    sumEl.className = "sum" + (off ? " warn" : "");
+    if (off && total !== null) { note.textContent = offTxt.charAt(0).toUpperCase() + offTxt.slice(1) + " (samen " + rounded.toLocaleString("nl-NL") + " %)"; note.className = "lcd-note warn"; }
+  }
+
+  [["ha", "ha"], ["norm", "norm"], ["tot", "tot"], ["extra", "extra"], ["width", "width"], ["lim", "limKg"]].forEach(([id, key]) => {
+    const el = $(id); el.value = m[key] || "";
+    el.addEventListener("input", () => { m[key] = el.value; saveMix(); updateMix(); });
+  });
+  $("mArea").addEventListener("click", () => setMode("area"));
+  $("mLen").addEventListener("click", () => setMode("length"));
+  $("mWeight").addEventListener("click", () => setMode("weight"));
+  function setCompMode(mode) {
+    if ((m.compMode || "pct") === mode) return;
+    const r = (v, d) => String(+v.toFixed(d)).replace(".", ",");
+    if (mode === "kgha") {
+      const norm = parse(m.norm);
+      if (norm) m.comps.forEach(c => { const p = parse(c.pct); if (p) c.kgha = r(p * norm / 100, 2); });
+    } else {
+      const sum = m.comps.reduce((a, c) => a + (parse(c.kgha) || 0), 0);
+      if (sum) {
+        m.comps.forEach(c => { const k = parse(c.kgha); c.pct = k ? r(k / sum * 100, 2) : ""; });
+        m.norm = r(sum, 2); $("norm").value = m.norm;
+      }
+    }
+    m.compMode = mode; saveMix(); renderComps(); updateMix();
+  }
+  $("cPct").addEventListener("click", () => setCompMode("pct"));
+  $("cKgha").addEventListener("click", () => setCompMode("kgha"));
+  $("addComp").addEventListener("click", () => {
+    m.comps.push({ name: "", pct: "", done: false }); saveMix(); renderComps(); updateMix();
+    const inputs = compEl.querySelectorAll(".cname"); inputs[inputs.length - 1].focus();
+  });
+  $("resetChecks").addEventListener("click", () => { m.comps.forEach(c => c.done = false); saveMix(); renderComps(); updateMix(); });
+  $("resetMix").addEventListener("click", e => {
+    if (!armed(e.currentTarget, "Nog eens = leeg")) return;
+    m = JSON.parse(JSON.stringify(defMix));
+    m.comps = [{ name: "", pct: "", done: false }, { name: "", pct: "", done: false }];
+    m.vakken = [{ l: "", b: "", g: "" }];
+    saveMix();
+    ["ha", "norm", "tot", "extra", "width"].forEach(id => $(id).value = m[id] || "");
+    $("lim").value = "";
+    renderComps(); renderVakken(); setMode("area");
+  });
+
+  /* ---------- Zocon ---------- */
+  const z = Object.assign({ norm: "", width: "", speed: "", time: 60, stand: "", gram: "", rol: "Geel", borstel: "", zaad: "" }, store.get("zocon", {}));
+  const saveZ = () => store.set("zocon", z);
+  [["zNorm", "norm"], ["zWidth", "width"], ["zSpeed", "speed"], ["zPStand", "stand"], ["zGram", "gram"]].forEach(([id, key]) => {
+    const el = $(id); el.value = z[key] || "";
+    el.addEventListener("input", () => { z[key] = el.value; saveZ(); updateZ(); });
+  });
+  const setZT = t => { z.time = t; saveZ(); updateZ(); };
+  $("zT30").addEventListener("click", () => setZT(30));
+  $("zT60").addEventListener("click", () => setZT(60));
+  $("zRolSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { z.rol = b.dataset.v; saveZ(); updateZ(); }));
+  $("zBorstelSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    z.borstel = String(z.borstel) === b.dataset.v ? "" : b.dataset.v; saveZ(); updateZ();
+  }));
+  $("zFromWeeg").addEventListener("click", e => {
+    if (!lastNet) { flash(e.currentTarget, "Nog geen netto bij Wegen"); return; }
+    z.gram = String(Math.round(lastNet * 10) / 10).replace(".", ","); $("zGram").value = z.gram; saveZ(); updateZ();
+  });
+
+  // Bewaarde proeven per rol + borstel + zaad, met meerdere standen per combinatie
+  let zProf = store.get("zoconProf", {});
+  if (!zProf || typeof zProf !== "object" || Array.isArray(zProf)) zProf = {};
+  Object.values(zProf).forEach(pr => { if (!Array.isArray(pr.pts)) pr.pts = pr.gps ? [{ s: 12, gpm: pr.gps * 12, ts: pr.ts }] : []; });
+  const normK = v => String(v || "").trim().toLowerCase().replace(",", ".");
+  const profKey = () => (normK(z.rol) && normK(z.zaad)) ? [normK(z.rol), normK(z.borstel), normK(z.zaad)].join("|") : null;
+  const profName = pr => pr.rol + (pr.borstel ? ", borstel " + pr.borstel : "") + ", " + pr.zaad;
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const dateTxt = ts => new Date(ts).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
+  const mergePts = (pts, extra) => { const mp = new Map(); pts.forEach(q => mp.set(q.s, q)); if (extra) mp.set(extra.s, extra); return [...mp.values()].sort((a, b) => a.s - b.s); };
+  const ptsTxt = pts => pts.map(q => q.s.toLocaleString("nl-NL")).join(", ");
+
+  // gram per minuut op stand s: evenredig bij 1 proef, anders lijnen tussen de proeven
+  function gpmAt(pts, s) {
+    if (!pts.length) return null;
+    const first = pts[0], last = pts[pts.length - 1];
+    if (pts.length === 1 || s <= first.s) return first.gpm * s / first.s;
+    for (let i = 1; i < pts.length; i++) if (s <= pts[i].s) { const a = pts[i - 1], b = pts[i]; return a.gpm + (b.gpm - a.gpm) * (s - a.s) / (b.s - a.s); }
+    const a = pts[pts.length - 2], slope = (last.gpm - a.gpm) / (last.s - a.s);
+    return slope > 0 ? last.gpm + slope * (s - last.s) : last.gpm * s / last.s;
+  }
+  function standFor(pts, target) {
+    for (let st = 0.5; st <= 30.0001; st += 0.01) if (gpmAt(pts, st) >= target) return st;
+    return 31;
+  }
+
+  function renderProfList() {
+    const ul = $("zProfList"); ul.innerHTML = "";
+    const items = Object.entries(zProf).filter(([, pr]) => pr.pts && pr.pts.length).sort((a, b) => b[1].ts - a[1].ts);
+    if (!items.length) {
+      const li = document.createElement("li"); li.className = "empty";
+      li.textContent = "Nog niks bewaard. Doe een afdraaiproef en tik op Bewaar proef.";
+      ul.appendChild(li); return;
+    }
+    items.forEach(([key, pr]) => {
+      const li = document.createElement("li");
+      const left = document.createElement("button");
+      left.type = "button";
+      left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
+      left.setAttribute("aria-label", "Gebruik " + profName(pr));
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = profName(pr);
+      const mt = document.createElement("div"); mt.className = "meta";
+      mt.textContent = "stand " + ptsTxt(pr.pts) + ", " + dateTxt(pr.ts);
+      left.append(nm, mt);
+      left.addEventListener("click", () => {
+        z.rol = pr.rol; z.borstel = pr.borstel; z.zaad = pr.zaad;
+        saveZ(); updateZ(); try { window.scrollTo(0, 0); } catch (e) {}
+      });
+      const w = document.createElement("div"); w.className = "w num";
+      w.textContent = pr.pts.length + (pr.pts.length === 1 ? " proef" : " proeven");
+      w.style.fontSize = "17px";
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder bewaarde proeven");
+      del.addEventListener("click", () => { if (armed(del, "Wis?")) { delete zProf[key]; store.set("zoconProf", zProf); renderProfList(); updateZ(); } });
+      li.append(left, w, del);
+      ul.appendChild(li);
+    });
+  }
+
+  // Keuzelijst zaadsoorten (vast + zelf toegevoegd)
+  const ZAAD_DEF = ["Italiaans raaigras", "Engels raaigras", "Groenbemester rogge", "Japanse haver", "Mosterd", "Phacelia (Angelia)", "Sv7", "Klaver", "Smakelijke weide excellent (Agrifirm)", "Smakelijke weide (Barenburg)"];
+  let zaadCustom = store.get("zaadsoorten", []);
+  if (!Array.isArray(zaadCustom)) zaadCustom = [];
+  let zAdding = false;
+  function zaadList() {
+    const mp = new Map();
+    [...ZAAD_DEF, ...zaadCustom, ...Object.values(zProf).map(q => q.zaad), z.zaad, ...(m && m.comps ? m.comps.map(c => c.name) : []), ...log.map(l => l.mix), mixEl.value, ...(() => { try { return [k.zaad, ...kCustom.map(e => e.zaad)]; } catch (er) { return []; } })()].forEach(n => {
+      n = String(n || "").trim(); if (n && !mp.has(n.toLowerCase())) mp.set(n.toLowerCase(), n);
+    });
+    return [...mp.values()].sort((a, b) => a.localeCompare(b, "nl"));
+  }
+  function fillZaad() {
+    const sel = $("zZaadSel"), list = zaadList(), sig = JSON.stringify(list);
+    if (sel._sig !== sig) {
+      sel.innerHTML = "";
+      const add = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o); };
+      add("", "Kies een soort…");
+      list.forEach(n => add(n, n));
+      add("__new", "+ Nieuwe soort toevoegen…");
+      sel._sig = sig;
+      const dl = $("zaadDL"); dl.innerHTML = "";
+      list.forEach(n => { const o = document.createElement("option"); o.value = n; dl.appendChild(o); });
+    }
+    sel.value = zAdding ? "__new" : (list.includes(String(z.zaad || "").trim()) ? String(z.zaad).trim() : "");
+    $("zNewWrap").hidden = !zAdding;
+  }
+  $("zZaadSel").addEventListener("change", e => {
+    if (e.target.value === "__new") { zAdding = true; $("zNewWrap").hidden = false; setTimeout(() => $("zNewZaad").focus(), 50); return; }
+    zAdding = false; z.zaad = e.target.value; saveZ(); updateZ();
+  });
+  function addZaad() {
+    const n = $("zNewZaad").value.trim();
+    if (!n) { flash($("zAddZaad"), "Naam?"); return; }
+    const found = zaadList().find(x => x.toLowerCase() === n.toLowerCase());
+    if (!found) { zaadCustom.push(n); store.set("zaadsoorten", zaadCustom); refreshAllPickers(); }
+    zAdding = false; z.zaad = found || n; $("zNewZaad").value = ""; saveZ(); updateZ();
+  }
+  $("zAddZaad").addEventListener("click", addZaad);
+  $("zNewZaad").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addZaad(); } });
+
+  // Ervaringstabel Zocon (praktijkwaarden; borstelstand, zaad, kg/ha, stand, km/h)
+  const ZTAB = [
+    { b: "0", zaad: "Italiaans raaigras", tag: "italiaans", kg: 15, st: 8, v: 8 },
+    { b: "0", zaad: "Italiaans raaigras", tag: "italiaans", kg: 25, st: 14, v: 8 },
+    { b: "0", zaad: "Groenbemester rogge", tag: "rogge", kg: 70, st: 20, v: 8 },
+    { b: "1", zaad: "Phacelia (Angelia)", tag: "phacelia", kg: 10, st: 2, v: 10 },
+    { b: "1", zaad: "Mosterd", tag: "mosterd", kg: 20, st: 6, v: 8 },
+    { b: "1", zaad: "Italiaans raaigras", tag: "italiaans", kg: 25, st: 13, v: 8, note: "genoteerd als 8 à 10 km/h" },
+    { b: "1", zaad: "Engels raaigras", tag: "engels", kg: 38, st: 24, v: 8, note: "stand 24 is het maximum" },
+    { b: "1", zaad: "Japanse haver", tag: "haver", kg: 65, st: 24, v: 8, note: "stand 24 is het maximum" },
+    { b: "2", zaad: "Groenbemester rogge", tag: "rogge", kg: 50, st: 12.5, v: 8, note: "genoteerd als stand 12/13" }
+  ];
+  const tabMatch = () => { const zk = normK(z.zaad); return zk && normK(z.rol) === "geel" ? ZTAB.filter(e => e.b === String(z.borstel).trim() && zk.includes(e.tag)) : []; };
+  const tabPts = width => {
+    const mp = new Map();
+    tabMatch().forEach(e => { const g = e.kg * width * e.v / 600 * 1000; const a = mp.get(e.st); mp.set(e.st, a ? (a + g) / 2 : g); });
+    return [...mp.entries()].map(([st, gpm]) => ({ s: st, gpm })).sort((a, b) => a.s - b.s);
+  };
+  function renderZTab() {
+    const ul = $("zTabList"); ul.innerHTML = "";
+    const match = new Set(tabMatch());
+    ZTAB.forEach(e => {
+      const li = document.createElement("li"); if (match.has(e)) li.className = "match";
+      const left = document.createElement("button"); left.type = "button";
+      left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
+      const nm = document.createElement("div"); nm.className = "name";
+      nm.textContent = e.zaad + ", " + e.kg + " kg/ha";
+      const mt = document.createElement("div"); mt.className = "meta";
+      mt.textContent = "borstel " + e.b + ", " + e.v + " km/h" + (e.note ? ", " + e.note : "");
+      left.append(nm, mt);
+      left.addEventListener("click", () => {
+        z.rol = "Geel"; z.borstel = e.b; z.zaad = e.zaad; z.norm = String(e.kg); z.speed = String(e.v); z.stand = ""; z.gram = "";
+        [["zNorm", "norm"], ["zSpeed", "speed"], ["zPStand", "stand"], ["zGram", "gram"]].forEach(([id, kk]) => $(id).value = z[kk]);
+        saveZ(); updateZ(); try { window.scrollTo(0, 0); } catch (er) {}
+      });
+      const w = document.createElement("div"); w.className = "w num tabw";
+      w.textContent = "stand " + String(e.st).replace(".", ",");
+      li.append(left, w, document.createElement("span"));
+      ul.appendChild(li);
+    });
+  }
+
+  function updateZ() {
+    fillZaad();
+    renderZTab();
+    const nl = (v, d) => v.toLocaleString("nl-NL", { maximumFractionDigits: d, useGrouping: false });
+    const norm = parse(z.norm), width = parse(z.width), speed = parse(z.speed);
+    const stand = parse(z.stand), gram = parse(z.gram), t = z.time === 30 ? 30 : 60;
+    $("zT30").setAttribute("aria-pressed", t === 30);
+    $("zT60").setAttribute("aria-pressed", t === 60);
+    $("zBorstelSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(z.borstel).trim() === b.dataset.v));
+    $("zRolSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(z.rol).trim().toLowerCase() === b.dataset.v.toLowerCase()));
+    $("zRolHint").textContent = { groen: "Volgens Zocon voor koolzaad, mosterd, klaver, luzerne", blauw: "Volgens Zocon voor koolzaad, mosterd, klaver, luzerne", geel: "Volgens Zocon voor phacelia, mosterd, radijs, graszaden", rood: "Volgens Zocon voor graszaden, phacelia, mosterd, radijs", zwart: "Volgens Zocon voor granen, graszaden" }[String(z.rol).trim().toLowerCase()] || "\u00a0";
+    const adv = $("zAdvice"), note = $("zNote"); adv.hidden = true; note.className = "lcd-note";
+    $("zTop").textContent = "";
+
+    const key = profKey(), prof = key ? zProf[key] : null;
+    const saved = prof && prof.pts ? prof.pts : [];
+    $("zProfHint").textContent = !key ? "Kies een zaairol en vul de zaadsoort in om proeven te onthouden."
+      : saved.length ? saved.length + (saved.length === 1 ? " proef" : " proeven") + " bewaard (stand " + ptsTxt(saved) + "), laatste " + dateTxt(prof.ts) + "."
+      : (tabMatch().length ? "Geen eigen proef, wel " + tabMatch().length + (tabMatch().length === 1 ? " waarde" : " waarden") + " uit de ervaringstabel." : "Nog geen proef bewaard voor deze combinatie.");
+
+    // Benodigde afgifte: kg/min = kg/ha × m × km/h / 600
+    const needKgMin = (norm && width && speed) ? norm * width * speed / 600 : null;
+    const needProef = needKgMin ? needKgMin * 1000 * t / 60 : null;
+    $("zNeed").textContent = needKgMin ? "Nodig: " + nl(needKgMin * 1000, 0) + " g per minuut, dus " + nl(needProef, 0) + " g per proef van " + t + " s" : "\u00a0";
+
+    if (!needKgMin) { setText($("zStand"), "–"); note.textContent = "Vul norm, werkbreedte en snelheid in."; return; }
+    const fromProef = !!(stand && gram);
+    const cur = fromProef ? { s: stand, gpm: gram * 60 / t, ts: Date.now() } : null;
+    let pts = mergePts(saved, cur), fromTab = false;
+    if (!pts.length) { const tp = tabPts(width); if (tp.length) { pts = tp; fromTab = true; } }
+    if (!pts.length) { setText($("zStand"), "–"); note.textContent = "Doe een afdraaiproef en vul stand en gewicht in."; return; }
+
+    const doseAt = st => gpmAt(pts, st) / 1000 * 600 / (width * speed);
+    const vAt = st => gpmAt(pts, st) / 1000 * 600 / (norm * width);
+    const exact = standFor(pts, needKgMin * 1000);
+
+    let h = "";
+    if (fromProef) {
+      const dNow = cur.gpm / 1000 * 600 / (width * speed), dev = (dNow / norm - 1) * 100;
+      h += '<div>Bij stand ' + nl(stand, 1) + ' zaai je nu <strong>' + nl(dNow, 1) + ' kg/ha</strong> (' + (dev >= 0 ? "+" : "−") + nl(Math.abs(dev), 0) + ' % t.o.v. ' + nl(norm, 2) + ').</div>';
+      if (saved.length) h += '<div>Gerekend met deze proef plus ' + saved.filter(q => q.s !== stand).length + ' bewaarde.</div>';
+    } else {
+      h += fromTab ? '<div>Startstand op basis van de <strong>ervaringstabel</strong> (' + pts.length + (pts.length === 1 ? ' waarde' : ' waarden') + ', niet zelf gemeten). Doe zeker een controleproef.</div>'
+        : '<div>Startstand op basis van ' + (pts.length === 1 ? 'je bewaarde proef' : 'je ' + pts.length + ' bewaarde proeven') + ' voor <strong>' + esc(profName(prof)) + '</strong>.</div>';
+    }
+
+    if (exact > 24) {
+      setText($("zStand"), "24+");
+      note.textContent = "Zelfs stand 24 is te weinig."; note.className = "lcd-note warn";
+      h += '<div class="steps"><div>Je zou meer dan stand 24 nodig hebben. Kies een grotere rol, of rij op stand 24 hooguit ' + nl(vAt(24), 1) + ' km/h.</div></div>';
+    } else if (exact < 1) {
+      setText($("zStand"), "<1");
+      note.textContent = "Zelfs stand 1 is te veel."; note.className = "lcd-note warn";
+      h += '<div class="steps"><div>Je zou minder dan stand 1 nodig hebben. Kies een kleinere rol, of rij op stand 1 minstens ' + nl(vAt(1), 1) + ' km/h.</div></div>';
+    } else {
+      const lo = Math.max(1, Math.floor(exact)), hi = Math.min(24, Math.ceil(exact));
+      const best = Math.abs(doseAt(lo) - norm) <= Math.abs(doseAt(hi) - norm) ? lo : hi;
+      const pctAt = st => { const d = (doseAt(st) / norm - 1) * 100; return (d >= 0 ? "+" : "−") + nl(Math.abs(d), 1) + " %"; };
+      setText($("zStand"), String(best));
+      $("zTop").textContent = (fromProef ? "" : "startstand, ") + "exact " + nl(exact, 1);
+      note.textContent = "≈ " + nl(doseAt(best), 1) + " kg/ha bij " + nl(speed, 1) + " km/h";
+      h += '<div class="steps">';
+      if (lo !== hi) {
+        h += '<div><strong>Stand ' + lo + '</strong> = ' + nl(doseAt(lo), 1) + ' kg/ha (' + pctAt(lo) + ')</div>';
+        h += '<div><strong>Stand ' + hi + '</strong> = ' + nl(doseAt(hi), 1) + ' kg/ha (' + pctAt(hi) + ')</div>';
+      }
+      h += '<div>Precies op norm met stand ' + best + ': rij ' + nl(vAt(best), 1) + ' km/h.</div>';
+      h += '<div>Controleproef op stand ' + best + ': verwacht ongeveer ' + nl(gpmAt(pts, best) * t / 60, 0) + ' g in ' + t + ' s.</div>';
+      const dist = Math.min(...pts.map(q => Math.abs(q.s - best)));
+      if (pts.length === 1 && dist > 3) h += '<div style="color:var(--warn)">Dit is ' + nl(dist, 0) + ' standen van je proef af. De afgifte loopt niet altijd recht op met de stand, dus deze schatting kan flink afwijken. Doe de controleproef en bewaar die ook: met twee proeven rekent de app veel nauwkeuriger.</div>';
+      else if (pts.length >= 2 && (best < pts[0].s - 1 || best > pts[pts.length - 1].s + 1)) h += '<div style="color:var(--warn)">Stand ' + best + ' valt buiten je proeven (stand ' + ptsTxt(pts) + '). Controleproef aanbevolen, en bewaar die ook.</div>';
+      h += '</div>';
+    }
+
+    if (fromProef && key) {
+      const nm = profName({ rol: z.rol.trim(), borstel: String(z.borstel || "").trim(), zaad: z.zaad.trim() });
+      const label = saved.some(q => q.s === stand) ? 'Proef op stand ' + nl(stand, 1) + ' bijwerken' : saved.length ? 'Proef op stand ' + nl(stand, 1) + ' toevoegen' : 'Bewaar proef voor ' + esc(nm);
+      h += '<div class="row"><button type="button" class="btn primary" id="zSave">' + label + '</button></div>';
+    } else if (fromProef && !key) {
+      h += '<div class="steps"><div>Kies een zaairol en vul de zaadsoort in, dan kun je deze proef bewaren.</div></div>';
+    }
+    adv.innerHTML = h; adv.hidden = false;
+    const sb = $("zSave");
+    if (sb) sb.addEventListener("click", () => {
+      const pr = zProf[key] || { pts: [] };
+      pr.rol = z.rol.trim(); pr.borstel = String(z.borstel || "").trim(); pr.zaad = z.zaad.trim();
+      pr.pts = mergePts(pr.pts || [], cur); pr.ts = Date.now();
+      zProf[key] = pr;
+      store.set("zoconProf", zProf); renderProfList(); updateZ();
+      const nb = $("zSave"); if (nb) { nb.textContent = "Bewaard"; nb.disabled = true; }
+    });
+  }
+  renderProfList();
+
+  /* ---------- Kopeg ---------- */
+  const k = Object.assign({ norm: "", area: "40", m2: "", stand: "", gram: "" }, store.get("kopeg", {}));
+  if (k.gram && !k.kg) { const g0 = parse(k.gram); if (g0) k.kg = String(+(g0 / 1000).toFixed(3)).replace(".", ","); }
+  const saveK = () => store.set("kopeg", k);
+  [["kNorm", "norm"], ["kDen", "den"], ["kPStand", "stand"], ["kGram", "kg"]].forEach(([id, key]) => {
+    const el = $(id); el.value = k[key] || "";
+    el.addEventListener("input", () => { k[key] = el.value; saveK(); updateK(); });
+  });
+  [["kA40", "40"], ["kA10", "10"], ["kAx", "x"]].forEach(([id, v]) => $(id).addEventListener("click", () => { k.area = v; saveK(); updateK(); }));
+  $("kFromWeeg").addEventListener("click", e => {
+    if (!lastNet) { flash(e.currentTarget, "Nog geen netto bij Wegen"); return; }
+    k.kg = String(+(lastNet / 1000).toFixed(3)).replace(".", ","); $("kGram").value = k.kg; saveK(); updateK();
+  });
+
+  const KTAB = [
+    { zaad: "Smakelijke weide excellent (Agrifirm)", kg: 40, st: 25 },
+    { zaad: "Smakelijke weide (Barenburg)", kg: 40, st: 22.5, note: "genoteerd als stand 22/23" }
+  ];
+  let kCustom = store.get("kopegTab", []);
+  if (!Array.isArray(kCustom)) kCustom = [];
+  const kAll = () => [...KTAB, ...kCustom];
+  const kMatch = () => { const zz = String(k.zaad || "").trim().toLowerCase(); return zz ? kAll().filter(e => e.zaad.toLowerCase() === zz) : []; };
+  function kStartStand(norm) {
+    const es = kMatch().slice().sort((a, b) => a.kg - b.kg);
+    if (!es.length || !norm) return null;
+    if (es.length === 1 || norm <= es[0].kg) return es[0].st * norm / es[0].kg;
+    const last = es[es.length - 1];
+    if (norm >= last.kg) return last.st * norm / last.kg;
+    for (let i = 1; i < es.length; i++) if (norm <= es[i].kg) { const a = es[i - 1], b = es[i]; return a.st + (b.st - a.st) * (norm - a.kg) / (b.kg - a.kg); }
+    return null;
+  }
+  function renderKTab() {
+    const ul = $("kTabList"); ul.innerHTML = "";
+    const zz = String(k.zaad || "").trim().toLowerCase();
+    kAll().forEach(e => {
+      const li = document.createElement("li"); if (zz && e.zaad.toLowerCase() === zz) li.className = "match";
+      const left = document.createElement("button"); left.type = "button";
+      left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + ", " + String(e.kg).replace(".", ",") + " kg/ha";
+      const mt = document.createElement("div"); mt.className = "meta";
+      mt.textContent = e.own ? "eigen proef, " + new Date(e.ts).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : (e.note || "praktijkwaarde");
+      left.append(nm, mt);
+      left.addEventListener("click", () => {
+        k.zaad = e.zaad; k.norm = String(e.kg).replace(".", ","); $("kNorm").value = k.norm;
+        k.stand = ""; k.kg = ""; $("kPStand").value = ""; $("kGram").value = "";
+        saveK(); refreshAllPickers(); updateK(); try { window.scrollTo(0, 0); } catch (er) {}
+      });
+      const w = document.createElement("div"); w.className = "w num tabw"; w.textContent = "stand " + String(e.st).replace(".", ",");
+      let third = document.createElement("span");
+      if (e.own) {
+        third = document.createElement("button"); third.type = "button"; third.className = "del"; third.textContent = "×"; third.setAttribute("aria-label", "Verwijder uit tabel");
+        third.addEventListener("click", () => { if (armed(third, "Wis?")) { kCustom = kCustom.filter(x => x !== e); store.set("kopegTab", kCustom); updateK(); } });
+      }
+      li.append(left, w, third);
+      ul.appendChild(li);
+    });
+  }
+
+  function updateK() {
+    renderKTab();
+    { const n = kMatch().length; $("kZaadHint").textContent = !k.zaad ? "\u00a0" : n ? n + (n === 1 ? " waarde" : " waarden") + " in de ervaringstabel" : "Nog niks in de tabel voor deze soort"; }
+    const nl = (v, d) => v.toLocaleString("nl-NL", { maximumFractionDigits: d, useGrouping: false });
+    ["40", "10", "x"].forEach(v => $({ "40": "kA40", "10": "kA10", "x": "kAx" }[v]).setAttribute("aria-pressed", k.area === v));
+    $("fKm2").hidden = k.area !== "x";
+    const den = parse(k.den);
+    const areaHa = k.area === "40" ? 1 / 40 : k.area === "10" ? 1 / 10 : (den ? 1 / den : null);
+    const areaTxt = k.area === "40" ? "1/40 ha" : k.area === "10" ? "1/10 ha" : (den ? "1/" + nl(den, 2) + " ha" : "");
+    const norm = parse(k.norm), stand = parse(k.stand), kgIn = parse(k.kg), gram = kgIn ? kgIn * 1000 : null;
+    $("kGHint").textContent = gram ? "= " + Math.round(gram) + " g" : "\u00a0";
+    $("kM2Hint").textContent = den ? "= " + nl(10000 / den, 0) + " m²" : "Vul in voor welk deel van een hectare je draaide, bijvoorbeeld 1/20 ha.";
+    const wt = g => nl(g / 1000, 3) + " kg (" + nl(g, 0) + " g)";
+    const adv = $("kAdvice"), note = $("kNote"); adv.hidden = true; note.className = "lcd-note"; $("kTop").textContent = "";
+    const want = norm && areaHa ? norm * areaHa * 1000 : null;
+    if (!norm) { setText($("kStand"), "–"); note.textContent = "Vul de norm in."; return; }
+    if (!areaHa) { setText($("kStand"), "–"); note.textContent = "Vul in voor welk deel van een hectare je de slinger draaide."; return; }
+    if (!stand || !gram) {
+      const ss = kStartStand(norm);
+      if (ss != null) {
+        setText($("kStand"), nl(ss, 1));
+        $("kTop").textContent = "startstand volgens tabel";
+        note.textContent = "Daarna afdraaien: op norm " + wt(want) + " voor " + areaTxt + ".";
+      } else {
+        setText($("kStand"), "–");
+        note.textContent = "Op norm hoort er " + wt(want) + " uit te komen voor " + areaTxt + ".";
+      }
+      return;
+    }
+    const dose = gram / 1000 / areaHa;
+    const exact = stand * norm / dose;
+    const dev = (dose / norm - 1) * 100;
+    const devTxt = (dev >= 0 ? "+" : "−") + nl(Math.abs(dev), 1) + " %";
+    const near = Math.abs(dev) < 1;
+    const warns = [];
+    if (areaHa >= 1) warns.push("De proef is " + nl(areaHa, 2) + " ha. Een afdraaiproef is altijd minder dan 1 ha. Heb je misschien je perceel ingevuld?");
+    if (Math.abs(dev) > 60) warns.push("Je zit " + devTxt + " naast de norm. Controleer oppervlakte, gewicht en norm.");
+    if (exact > stand * 3 || exact < stand / 3) warns.push("Stand " + nl(exact, 1) + " is waarschijnlijk niet in te stellen. Eerst je invoer nakijken.");
+    const odd = warns.length > 0;
+    setText($("kStand"), odd ? "?" : nl(exact, 1));
+    $("kTop").textContent = "was " + nl(stand, 1);
+    note.textContent = odd ? "Klopt je invoer wel?" : near ? "Zit al op norm, stand kan blijven." : "Verwacht bij controleproef " + wt(want);
+    if (odd) note.className = "lcd-note warn";
+    let h = '';
+    if (odd) h += '<div style="color:var(--warn);font-weight:600;margin-bottom:8px">Let op: ' + warns.join(' ') + '</div>';
+    h += '<div>Bij stand ' + nl(stand, 1) + ' zaai je nu <strong>' + nl(dose, 1) + ' kg/ha</strong> (' + devTxt + ' t.o.v. ' + nl(norm, 2) + ').</div>';
+    h += '<div class="steps">';
+    if (!near) h += '<div>Zet de variator ' + (exact > stand ? 'hoger' : 'lager') + ', op ongeveer <strong>' + nl(exact, 1) + '</strong>.</div>';
+    h += '<div>Op norm hoort er bij de proef van ' + areaTxt + ' <strong>' + wt(want) + '</strong> uit te komen.</div>';
+    if (!near) h += '<div>Draai daarna een controleproef. Zit je er nog naast, vul dan de nieuwe stand en het nieuwe gewicht in.</div>';
+    h += '</div>';
+    if (k.zaad && !odd) h += '<div class="row"><button type="button" class="btn primary" id="kSaveTab">Bewaar in tabel: ' + nl(dose, 1) + ' kg/ha op stand ' + nl(stand, 1) + '</button></div>';
+    else if (!k.zaad && !odd) h += '<div class="steps"><div>Kies een zaadsoort, dan kun je deze proef in de tabel bewaren.</div></div>';
+    adv.innerHTML = h; adv.hidden = false;
+    const sb = $("kSaveTab");
+    if (sb) sb.addEventListener("click", () => {
+      kCustom.push({ zaad: k.zaad, kg: Math.round(dose * 10) / 10, st: stand, own: true, ts: Date.now() });
+      store.set("kopegTab", kCustom); updateK();
+      const nb = $("kSaveTab"); if (nb) { nb.textContent = "Bewaard in tabel"; nb.disabled = true; }
+    });
+  }
+
+  /* ---------- Init ---------- */
+  tareEl.value = fmtInput(tareG);
+  setUnit(unit);
+  renderLog();
+  updateZ();
+  updateK();
+  renderComps();
+  renderVakken();
+  setMode(["area", "length", "weight"].includes(m.mode) ? m.mode : "area");
+  function loadMix() {
+    const raw = store.get(mixKey(), {});
+    m = Object.assign({}, defMix, raw);
+    if (machine === "zoc" && !raw.width) m.width = "";
+    if (!Array.isArray(m.comps) || !m.comps.length) m.comps = defMix.comps.map(c => Object.assign({}, c));
+    if (!Array.isArray(m.vakken) || !m.vakken.length) m.vakken = [{ l: m.len || "", b: "", g: "" }];
+    if (m.limBy !== "all" && m.limBy !== "each") m.limBy = "all";
+    ["ha", "norm", "tot", "extra", "width"].forEach(id => $(id).value = m[id] || "");
+    $("lim").value = m.limKg || "";
+    renderComps(); renderVakken();
+    setMode(["area", "length", "weight"].includes(m.mode) ? m.mode : "area");
+  }
+  function loadWeeg() {
+    unit = store.get(wk("unit"), "g");
+    tareG = store.get(wk("tareG"), null);
+    log = store.get(wk("log"), []);
+    if (!Array.isArray(log)) log = [];
+    mixEl.value = store.get(wk("mix"), "");
+    grossEl.value = "";
+    tareEl.value = fmtInput(tareG);
+    setUnit(unit);
+    renderLog();
+    refreshAllPickers();
+  }
+  function setMachine(mc) {
+    machine = mc;
+    store.set("machine", mc);
+    document.body.classList.toggle("m-apv", mc === "apv");
+    document.body.classList.toggle("m-zoc", mc === "zoc");
+    document.body.classList.toggle("m-kop", mc === "kop");
+    $("pHome").hidden = !!mc;
+    $("appHead").hidden = !mc;
+    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop"].forEach(id => $(id).hidden = true); refreshShareCounts(); return; }
+    $("mName").textContent = { apv: "APV 5.2", zoc: "Zocon Z300", kop: "Kopeg-zaaier" }[mc];
+    $("weegLabel").textContent = mc === "apv" ? "Invullen op kast" : "Netto afgedraaid";
+    loadWeeg();
+    loadMix();
+    const allowed = { apv: ["weeg", "meng"], zoc: ["zoc", "weeg", "meng"], kop: ["kop", "weeg", "meng"] }[mc];
+    const t = store.get("tab_" + mc, allowed[0]);
+    showTab(allowed.includes(t) ? t : allowed[0]);
+    try { window.scrollTo(0, 0); } catch (e) {}
+  }
+  $("mApv").addEventListener("click", () => setMachine("apv"));
+  $("mZoc").addEventListener("click", () => setMachine("zoc"));
+  $("mKop").addEventListener("click", () => setMachine("kop"));
+  $("mSwitch").addEventListener("click", () => setMachine(null));
+  // Licht / donker
+  const themes = ["auto", "light", "dark"], tLabel = { auto: "◐ Auto", light: "☀ Licht", dark: "☾ Donker" };
+  let theme = store.get("theme", "auto"); if (!themes.includes(theme)) theme = "auto";
+  function applyTheme() {
+    if (theme === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme;
+    $("themeBtn").textContent = tLabel[theme]; $("themeBtn").setAttribute("aria-label", "Weergave: " + tLabel[theme].slice(2));
+    store.set("theme", theme);
+  }
+  $("themeBtn").addEventListener("click", () => { theme = themes[(themes.indexOf(theme) + 1) % themes.length]; applyTheme(); });
+  applyTheme();
+
+  // Scherm aan houden (Wake Lock)
+  let wakeLock = null, wakeWanted = false;
+  const wakeBtn = $("wakeBtn");
+  function updWake() { wakeBtn.setAttribute("aria-pressed", !!wakeLock); if (!wakeBtn._fl) wakeBtn.textContent = "Scherm blijft aan: " + (wakeLock ? "aan" : "uit"); }
+  async function reqWake() {
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; updWake(); });
+    } catch (e) { wakeLock = null; wakeWanted = false; flash(wakeBtn, "Lukt hier niet, open in browser"); }
+    updWake();
+  }
+  wakeBtn.addEventListener("click", () => {
+    if (!("wakeLock" in navigator)) { flash(wakeBtn, "Niet ondersteund op dit toestel"); return; }
+    if (wakeLock) { wakeWanted = false; const wl = wakeLock; wakeLock = null; wl.release().catch(() => {}); updWake(); }
+    else { wakeWanted = true; reqWake(); }
+  });
+  document.addEventListener("visibilitychange", () => { if (wakeWanted && document.visibilityState === "visible" && !wakeLock) reqWake(); });
+
+  $("mixPick").appendChild(makeSoortPicker(() => mixEl.value, v => { mixEl.value = v; store.set(wk("mix"), v); }, { empty: "Kies…", label: "Mengsel of soort" }));
+  $("kZaadPick").appendChild(makeSoortPicker(() => k.zaad, v => { k.zaad = v; saveK(); updateK(); }, { empty: "Kies een soort…", label: "Zaadsoort kopeg" }));
+  // ---------- Delen en overzetten ----------
+  const SH_PREFIX = "ZAAIHULP1:";
+  const zocItems = () => Object.entries(zProf).filter(([, pr]) => pr.pts && pr.pts.length);
+  // Per item aan- of uitvinken; standaard staat alles aan
+  const unSel = { zoc: new Set(), kop: new Set(), soort: new Set() };
+  const kopKey = e => e.zaad + "|" + e.kg + "|" + e.st;
+  function shareGroups() {
+    return {
+      zoc: zocItems().map(([key, pr]) => ({ key, label: profName(pr) + " (stand " + ptsTxt(pr.pts) + ")" })),
+      kop: kCustom.map(e => ({ key: kopKey(e), label: e.zaad + ", " + String(e.kg).replace(".", ",") + " kg/ha op stand " + String(e.st).replace(".", ",") })),
+      soort: zaadCustom.map(n => ({ key: n, label: n }))
+    };
+  }
+  function refreshShareCounts() {
+    const g = shareGroups();
+    [["zoc", "itZoc", "cntZoc", "shZoc"], ["kop", "itKop", "cntKop", "shKop"], ["soort", "itSoort", "cntSoort", "shSoort"]].forEach(([grp, boxId, cntId, chkId]) => {
+      const items = g[grp], box = $(boxId), un = unSel[grp];
+      [...un].forEach(kk => { if (!items.some(it => it.key === kk)) un.delete(kk); });
+      box.innerHTML = "";
+      items.forEach(it => {
+        const lb = document.createElement("label"); lb.className = "chk";
+        const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !un.has(it.key);
+        cb.addEventListener("change", () => { if (cb.checked) un.delete(it.key); else un.add(it.key); refreshShareCounts(); });
+        const sp = document.createElement("span"); sp.textContent = it.label;
+        lb.append(cb, sp); box.appendChild(lb);
+      });
+      const sel = items.filter(it => !un.has(it.key)).length;
+      $(cntId).textContent = "(" + sel + " van " + items.length + ")";
+      $(chkId).checked = items.length ? sel > 0 : $(chkId).checked;
+    });
+  }
+  [["shZoc", "zoc"], ["shKop", "kop"], ["shSoort", "soort"]].forEach(([id, grp]) => $(id).addEventListener("change", e => {
+    const g = shareGroups()[grp];
+    if (e.target.checked) unSel[grp].clear(); else g.forEach(it => unSel[grp].add(it.key));
+    refreshShareCounts();
+  }));
+  const enc = obj => btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  const dec = str => JSON.parse(decodeURIComponent(escape(atob(str))));
+  $("shExport").addEventListener("click", async () => {
+    const data = { v: 1, ts: Date.now() };
+    const zs = zocItems().filter(([kk]) => !unSel.zoc.has(kk));
+    const ks = kCustom.filter(e => !unSel.kop.has(kopKey(e)));
+    const ss = zaadCustom.filter(n => !unSel.soort.has(n));
+    if ($("shZoc").checked && zs.length) data.zocon = Object.fromEntries(zs);
+    if ($("shKop").checked && ks.length) data.kopeg = ks;
+    if ($("shSoort").checked && ss.length) data.soorten = ss;
+    if (!data.zocon && !data.kopeg && !data.soorten && !data.inst) { $("shOutHint").textContent = "Niks aangevinkt om te delen."; return; }
+    if ($("shInst").checked) data.inst = {
+      tare: { apv: store.get("tareG", null), zoc: store.get("tareG_zoc", null), kop: store.get("tareG_kop", null) },
+      unit: { apv: store.get("unit", "g"), zoc: store.get("unit_zoc", "g"), kop: store.get("unit_kop", "g") },
+      restKg: store.get("restKg", ""), zWidth: z.width || ""
+    };
+    const code = SH_PREFIX + enc(data);
+    const out = $("shOut"); out.value = code; out.hidden = false;
+    let how = "";
+    try {
+      if (navigator.share) { await navigator.share({ text: "Zaaihulp-gegevens, plak dit in de app bij Importeren:\n" + code }); how = "Gedeeld."; }
+    } catch (e) { if (e && e.name === "AbortError") how = "Delen geannuleerd. Je kunt de code hieronder ook kopiëren."; }
+    if (!how) {
+      try { await navigator.clipboard.writeText(code); how = "Gekopieerd. Plak hem in WhatsApp of waar je wilt."; }
+      catch (e) { out.focus(); out.select(); how = "Houd de code ingedrukt om hem te kopiëren."; }
+    }
+    $("shOutHint").textContent = how;
+  });
+  $("shImport").addEventListener("click", () => {
+    const hint = $("shInHint");
+    const mt = $("shIn").value.match(/ZAAIHULP1:\s*([A-Za-z0-9+/=]+)/);
+    if (!mt) { hint.textContent = "Geen geldige code gevonden. Die begint met ZAAIHULP1:"; hint.style.color = "var(--warn)"; return; }
+    let data;
+    try { data = dec(mt[1]); } catch (e) { hint.textContent = "De code is beschadigd of niet compleet geplakt."; hint.style.color = "var(--warn)"; return; }
+    const res = [];
+    if (Array.isArray(data.soorten)) {
+      let n = 0;
+      data.soorten.forEach(nm => { nm = String(nm || "").trim(); if (nm && !zaadList().some(x => x.toLowerCase() === nm.toLowerCase())) { zaadCustom.push(nm); n++; } });
+      store.set("zaadsoorten", zaadCustom); res.push(n + " soort" + (n === 1 ? "" : "en"));
+    }
+    // Zocon-proeven: per combinatie samenvoegen, eigen proef op dezelfde stand gaat voor
+    if (data.zocon && typeof data.zocon === "object") {
+      let n = 0;
+      Object.entries(data.zocon).forEach(([key, pr]) => {
+        if (!pr || !Array.isArray(pr.pts)) return;
+        const mine = zProf[key] || { rol: pr.rol, borstel: pr.borstel, zaad: pr.zaad, pts: [], ts: pr.ts };
+        if (!Array.isArray(mine.pts)) mine.pts = [];
+        pr.pts.forEach(q => {
+          if (typeof q.s !== "number" || typeof q.gpm !== "number") return;
+          if (!mine.pts.some(x => x.s === q.s)) { mine.pts.push(q); n++; }
+        });
+        mine.pts.sort((a, b) => a.s - b.s);
+        zProf[key] = mine;
+      });
+      store.set("zoconProf", zProf); res.push(n + (n === 1 ? " Zocon-proef" : " Zocon-proeven"));
+    }
+    if (Array.isArray(data.kopeg)) {
+      let n = 0;
+      data.kopeg.forEach(e => {
+        if (!e || !e.zaad || typeof e.kg !== "number" || typeof e.st !== "number") return;
+        if (!kCustom.some(x => x.zaad.toLowerCase() === e.zaad.toLowerCase() && x.kg === e.kg && x.st === e.st)) { kCustom.push(Object.assign({}, e, { own: true })); n++; }
+      });
+      store.set("kopegTab", kCustom); res.push(n + " kopeg-regel" + (n === 1 ? "" : "s"));
+    }
+    if (data.inst && typeof data.inst === "object") {
+      const t = data.inst.tare || {}, u = data.inst.unit || {};
+      if (t.apv != null) store.set("tareG", t.apv); if (t.zoc != null) store.set("tareG_zoc", t.zoc); if (t.kop != null) store.set("tareG_kop", t.kop);
+      if (u.apv) store.set("unit", u.apv); if (u.zoc) store.set("unit_zoc", u.zoc); if (u.kop) store.set("unit_kop", u.kop);
+      if (data.inst.restKg) { store.set("restKg", data.inst.restKg); $("rest").value = data.inst.restKg; }
+      if (data.inst.zWidth) { z.width = data.inst.zWidth; $("zWidth").value = z.width; saveZ(); }
+      res.push("instellingen");
+    }
+    renderProfList(); updateZ(); updateK(); refreshAllPickers(); refreshShareCounts();
+    hint.style.color = "";
+    hint.textContent = res.length ? "Toegevoegd: " + res.join(", ") + ". Bestaande eigen proeven zijn niet overschreven." : "Er zat niks in om te importeren.";
+    $("shIn").value = "";
+  });
+
+  setMachine(machine);
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+  window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+}
+</script>
+</body>
+</html>

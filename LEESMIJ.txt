@@ -1,0 +1,24 @@
+ZAAIHULP – los op je telefoon
+
+Deze map is een complete web-app die ook zonder internet werkt.
+Hij moet één keer op een website staan, daarna installeer je hem als app.
+
+1. ONLINE ZETTEN (één keer)
+   Makkelijkst: GitHub Pages
+   - Maak een (gratis) repository aan, bijvoorbeeld "zaaihulp".
+   - Upload alle bestanden uit deze map (index.html, sw.js, manifest.webmanifest, de twee iconen).
+   - Settings > Pages > Branch: main, map: / (root) > Save.
+   - Na een minuut staat hij op https://<jouwnaam>.github.io/zaaihulp/
+   Alternatief: Cloudflare Pages of Netlify (map erin slepen).
+
+2. INSTALLEREN OP DE TELEFOON
+   Android (Chrome): open de link > menu (⋮) > "App installeren" of "Toevoegen aan startscherm".
+   iPhone (Safari): open de link > deel-knop > "Zet op beginscherm".
+
+3. GOED OM TE WETEN
+   - Alles wat je invult blijft op je eigen telefoon.
+   - Gegevens uit de Claude-versie komen niet vanzelf mee; dat is een andere plek.
+   - Gebruik op iPhone altijd het icoon op het beginscherm, niet los Safari:
+     dan bewaart iOS je gegevens het betrouwbaarst.
+   - Nieuwe versie? Vervang index.html online; de app pakt hem op zodra er internet is.
+     Verhoog dan ook het versienummer in sw.js (zaaihulp-v1 -> zaaihulp-v2).
