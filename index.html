@@ -239,7 +239,7 @@ h2 .sum.warn { color: var(--warn); }
     <div class="hint" id="shInHint" style="margin-top:6px"></div>
 
     <h2>Back-up</h2>
-    <p class="small" style="margin-top:0">Alles uit de app, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf of in je mail. Telefoon kapot of een nieuwe? Dan zet je hem hier terug.</p>
+    <p class="small" style="margin-top:0">Alles uit de Zaaihulp, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf of in je mail. Telefoon kapot of een nieuwe? Dan zet je hem hier terug.</p>
     <div class="hint" id="bkLast"></div>
     <div class="row"><button type="button" class="btn primary" id="bkMake">Back-up maken</button></div>
     <div class="row" style="margin-top:8px"><button type="button" class="btn" id="bkCopy">Kopieer als tekst</button></div>
@@ -1677,11 +1677,11 @@ h2 .sum.warn { color: var(--warn); }
 
   // ---------- Back-up: alles uit localStorage, terug te zetten op elke telefoon ----------
   const BK_PREFIX = "ZAAIHULP-BACKUP1:";
-  // Niet meenemen: opgehaalde PDOK-percelen (groot, komen vanzelf terug) en de datum van de back-up zelf
-  const BK_SKIP = ["perceelCache", "laatsteBackup"];
+  // Alleen de sleutels van de Zaaihulp: de Perceelkaart staat op hetzelfde domein en deelt de opslag
+  const isZaaiKey = k => /^(machine|theme|restKg|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger)(_(zoc|kop))?)$/.test(k);
   function backupData() {
     const data = {};
-    try { for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (!BK_SKIP.includes(key)) data[key] = localStorage.getItem(key); } } catch (e) {}
+    try { for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) data[key] = localStorage.getItem(key); } } catch (e) {}
     return { v: 1, ts: Date.now(), data };
   }
   const bkNaam = () => "zaaihulp-backup-" + new Date().toISOString().slice(0, 10) + ".txt";
@@ -1732,10 +1732,10 @@ h2 .sum.warn { color: var(--warn); }
     // Bevestigen zonder pop-up: alles wordt vervangen
     if (!armed(e.currentTarget, "Tik nog eens: alles vervangen")) return;
     try {
-      const houd = {}; BK_SKIP.forEach(k => { const v = localStorage.getItem(k); if (v !== null) houd[k] = v; });
-      localStorage.clear();
-      Object.entries(houd).forEach(([k, v]) => localStorage.setItem(k, v));
-      Object.entries(b.data).forEach(([k, v]) => localStorage.setItem(k, v));
+      // Alleen Zaaihulp-gegevens vervangen; die van de Perceelkaart blijven staan
+      const weg = []; for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) weg.push(key); }
+      weg.forEach(k => localStorage.removeItem(k));
+      Object.entries(b.data).forEach(([k, v]) => { if (isZaaiKey(k)) localStorage.setItem(k, v); });
       localStorage.setItem("laatsteBackup", JSON.stringify(b.ts || Date.now()));
     } catch (er) { bad("Terugzetten lukte niet (opslag vol of geblokkeerd)."); return; }
     hint.style.color = ""; hint.textContent = "Teruggezet (back-up van " + dateTxt(b.ts) + "). De app start opnieuw…";

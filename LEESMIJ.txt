@@ -21,10 +21,8 @@ Hij moet één keer op een website staan, daarna installeer je hem als app.
 
 3. GOED OM TE WETEN
    - Alles wat je invult blijft op je eigen telefoon.
-   - "Perceel op mijn locatie" (Zocon en kopeg, bij Mengen) vraagt je GPS-positie
-     en haalt het perceel op bij PDOK (BRP gewaspercelen). Dat werkt alleen via
-     https, dus niet als je index.html los opent. Opgehaalde percelen worden
-     bewaard, zodat het zonder bereik ook werkt op een plek waar je eerder was.
+   - Maak af en toe een back-up (startscherm, onderaan) en bewaar die buiten
+     je telefoon. Telefoon kapot of nieuw? Daar zet je hem ook weer terug.
    - Gegevens uit de Claude-versie komen niet vanzelf mee; dat is een andere plek.
    - Gebruik op iPhone altijd het icoon op het beginscherm, niet los Safari:
      dan bewaart iOS je gegevens het betrouwbaarst.
