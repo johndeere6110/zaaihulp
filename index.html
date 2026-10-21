@@ -185,6 +185,9 @@ h2 .sum.warn { color: var(--warn); }
 .vak input { font-size: 20px; text-align: right; }
 .vak .info { grid-column: 1 / -1; font-size: 14px; color: var(--muted); min-height: 1.2em; white-space: pre-line; }
 .small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+.hint.warn { color: var(--warn); font-weight: 600; }
+#pHint { margin-top: 6px; }
+#pHint:empty { display: none; }
 
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: no-preference) {
@@ -305,6 +308,12 @@ h2 .sum.warn { color: var(--warn); }
       </div>
     </div>
 
+    <section id="perceelSec" hidden>
+      <div class="row"><button type="button" class="btn" id="pZoek">Perceel op mijn locatie</button></div>
+      <div class="hint" id="pHint"></div>
+      <div class="advice" id="pInfo" aria-live="polite" hidden></div>
+    </section>
+
     <div class="fields">
       <div class="field wide" id="fTot" hidden>
         <label for="tot">Totaalgewicht (kg)</label>
@@ -329,6 +338,11 @@ h2 .sum.warn { color: var(--warn); }
       <div class="field wide" id="fExtra">
         <label for="extra">Extra voor afdraaien en restant (%)</label>
         <input id="extra" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </div>
+      <div class="field wide" id="fBulk" hidden>
+        <label for="bulk">Stortgewicht zaad (kg/L)</label>
+        <input id="bulk" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0,3">
+        <div class="hint" id="bulkHint">voor het aantal vullingen van de bak (300 L). Grof: gras ±0,3, rogge ±0,7. Beter: weeg een emmer met bekende inhoud.</div>
       </div>
     </div>
 
@@ -510,6 +524,7 @@ h2 .sum.warn { color: var(--warn); }
   <datalist id="zaadDL"></datalist>
 </main>
 
+<script src="perceel.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -801,6 +816,8 @@ h2 .sum.warn { color: var(--warn); }
     $("fWidth").hidden = mode === "area";
     $("fTot").hidden = mode !== "weight";
     $("fExtra").hidden = mode === "weight";
+    $("perceelSec").hidden = mode !== "area" || !machine || machine === "apv";
+    $("fBulk").hidden = machine !== "zoc";
     updateMix();
   }
 
@@ -847,6 +864,7 @@ h2 .sum.warn { color: var(--warn); }
     const nl = (v, d) => v.toLocaleString("nl-NL", { maximumFractionDigits: d, useGrouping: false });
     const n2 = v => v.toLocaleString("nl-NL", { maximumFractionDigits: 2, useGrouping: false });
     $("haHint").textContent = ha ? "= " + nl(ha * 10000, 0) + " m²" : "";
+    renderPerceel();
     const vk = calcVakken(width);
 
     let fieldHa = null, machHa = null;
@@ -956,7 +974,14 @@ h2 .sum.warn { color: var(--warn); }
       note.textContent = m.mode === "area" ? "Vul oppervlakte en norm in." : m.mode === "length" ? "Vul lengte, werkbreedte en norm in." : "Vul het totaalgewicht in.";
       $("mBase").textContent = "";
     } else {
-      note.textContent = "= " + gStr(total * 1000) + (reach ? "\n" + reach : "") + (ovl ? "\n" + ovl : "");
+      // Zocon: aantal vullingen van de 300 L-bak
+      const bulk = parse(m.bulk);
+      let fill = "";
+      if (machine === "zoc" && bulk > 0) {
+        const L = total / bulk, n = L / 300;
+        fill = "≈ " + nl(L, 0) + " L, " + (n <= 1 ? "past in 1 vulling" : nl(n, 1) + " bak = " + Math.ceil(n - 1e-9) + " vullingen") + " (300 L)";
+      }
+      note.textContent = "= " + gStr(total * 1000) + (reach ? "\n" + reach : "") + (ovl ? "\n" + ovl : "") + (fill ? "\n" + fill : "");
       $("mBase").textContent = limited ? "beperkt door " + limName : extra ? kg(base) + " kg + " + kg(extra, extra % 1 ? 1 : 0) + " %" : "";
     }
     setText($("mTotal"), total === null ? "0" : kg(total));
@@ -995,7 +1020,7 @@ h2 .sum.warn { color: var(--warn); }
     if (off && total !== null) { note.textContent = offTxt.charAt(0).toUpperCase() + offTxt.slice(1) + " (samen " + rounded.toLocaleString("nl-NL") + " %)"; note.className = "lcd-note warn"; }
   }
 
-  [["ha", "ha"], ["norm", "norm"], ["tot", "tot"], ["extra", "extra"], ["width", "width"], ["lim", "limKg"]].forEach(([id, key]) => {
+  [["ha", "ha"], ["norm", "norm"], ["tot", "tot"], ["extra", "extra"], ["width", "width"], ["lim", "limKg"], ["bulk", "bulk"]].forEach(([id, key]) => {
     const el = $(id); el.value = m[key] || "";
     el.addEventListener("input", () => { m[key] = el.value; saveMix(); updateMix(); });
   });
@@ -1030,9 +1055,52 @@ h2 .sum.warn { color: var(--warn); }
     m.comps = [{ name: "", pct: "", done: false }, { name: "", pct: "", done: false }];
     m.vakken = [{ l: "", b: "", g: "" }];
     saveMix();
-    ["ha", "norm", "tot", "extra", "width"].forEach(id => $(id).value = m[id] || "");
+    ["ha", "norm", "tot", "extra", "width", "bulk"].forEach(id => $(id).value = m[id] || "");
     $("lim").value = "";
     renderComps(); renderVakken(); setMode("area");
+  });
+
+  /* ---------- Perceel op locatie (PDOK, zie perceel.js) ---------- */
+  const haTxt = v => v.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
+  function renderPerceel() {
+    const box = $("pInfo"), p = m.perceel;
+    if (!p || !p.ha) { box.hidden = true; return; }
+    const ha = parse(m.ha), same = ha !== null && Math.abs(ha - p.ha) < 0.005;
+    let h = '<div>' + esc(p.gewas || "Onbekend gewas") + (p.jaar ? ', BRP ' + esc(p.jaar) : '') + '</div>' +
+      '<div class="adv-main num">' + haTxt(p.ha) + ' ha</div>' +
+      '<div class="steps">';
+    if (p.bron === "opgeslagen") h += '<div style="color:var(--warn)">Geen verbinding: uit opgeslagen percelen (opgehaald ' + dateTxt(p.opgehaald) + ').</div>';
+    h += same ? '<div>Ingevuld als voorstel. Zaai je maar een deel, of gaan de kopakkers eraf? Pas de oppervlakte hieronder aan.</div>'
+      : '<div>Je zaait ' + (ha ? '<strong>' + haTxt(ha) + ' ha</strong>' : 'nog niks ingevuld') + ' van dit perceel.</div>';
+    h += '<div>Berekend uit de perceelgrens; dat kan iets afwijken van je opgave.</div></div>';
+    if (!same) h += '<div class="row"><button type="button" class="btn" id="pTerug">Zet op ' + haTxt(p.ha) + ' ha</button></div>';
+    box.innerHTML = h; box.hidden = false;
+    const tb = $("pTerug");
+    if (tb) tb.addEventListener("click", () => { m.ha = haTxt(p.ha); $("ha").value = m.ha; saveMix(); updateMix(); });
+  }
+  $("pZoek").addEventListener("click", async e => {
+    const btn = e.currentTarget, hint = $("pHint");
+    if (btn.disabled) return;
+    if (!window.Perceel) { hint.textContent = "Perceel zoeken is niet geladen. Vul de oppervlakte zelf in."; hint.className = "hint warn"; return; }
+    const mm = m, old = btn.textContent;
+    btn.disabled = true; hint.className = "hint"; hint.textContent = "";
+    try {
+      btn.textContent = "Locatie zoeken…";
+      const pos = await Perceel.positie();
+      btn.textContent = "Perceel ophalen…";
+      const r = await Perceel.zoekOpPunt(pos.lon, pos.lat);
+      if (m !== mm) return; // intussen andere machine gekozen
+      const p = r.perceel;
+      m.perceel = { gewas: p.gewas, jaar: p.jaar, ha: p.ha, bron: p.bron, opgehaald: p.opgehaald, ts: Date.now() };
+      m.ha = haTxt(p.ha); $("ha").value = m.ha;
+      saveMix(); updateMix();
+      if (pos.nauwkeurigheid > 50) hint.textContent = "GPS is onnauwkeurig (± " + Math.round(pos.nauwkeurigheid) + " m). Klopt het gewas niet, loop dan verder de kavel op en probeer opnieuw.";
+    } catch (er) {
+      hint.textContent = (er && er.message) || "Perceel zoeken lukte niet. Vul de oppervlakte zelf in.";
+      hint.className = "hint warn";
+    } finally {
+      btn.disabled = false; btn.textContent = old;
+    }
   });
 
   /* ---------- Zocon ---------- */
@@ -1428,7 +1496,7 @@ h2 .sum.warn { color: var(--warn); }
     if (!Array.isArray(m.comps) || !m.comps.length) m.comps = defMix.comps.map(c => Object.assign({}, c));
     if (!Array.isArray(m.vakken) || !m.vakken.length) m.vakken = [{ l: m.len || "", b: "", g: "" }];
     if (m.limBy !== "all" && m.limBy !== "each") m.limBy = "all";
-    ["ha", "norm", "tot", "extra", "width"].forEach(id => $(id).value = m[id] || "");
+    ["ha", "norm", "tot", "extra", "width", "bulk"].forEach(id => $(id).value = m[id] || "");
     $("lim").value = m.limKg || "";
     renderComps(); renderVakken();
     setMode(["area", "length", "weight"].includes(m.mode) ? m.mode : "area");

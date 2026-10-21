@@ -1,6 +1,6 @@
 // Zaaihulp service worker: werkt offline, haalt updates op zodra er internet is.
-const CACHE = "zaaihulp-v5";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const CACHE = "zaaihulp-v6";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./perceel.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
@@ -15,6 +15,8 @@ self.addEventListener("activate", e => {
 // Eerst netwerk (dan heb je altijd de nieuwste versie), anders uit de cache.
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  // PDOK-percelen niet via de cache: perceel.js bewaart die zelf en geeft een nette fout zonder bereik
+  if (new URL(e.request.url).hostname === "api.pdok.nl") return;
   e.respondWith(
     fetch(e.request)
       .then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res; })
