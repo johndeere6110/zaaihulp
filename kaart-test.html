@@ -110,14 +110,20 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
   if (!window.Perceel) { say("perceel.js kon niet laden.", true); return; }
 
   // Laatste kaartbeeld onthouden; eerste keer heel Nederland
-  const view = store.get("kaartTestView", { lat: 52.15, lon: 5.4, z: 8 });
-  const map = L.map("map", { zoomControl: true, attributionControl: true }).setView([view.lat, view.lon], view.z);
+  // PDOK-kaarten dekken alleen Nederland: kaart daarbinnen houden, anders zie je niks
+  const NL = L.latLngBounds([50.6, 3.1], [53.7, 7.4]);
+  const inNL = (lat, lon) => NL.contains([lat, lon]);
+  let view = store.get("kaartTestView", null);
+  if (!view || !inNL(view.lat, view.lon) || !(view.z >= 7)) view = { lat: 52.15, lon: 5.4, z: 8 };
+  const map = L.map("map", { zoomControl: true, attributionControl: true, minZoom: 7, maxBounds: NL.pad(0.05), maxBoundsViscosity: 1 })
+    .setView([view.lat, view.lon], view.z);
+  store.set("kaartTestView", view);
   map.on("moveend", () => { const c = map.getCenter(); store.set("kaartTestView", { lat: c.lat, lon: c.lng, z: map.getZoom() }); });
 
   // PDOK-achtergronden (Web Mercator, geen key)
   const attr = 'Kaart: <a href="https://www.pdok.nl">PDOK</a>, Kadaster';
-  const brt = L.tileLayer("https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png", { minZoom: 6, maxZoom: 19, attribution: attr });
-  const foto = L.tileLayer("https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg", { minZoom: 6, maxZoom: 19, attribution: "Luchtfoto: " + attr });
+  const brt = L.tileLayer("https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png", { minZoom: 7, maxZoom: 19, attribution: attr });
+  const foto = L.tileLayer("https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg", { minZoom: 7, maxZoom: 19, attribution: "Luchtfoto: " + attr });
   let isFoto = store.get("kaartTestFoto", false);
   const setLaag = () => {
     (isFoto ? brt : foto).remove(); (isFoto ? foto : brt).addTo(map);
@@ -219,6 +225,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
     btn.disabled = true; btn.textContent = "Locatie zoeken…";
     try {
       const p = await Perceel.positie();
+      if (!inNL(p.lat, p.lon)) { say("Je locatie ligt buiten Nederland; daar heeft PDOK geen kaart of percelen.", true); return; }
       if (mij) mij.remove();
       mij = L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "", html: '<div class="me"></div>', iconSize: [22, 22] }), interactive: false }).addTo(map);
       map.setView([p.lat, p.lon], 16);
