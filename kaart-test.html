@@ -76,6 +76,8 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 .seg4 button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .seg4 button[aria-pressed="true"] small { color: var(--accent-ink); }
 .warn4 { color: var(--warn); font-weight: 600; }
+.af { color: var(--ink); font-weight: 600; margin-top: 2px; }
+.stappen { font-size: 13px; margin-top: 2px; }
 .toggle { width: 100%; margin-top: 10px; flex: none; }
 #map.oever { cursor: crosshair; }
 .me { width: 16px; height: 16px; border-radius: 50%; background: #3a6fd1; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
@@ -83,7 +85,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 </head>
 <body>
 <header>
-  <h1>Perceelkaart</h1><span class="tag">test 7, los van de app</span>
+  <h1>Perceelkaart</h1><span class="tag">test 8, los van de app</span>
 </header>
 <div id="map" role="application" aria-label="Kaart, tik op een perceel"></div>
 <div class="panel">
@@ -199,7 +201,11 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
     let af = opp(Infinity), stap = 0;
     const hoofd = af;
     if (af > max) { stap = 1; af = opp(HERBEREKEN[0]); if (af > max) { stap = 2; af = opp(HERBEREKEN[1]); } }
-    return { per, lengte, hoofd, af: Math.min(af, q.ha), stap };
+    // Elke tussenstap bewaren om te laten zien hoe de app eraan komt
+    const stappen = [{ cap: Infinity, af: hoofd }];
+    for (let i = 0; i < stap; i++) stappen.push({ cap: HERBEREKEN[i], af: opp(HERBEREKEN[i]) });
+    const cap = stap ? HERBEREKEN[stap - 1] : Infinity;
+    return { per, lengte, hoofd, af: Math.min(af, q.ha), stap, stappen, cap, max };
   }
   const nlM = v => String(v).replace(".", ",") + " m";
   const perTxt = per => Object.entries(per).sort((x, y) => y[0] - x[0]).map(([b, m]) => mTxt(m) + " à " + nlM(b)).join(", ");
@@ -229,11 +235,19 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
       const bf = buffer(q);
       mt.textContent = [q.jaar ? "BRP " + q.jaar : "", q.bron === "opgeslagen" ? "uit opgeslagen percelen" : ""].filter(Boolean).join(", ");
       if (bf.lengte) {
-        const o = document.createElement("div"); o.textContent = "Oever " + perTxt(bf.per) + " = −" + haTxt(bf.af) + " ha"; mt.appendChild(o);
+        const regel = (cls, t) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = t; mt.appendChild(d); };
+        const pct = v => (v / q.ha * 100).toLocaleString("nl-NL", { maximumFractionDigits: 1 }) + " %";
+        // 1. Wat er gevonden is (type volgens hoofdregel)
+        regel("", "Oever " + Object.entries(bf.per).sort((x, y) => y[0] - x[0]).map(([b, m]) => mTxt(m) + ", type " + nlM(b)).join("; "));
+        // 2. Waarmee echt gerekend wordt
+        const eff = Object.entries(bf.per).filter(([b]) => +b > 0).sort((x, y) => y[0] - x[0])
+          .map(([b, m]) => mTxt(m) + " × " + nlM(Math.min(+b, bf.cap)));
+        regel("af", "Aftrek: " + (eff.length ? eff.join(" + ") + " = −" + haTxt(bf.af) + " ha" : "geen (droge sloot)"));
+        // 3. Hoe de app daar kwam, alleen bij herberekening
         if (bf.stap) {
-          const w = document.createElement("div"); w.className = "warn4";
-          w.textContent = "Meer dan " + MAX_PCT + " % (" + haTxt(bf.hoofd) + " ha): herberekend op " + nlM(HERBEREKEN[bf.stap - 1]) + (bf.stap === 1 ? " (aanname, nakijken)" : "");
-          mt.appendChild(w);
+          const lab = c => c === Infinity ? "Hoofdregel" : nlM(c);
+          regel("stappen", "Grens 4 % = " + haTxt(bf.max) + " ha. " + bf.stappen.map(x => lab(x.cap) + ": " + haTxt(x.af) + " ha (" + pct(x.af) + ")").join(" → ") +
+            (bf.stap >= 1 ? ". " + nlM(HERBEREKEN[0]) + " bij de 1e herberekening is een aanname." : ""));
         }
       }
       go.append(nm, mt);
