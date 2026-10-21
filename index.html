@@ -207,6 +207,11 @@ h2 .sum.warn { color: var(--warn); }
       <button type="button" class="mach" id="mKop"><span class="mn">Kopeg-zaaier</span><span class="md">Mechanisch: afdraaien met de slinger en variatorstand bijstellen</span></button>
     </div>
 
+    <h2>Soortenlijst</h2>
+    <p class="small" style="margin-top:0">Haal soorten weg die je niet gebruikt. Een weggehaalde soort kun je altijd opnieuw toevoegen via + Nieuwe soort.</p>
+    <ul class="log" id="soortList"></ul>
+    <div class="row" id="soortRestoreRow" hidden><button type="button" class="btn" id="soortRestore">Standaardsoorten terugzetten</button></div>
+
     <h2>Delen en overzetten</h2>
     <p class="small" style="margin-top:0">Deel je bewaarde proeven, tabellen en soorten, of zet ze over naar een andere telefoon. Wegingen en lopende mengsels blijven altijd privé.</p>
     <div class="field wide sharebox">
@@ -525,6 +530,8 @@ h2 .sum.warn { color: var(--warn); }
   const pickers = new Set();
   function refreshAllPickers() { pickers.forEach(pk => { if (!pk.isConnected) pickers.delete(pk); else pk._fill(); }); try { fillZaad(); } catch (e) {} }
   function addSoort(n) {
+    const lw = n.toLowerCase();
+    if (zaadHidden.includes(lw)) { zaadHidden = zaadHidden.filter(h => h !== lw); store.set("zaadVerborgen", zaadHidden); }
     const found = zaadList().find(x => x.toLowerCase() === n.toLowerCase());
     if (found) return found;
     zaadCustom.push(n); store.set("zaadsoorten", zaadCustom); return n;
@@ -1108,6 +1115,8 @@ h2 .sum.warn { color: var(--warn); }
 
   // Keuzelijst zaadsoorten (vast + zelf toegevoegd)
   const ZAAD_DEF = ["Italiaans raaigras", "Engels raaigras", "Groenbemester rogge", "Japanse haver", "Mosterd", "Phacelia (Angelia)", "Sv7", "Klaver", "Smakelijke weide excellent (Agrifirm)", "Smakelijke weide (Barenburg)"];
+  let zaadHidden = store.get("zaadVerborgen", []);
+  if (!Array.isArray(zaadHidden)) zaadHidden = [];
   let zaadCustom = store.get("zaadsoorten", []);
   if (!Array.isArray(zaadCustom)) zaadCustom = [];
   let zAdding = false;
@@ -1116,7 +1125,8 @@ h2 .sum.warn { color: var(--warn); }
     [...ZAAD_DEF, ...zaadCustom, ...Object.values(zProf).map(q => q.zaad), z.zaad, ...(m && m.comps ? m.comps.map(c => c.name) : []), ...log.map(l => l.mix), mixEl.value, ...(() => { try { return [k.zaad, ...kCustom.map(e => e.zaad)]; } catch (er) { return []; } })()].forEach(n => {
       n = String(n || "").trim(); if (n && !mp.has(n.toLowerCase())) mp.set(n.toLowerCase(), n);
     });
-    return [...mp.values()].sort((a, b) => a.localeCompare(b, "nl"));
+    const hid = new Set(zaadHidden);
+    return [...mp.values()].filter(n => !hid.has(n.toLowerCase())).sort((a, b) => a.localeCompare(b, "nl"));
   }
   function fillZaad() {
     const sel = $("zZaadSel"), list = zaadList(), sig = JSON.stringify(list);
@@ -1140,9 +1150,8 @@ h2 .sum.warn { color: var(--warn); }
   function addZaad() {
     const n = $("zNewZaad").value.trim();
     if (!n) { flash($("zAddZaad"), "Naam?"); return; }
-    const found = zaadList().find(x => x.toLowerCase() === n.toLowerCase());
-    if (!found) { zaadCustom.push(n); store.set("zaadsoorten", zaadCustom); refreshAllPickers(); }
-    zAdding = false; z.zaad = found || n; $("zNewZaad").value = ""; saveZ(); updateZ();
+    const name = addSoort(n);
+    zAdding = false; z.zaad = name; $("zNewZaad").value = ""; saveZ(); refreshAllPickers(); updateZ();
   }
   $("zAddZaad").addEventListener("click", addZaad);
   $("zNewZaad").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addZaad(); } });
@@ -1444,7 +1453,7 @@ h2 .sum.warn { color: var(--warn); }
     document.body.classList.toggle("m-kop", mc === "kop");
     $("pHome").hidden = !!mc;
     $("appHead").hidden = !mc;
-    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop"].forEach(id => $(id).hidden = true); refreshShareCounts(); return; }
+    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); return; }
     $("mName").textContent = { apv: "APV 5.2", zoc: "Zocon Z300", kop: "Kopeg-zaaier" }[mc];
     $("weegLabel").textContent = mc === "apv" ? "Invullen op kast" : "Netto afgedraaid";
     loadWeeg();
@@ -1489,6 +1498,34 @@ h2 .sum.warn { color: var(--warn); }
 
   $("mixPick").appendChild(makeSoortPicker(() => mixEl.value, v => { mixEl.value = v; store.set(wk("mix"), v); }, { empty: "Kies…", label: "Mengsel of soort" }));
   $("kZaadPick").appendChild(makeSoortPicker(() => k.zaad, v => { k.zaad = v; saveK(); updateK(); }, { empty: "Kies een soort…", label: "Zaadsoort kopeg" }));
+  // ---------- Soortenlijst beheren ----------
+  function renderSoortList() {
+    const ul = $("soortList"); ul.innerHTML = "";
+    zaadList().forEach(n => {
+      const li = document.createElement("li");
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = n;
+      const tag = document.createElement("div"); tag.className = "meta tabw"; tag.textContent = ZAAD_DEF.includes(n) ? "standaard" : "eigen";
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Haal " + n + " weg");
+      del.addEventListener("click", () => {
+        if (!armed(del, "Wis?")) return;
+        const lw = n.toLowerCase();
+        zaadCustom = zaadCustom.filter(x => x.toLowerCase() !== lw); store.set("zaadsoorten", zaadCustom);
+        if (!zaadHidden.includes(lw)) { zaadHidden.push(lw); store.set("zaadVerborgen", zaadHidden); }
+        if (String(z.zaad || "").toLowerCase() === lw) { z.zaad = ""; saveZ(); }
+        if (String(k.zaad || "").toLowerCase() === lw) { k.zaad = ""; saveK(); }
+        if (String(mixEl.value || "").toLowerCase() === lw) { mixEl.value = ""; store.set(wk("mix"), ""); }
+        refreshAllPickers(); updateZ(); updateK(); renderSoortList(); refreshShareCounts();
+      });
+      li.append(nm, tag, del); ul.appendChild(li);
+    });
+    $("soortRestoreRow").hidden = !ZAAD_DEF.some(n => zaadHidden.includes(n.toLowerCase()));
+  }
+  $("soortRestore").addEventListener("click", () => {
+    const defs = ZAAD_DEF.map(n => n.toLowerCase());
+    zaadHidden = zaadHidden.filter(h => !defs.includes(h)); store.set("zaadVerborgen", zaadHidden);
+    refreshAllPickers(); renderSoortList();
+  });
+
   // ---------- Delen en overzetten ----------
   const SH_PREFIX = "ZAAIHULP1:";
   const zocItems = () => Object.entries(zProf).filter(([, pr]) => pr.pts && pr.pts.length);
@@ -1555,14 +1592,17 @@ h2 .sum.warn { color: var(--warn); }
   });
   $("shImport").addEventListener("click", () => {
     const hint = $("shInHint");
-    const mt = $("shIn").value.match(/ZAAIHULP1:\s*([A-Za-z0-9+/=]+)/);
+    const mt = $("shIn").value.match(/ZAAIHULP1:\s*([A-Za-z0-9+/]+={0,2})/);
     if (!mt) { hint.textContent = "Geen geldige code gevonden. Die begint met ZAAIHULP1:"; hint.style.color = "var(--warn)"; return; }
-    let data;
-    try { data = dec(mt[1]); } catch (e) { hint.textContent = "De code is beschadigd of niet compleet geplakt."; hint.style.color = "var(--warn)"; return; }
+    let data = null, raw = mt[1];
+    for (let tries = 0; tries < 12 && raw.length >= 8 && data === null; tries++) {
+      try { data = dec(raw); } catch (e) { raw = raw.replace(/=+$/, ""); raw = raw.slice(0, raw.length - (raw.length % 4 || 4)); }
+    }
+    if (data === null) { hint.textContent = "De code is beschadigd of niet compleet geplakt."; hint.style.color = "var(--warn)"; return; }
     const res = [];
     if (Array.isArray(data.soorten)) {
       let n = 0;
-      data.soorten.forEach(nm => { nm = String(nm || "").trim(); if (nm && !zaadList().some(x => x.toLowerCase() === nm.toLowerCase())) { zaadCustom.push(nm); n++; } });
+      data.soorten.forEach(nm => { nm = String(nm || "").trim(); if (nm && !zaadList().some(x => x.toLowerCase() === nm.toLowerCase())) { addSoort(nm); n++; } });
       store.set("zaadsoorten", zaadCustom); res.push(n + " soort" + (n === 1 ? "" : "en"));
     }
     // Zocon-proeven: per combinatie samenvoegen, eigen proef op dezelfde stand gaat voor
