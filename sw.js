@@ -1,5 +1,5 @@
 // Zaaihulp service worker: werkt offline, haalt updates op zodra er internet is.
-const CACHE = "zaaihulp-v22";
+const CACHE = "zaaihulp-v23";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./perceel.js",
   "./fonts/barlow-latin-400-normal.woff2", "./fonts/barlow-latin-500-normal.woff2", "./fonts/barlow-latin-600-normal.woff2",
   "./fonts/barlow-semi-condensed-latin-500-normal.woff2", "./fonts/barlow-semi-condensed-latin-700-normal.woff2"];
@@ -10,7 +10,8 @@ self.addEventListener("install", e => {
 });
 
 self.addEventListener("activate", e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))));
+  // Alleen eigen oude caches opruimen: de Perceelkaart staat op hetzelfde domein
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith("zaaihulp-") && k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
 
