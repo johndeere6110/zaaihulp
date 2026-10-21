@@ -68,12 +68,18 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 .armed { color: var(--warn) !important; font-weight: 700 !important; }
 .leaflet-tooltip.pnr { background: var(--hl); border: 0; color: #1C2318; font: 700 15px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; padding: 1px 7px; border-radius: 999px; box-shadow: none; }
 .leaflet-tooltip.pnr::before { display: none; }
+.buf { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.buf label { flex: 1; color: var(--muted); font-weight: 500; }
+.buf input { width: 110px; min-height: 48px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font-size: 22px; text-align: right; padding: 0 10px; outline: none; }
+.buf input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.toggle { width: 100%; margin-top: 10px; flex: none; }
+#map.oever { cursor: crosshair; }
 .me { width: 16px; height: 16px; border-radius: 50%; background: #3a6fd1; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
 </style>
 </head>
 <body>
 <header>
-  <h1>Perceelkaart</h1><span class="tag">test 4, los van de app</span>
+  <h1>Perceelkaart</h1><span class="tag">test 5, los van de app</span>
 </header>
 <div id="map" role="application" aria-label="Kaart, tik op een perceel"></div>
 <div class="panel">
@@ -85,6 +91,9 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
   <div class="hint" id="hint">Tik op een perceel om het toe te voegen. Nog eens tikken haalt het weg.</div>
   <div class="advice" id="info" aria-live="polite" hidden>
     <div class="tot"><span id="totLbl"></span><span class="adv-main num" id="totHa"></span></div>
+    <div class="meta" id="totSub"></div>
+    <div class="buf"><label for="bufM">Bufferstrook langs water (m)</label><input id="bufM" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0"></div>
+    <button type="button" class="btn toggle" id="bOever" aria-pressed="false">Oevers aanwijzen</button>
     <ul class="log" id="lijst"></ul>
     <div class="row" style="margin-top:10px"><button type="button" class="btn" id="bWis">Alles wissen</button></div>
   </div>
@@ -101,6 +110,8 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
   const $ = id => document.getElementById(id);
   const hint = $("hint"), info = $("info"), ruw = $("ruw");
   const say = (t, warn) => { hint.textContent = t; hint.className = "hint" + (warn ? " warn" : ""); };
+  const parse = v => { const n = parseFloat(String(v || "").replace(/\s/g, "").replace(",", ".")); return isFinite(n) ? n : null; };
+  const mTxt = v => Math.round(v).toLocaleString("nl-NL") + " m";
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const haTxt = v => v.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
   const store = {
@@ -150,6 +161,16 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
   let sel = store.get("kaartTestSelectie", []);
   if (!Array.isArray(sel)) sel = [];
   sel = sel.filter(q => q && q.geometry && typeof q.ha === "number");
+  sel.forEach(q => { if (!Array.isArray(q.oever)) q.oever = []; });
+
+  // Bufferstrook: breedte zelf invullen (regels verschillen), oevers per perceel aanwijzen
+  const bufEl = $("bufM");
+  bufEl.value = store.get("kaartTestBuffer", "");
+  bufEl.addEventListener("input", () => { store.set("kaartTestBuffer", bufEl.value); teken(); });
+  const oeverM = q => { const ks = new Set(q.oever); return Perceel.zijden(q.geometry).reduce((a, z) => ks.has(z.key) ? a + z.m : a, 0); };
+  const aftrekHa = q => { const b = parse(bufEl.value); return b > 0 ? Math.min(q.ha, oeverM(q) * b / 10000) : 0; };
+  let oeverModus = false;
+  const blauw = "#2f7fd8";
   const laag = L.layerGroup().addTo(map);
   const bewaar = () => store.set("kaartTestSelectie", sel);
 
@@ -159,6 +180,9 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
       const g = L.geoJSON(q.geometry, { style: stijl, interactive: false });
       g.bindTooltip(String(i + 1), { permanent: true, direction: "center", className: "pnr" });
       laag.addLayer(g);
+      const ks = new Set(q.oever);
+      Perceel.zijden(q.geometry).filter(z => ks.has(z.key)).forEach(z =>
+        laag.addLayer(L.polyline([[z.a[1], z.a[0]], [z.b[1], z.b[0]]], { color: blauw, weight: 6, opacity: .9, interactive: false })));
     });
     const ul = $("lijst"); ul.innerHTML = "";
     sel.forEach((q, i) => {
@@ -168,7 +192,9 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
       go.setAttribute("aria-label", "Toon perceel " + (i + 1) + " op de kaart");
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = q.gewas || "Onbekend gewas";
       const mt = document.createElement("div"); mt.className = "meta";
-      mt.textContent = (q.jaar ? "BRP " + q.jaar : "") + (q.bron === "opgeslagen" ? (q.jaar ? ", " : "") + "uit opgeslagen percelen" : "");
+      const om = oeverM(q), af = aftrekHa(q);
+      mt.textContent = [q.jaar ? "BRP " + q.jaar : "", q.bron === "opgeslagen" ? "uit opgeslagen percelen" : "",
+        om ? "oever " + mTxt(om) + (af ? " = −" + haTxt(af) + " ha" : "") : ""].filter(Boolean).join(", ");
       go.append(nm, mt);
       go.addEventListener("click", () => map.fitBounds(L.geoJSON(q.geometry).getBounds(), { padding: [24, 24], maxZoom: 17 }));
       const w = document.createElement("div"); w.className = "w num"; w.textContent = haTxt(q.ha) + " ha";
@@ -177,13 +203,17 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
       del.addEventListener("click", () => { sel.splice(i, 1); bewaar(); teken(); });
       li.append(nr, go, w, del); ul.appendChild(li);
     });
-    const tot = sel.reduce((a, q) => a + q.ha, 0);
-    $("totLbl").textContent = sel.length === 1 ? "1 perceel" : sel.length + " percelen samen";
-    $("totHa").textContent = haTxt(tot) + " ha";
+    const tot = sel.reduce((a, q) => a + q.ha, 0), af = sel.reduce((a, q) => a + aftrekHa(q), 0);
+    const om = sel.reduce((a, q) => a + oeverM(q), 0);
+    $("totLbl").textContent = (sel.length === 1 ? "1 perceel" : sel.length + " percelen samen") + (af ? ", zonder bufferstrook" : "");
+    $("totHa").textContent = haTxt(tot - af) + " ha";
+    $("totSub").textContent = af ? "Bruto " + haTxt(tot) + " ha − bufferstrook " + haTxt(af) + " ha (" + mTxt(om) + " oever)"
+      : om ? mTxt(om) + " oever aangewezen. Vul de breedte van de bufferstrook in." : "";
     $("info").hidden = !sel.length;
+    if (!sel.length && oeverModus) setOever(false);
     map.invalidateSize();
   }
-  $("bWis").addEventListener("click", e => { if (armed(e.currentTarget, "Tik nog eens om te wissen")) { sel = []; bewaar(); teken(); say("Selectie gewist. Tik op een perceel om te beginnen."); } });
+  $("bWis").addEventListener("click", e => { if (armed(e.currentTarget, "Tik nog eens om te wissen")) { sel = []; bewaar(); setOever(false); teken(); say("Selectie gewist. Tik op een perceel om te beginnen."); } });
 
   async function zoek(lat, lon) {
     if (map.getZoom() < 14) { map.setView([lat, lon], 16); say("Ingezoomd. Tik nog eens op het perceel."); return; }
@@ -204,7 +234,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
       const p = r.perceel, key = sleutel(p);
       if (punt) { punt.remove(); punt = null; }
       if (!sel.some(q => q.key === key)) {
-        sel.push({ key, gewas: p.gewas, jaar: p.jaar, ha: p.ha, bron: p.bron, geometry: p.geometry });
+        sel.push({ key, gewas: p.gewas, jaar: p.jaar, ha: p.ha, bron: p.bron, geometry: p.geometry, oever: [] });
         bewaar(); teken();
       }
       say((p.gewas || "Perceel") + " (" + haTxt(p.ha) + " ha) toegevoegd." + (p.bron === "opgeslagen" ? " Geen verbinding: uit opgeslagen percelen." : ""), p.bron === "opgeslagen");
@@ -217,7 +247,32 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
       ruw.textContent = "Fout: " + (e && e.code ? e.code + " – " : "") + (e && e.message);
     }
   }
-  map.on("click", ev => zoek(ev.latlng.lat, ev.latlng.lng));
+  // Oevers aanwijzen: tik bij de rand, het hele rechte stuk gaat aan of uit
+  function oeverTik(ll) {
+    const p = map.latLngToContainerPoint(ll);
+    let best = null;
+    sel.forEach(q => Perceel.zijden(q.geometry).forEach(z => {
+      const a = map.latLngToContainerPoint([z.a[1], z.a[0]]), b = map.latLngToContainerPoint([z.b[1], z.b[0]]);
+      const d = L.LineUtil.pointToSegmentDistance(p, a, b);
+      if (!best || d < best.d) best = { d, q, z };
+    }));
+    if (!best || best.d > 24) { say("Tik op de rand van een gekozen perceel, aan de kant van het water.", true); return; }
+    const { q, z } = best, alle = Perceel.zijden(q.geometry), run = Perceel.rechteZijde(alle, z.key);
+    const lengte = alle.filter(x => run.includes(x.key)).reduce((a, x) => a + x.m, 0);
+    const nr = sel.indexOf(q) + 1;
+    if (q.oever.includes(z.key)) { q.oever = q.oever.filter(k => !run.includes(k)); say("Oever van " + mTxt(lengte) + " weggehaald bij perceel " + nr + "."); }
+    else { q.oever = [...new Set(q.oever.concat(run))]; say("Oever van " + mTxt(lengte) + " toegevoegd bij perceel " + nr + ". Bochtige sloot? Tik op het volgende stuk."); }
+    bewaar(); teken();
+  }
+  function setOever(aan) {
+    oeverModus = aan;
+    $("bOever").setAttribute("aria-pressed", aan);
+    $("bOever").textContent = aan ? "Klaar met oevers" : "Oevers aanwijzen";
+    $("map").classList.toggle("oever", aan);
+    say(aan ? "Tik op de randen langs het water. Nog eens tikken haalt een oever weg." : "Tik op een perceel om het toe te voegen. Nog eens tikken haalt het weg.");
+  }
+  $("bOever").addEventListener("click", () => setOever(!oeverModus));
+  map.on("click", ev => oeverModus ? oeverTik(ev.latlng) : zoek(ev.latlng.lat, ev.latlng.lng));
   teken();
   // Paneel eronder groeit/krimpt: kaart laten meeschalen
   if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe($("map"));

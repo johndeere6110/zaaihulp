@@ -4,6 +4,7 @@
 //   Perceel.zoekOpMijnLocatie().then(r => r.perceel.ha)        // GPS + PDOK, valt terug op opgeslagen percelen
 //   Perceel.zoekOpPunt(lon, lat)                                // zelfde, met een bekende positie
 //   Perceel.oppervlakteHa(geometry), Perceel.bevatPunt(geometry, lon, lat)
+//   Perceel.zijden(geometry), Perceel.rechteZijde(zijden, key)   // randstukjes en lengtes, voor bufferstroken
 //
 // Fouten zijn Error-objecten met .code: "geen-gps", "gps-geweigerd", "gps-timeout", "gps-onbekend",
 // "offline" (geen verbinding en niks opgeslagen op deze plek), "server", "geen-perceel". De .message is Nederlands.
@@ -61,6 +62,45 @@
   }
   const bevatPunt = (geometry, lon, lat) =>
     polygonen(geometry).some(rings => rings.length && inRing(rings[0], lon, lat) && !rings.slice(1).some(h => inRing(h, lon, lat)));
+
+  /* ---------- Zijden (voor bufferstroken langs water) ---------- */
+  // Afstand in m over de bol (haversine, zelfde straal als de oppervlakte)
+  function afstandM(a, b) {
+    const rad = d => d * Math.PI / 180;
+    const dLat = rad(b[1] - a[1]), dLon = rad(b[0] - a[0]);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[1])) * Math.cos(rad(b[1])) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  // Alle randstukjes van een perceel; key "p0r0s12" = polygoon 0, ring 0 (buitenrand), stukje 12
+  function zijden(geometry) {
+    const uit = [];
+    polygonen(geometry).forEach((rings, pi) => rings.forEach((ring, ri) => {
+      const n = ring.length - (ring.length > 1 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1] ? 1 : 0);
+      for (let si = 0; si < n; si++) {
+        const a = ring[si], b = ring[(si + 1) % n];
+        uit.push({ key: "p" + pi + "r" + ri + "s" + si, pi, ri, si, n, a, b, m: afstandM(a, b) });
+      }
+    }));
+    return uit;
+  }
+  // Richting van een stukje in graden (vlak benaderd, prima voor perceelmaat)
+  const richting = z => Math.atan2(z.b[1] - z.a[1], (z.b[0] - z.a[0]) * Math.cos(z.a[1] * Math.PI / 180)) * 180 / Math.PI;
+  const hoekVerschil = (x, y) => { const d = Math.abs(x - y) % 360; return d > 180 ? 360 - d : d; };
+  // Het rechte stuk rand rond één stukje: buren die minder dan maxHoek graden afwijken van dat stukje
+  function rechteZijde(alle, key, maxHoek) {
+    maxHoek = maxHoek == null ? 30 : maxHoek;
+    const z0 = alle.find(z => z.key === key); if (!z0) return [];
+    const ring = alle.filter(z => z.pi === z0.pi && z.ri === z0.ri), r0 = richting(z0), uit = [z0.key];
+    for (const stap of [1, -1]) {
+      for (let i = 1; i < ring.length; i++) {
+        const z = ring[((z0.si + stap * i) % ring.length + ring.length) % ring.length];
+        if (uit.includes(z.key)) break;
+        if (z.m > 0.01 && hoekVerschil(richting(z), r0) > maxHoek) break;
+        uit.push(z.key);
+      }
+    }
+    return uit;
+  }
 
   const isLandschap = f => String((f.properties || {}).category || "").toLowerCase() === "landschapselement";
 
@@ -174,5 +214,5 @@
     return r;
   }
 
-  return { zoekOpMijnLocatie, zoekOpPunt, positie, oppervlakteHa, oppervlakteM2, bevatPunt, wisCache, aantalOpgeslagen, API };
+  return { zoekOpMijnLocatie, zoekOpPunt, positie, oppervlakteHa, oppervlakteM2, bevatPunt, zijden, rechteZijde, afstandM, wisCache, aantalOpgeslagen, API };
 });
