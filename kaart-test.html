@@ -69,7 +69,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 .leaflet-tooltip.pnr { background: var(--hl); border: 0; color: #1C2318; font: 700 15px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; padding: 1px 7px; border-radius: 999px; box-shadow: none; }
 .leaflet-tooltip.pnr::before { display: none; }
 .lbl2 { margin-top: 10px; color: var(--muted); font-weight: 500; }
-.seg4 { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); margin-top: 6px; }
+.seg4 { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); margin-top: 6px; }
 .seg4 button { border: 0; background: transparent; color: var(--ink); padding: 6px 2px 8px; min-height: 64px; font: 700 20px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .seg4 button small { font: 500 12px "Barlow", system-ui, sans-serif; color: var(--muted); line-height: 1.1; text-align: center; }
 .seg4 button i { display: block; width: 70%; height: 0; border-top: 5px solid; margin-top: 3px; }
@@ -85,7 +85,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 </head>
 <body>
 <header>
-  <h1>Perceelkaart</h1><span class="tag">test 8, los van de app</span>
+  <h1>Perceelkaart</h1><span class="tag">test 9, los van de app</span>
 </header>
 <div id="map" role="application" aria-label="Kaart, tik op een perceel"></div>
 <div class="panel">
@@ -174,41 +174,39 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
   if (!Array.isArray(sel)) sel = [];
   sel = sel.filter(q => q && q.geometry && typeof q.ha === "number");
 
-  // Bufferstroken (hoofdregel RVO): breedte per type waterloop
+  // Bufferstroken per type waterloop (RVO): breedte bij hoofdregel, 1e en 2e herberekening (>4 % van het perceel)
   const TYPES = [
-    { b: 5, t: "KRW / kwetsbaar", c: "#1d4f9e", w: 8 },
-    { b: 3, t: "nat of kort droog", c: "#2f7fd8", w: 6 },
-    { b: 1, t: "lang droog", c: "#5fb0f0", w: 5, d: "10 6" },
-    { b: 0, t: "droge sloot", c: "#8a8f86", w: 4, d: "3 7" }
+    { id: "krw", st: [5, 3, 1], t: "KRW tot 10 m breed", c: "#1d4f9e", w: 8 },
+    { id: "krwb", st: [5, 3, 3], t: "KRW breder dan 10 m", c: "#0d2a5c", w: 9 },
+    { id: "eco", st: [5, 5, 5], t: "ecologisch kwetsbaar", c: "#1f8a76", w: 8 },
+    { id: "nat", st: [3, 1, 0.5], t: "nat of kort droog", c: "#2f7fd8", w: 6 },
+    { id: "lang", st: [1, 1, 1], t: "lang droog", c: "#5fb0f0", w: 5, d: "10 6" },
+    { id: "droog", st: [0, 0, 0], t: "droge sloot", c: "#8a8f86", w: 4, d: "3 7" }
   ];
-  const typeVan = b => TYPES.find(t => t.b === b) || TYPES[1];
-  // Meer dan 4 % van het perceel: herberekening. Stap 2 = 0,5 m (Cumela); stap 1 = 1 m is een aanname, nakijken bij RVO
-  const MAX_PCT = 4, HERBEREKEN = [1, 0.5];
-  let huidigType = store.get("kaartTestType", 3);
-  if (!TYPES.some(t => t.b === huidigType)) huidigType = 3;
-  // Oude opslag (lijst met randen, één breedte) omzetten naar rand -> breedte
+  const typeVan = id => TYPES.find(t => t.id === id) || TYPES[3];
+  // Oude opslag bewaarde een breedte in plaats van een type
+  const OUD = { 5: "krw", 3: "nat", 1: "lang", 0: "droog" };
+  const naarType = v => typeof v === "string" && TYPES.some(t => t.id === v) ? v : (OUD[v] || "nat");
+  const MAX_PCT = 4;
+  let huidigType = naarType(store.get("kaartTestType", "nat"));
   const oudB = parse(store.get("kaartTestBuffer", "")) || 3;
   sel.forEach(q => {
     if (Array.isArray(q.oever)) q.oever = Object.fromEntries(q.oever.map(k => [k, oudB]));
     if (!q.oever || typeof q.oever !== "object") q.oever = {};
+    Object.keys(q.oever).forEach(k => q.oever[k] = naarType(q.oever[k]));
   });
-  // Per perceel: lengte per breedte, aftrek en eventuele herberekening
+  // Per perceel: lengte per type, en de stap waarop het onder 4 % komt (of de laatste stap)
   function buffer(q) {
     const per = {};
-    Perceel.zijden(q.geometry).forEach(z => { const b = q.oever[z.key]; if (b != null) per[b] = (per[b] || 0) + z.m; });
-    const opp = cap => Object.entries(per).reduce((a, [b, m]) => a + m * Math.min(+b, cap) / 10000, 0);
+    Perceel.zijden(q.geometry).forEach(z => { const id = q.oever[z.key]; if (id) per[id] = (per[id] || 0) + z.m; });
+    const opp = i => Object.entries(per).reduce((a, [id, m]) => a + m * typeVan(id).st[i] / 10000, 0);
     const lengte = Object.values(per).reduce((a, m) => a + m, 0), max = q.ha * MAX_PCT / 100;
-    let af = opp(Infinity), stap = 0;
-    const hoofd = af;
-    if (af > max) { stap = 1; af = opp(HERBEREKEN[0]); if (af > max) { stap = 2; af = opp(HERBEREKEN[1]); } }
-    // Elke tussenstap bewaren om te laten zien hoe de app eraan komt
-    const stappen = [{ cap: Infinity, af: hoofd }];
-    for (let i = 0; i < stap; i++) stappen.push({ cap: HERBEREKEN[i], af: opp(HERBEREKEN[i]) });
-    const cap = stap ? HERBEREKEN[stap - 1] : Infinity;
-    return { per, lengte, hoofd, af: Math.min(af, q.ha), stap, stappen, cap, max };
+    const stappen = [{ i: 0, af: opp(0) }];
+    while (stappen.length < 3 && stappen[stappen.length - 1].af > max) stappen.push({ i: stappen.length, af: opp(stappen.length) });
+    const stap = stappen.length - 1;
+    return { per, lengte, hoofd: stappen[0].af, af: Math.min(stappen[stap].af, q.ha), stap, stappen, max };
   }
   const nlM = v => String(v).replace(".", ",") + " m";
-  const perTxt = per => Object.entries(per).sort((x, y) => y[0] - x[0]).map(([b, m]) => mTxt(m) + " à " + nlM(b)).join(", ");
   let oeverModus = false;
   const laag = L.layerGroup().addTo(map);
   const bewaar = () => store.set("kaartTestSelectie", sel);
@@ -238,16 +236,16 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
         const regel = (cls, t) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = t; mt.appendChild(d); };
         const pct = v => (v / q.ha * 100).toLocaleString("nl-NL", { maximumFractionDigits: 1 }) + " %";
         // 1. Wat er gevonden is (type volgens hoofdregel)
-        regel("", "Oever " + Object.entries(bf.per).sort((x, y) => y[0] - x[0]).map(([b, m]) => mTxt(m) + ", type " + nlM(b)).join("; "));
+        const lijst = Object.entries(bf.per).sort((x, y) => typeVan(y[0]).st[0] - typeVan(x[0]).st[0]);
+        regel("", "Oever " + lijst.map(([id, m]) => mTxt(m) + " " + typeVan(id).t + " (" + nlM(typeVan(id).st[0]) + ")").join("; "));
         // 2. Waarmee echt gerekend wordt
-        const eff = Object.entries(bf.per).filter(([b]) => +b > 0).sort((x, y) => y[0] - x[0])
-          .map(([b, m]) => mTxt(m) + " × " + nlM(Math.min(+b, bf.cap)));
+        const eff = lijst.filter(([id]) => typeVan(id).st[bf.stap] > 0).map(([id, m]) => mTxt(m) + " × " + nlM(typeVan(id).st[bf.stap]));
         regel("af", "Aftrek: " + (eff.length ? eff.join(" + ") + " = −" + haTxt(bf.af) + " ha" : "geen (droge sloot)"));
         // 3. Hoe de app daar kwam, alleen bij herberekening
         if (bf.stap) {
-          const lab = c => c === Infinity ? "Hoofdregel" : nlM(c);
-          regel("stappen", "Grens 4 % = " + haTxt(bf.max) + " ha. " + bf.stappen.map(x => lab(x.cap) + ": " + haTxt(x.af) + " ha (" + pct(x.af) + ")").join(" → ") +
-            (bf.stap >= 1 ? ". " + nlM(HERBEREKEN[0]) + " bij de 1e herberekening is een aanname." : ""));
+          const lab = ["Hoofdregel", "1e herberekening", "2e herberekening"];
+          regel("stappen", "Grens 4 % = " + haTxt(bf.max) + " ha. " + bf.stappen.map(x => lab[x.i] + ": " + haTxt(x.af) + " ha (" + pct(x.af) + ")").join(" → ") +
+            (bf.stap === 2 && bf.af > bf.max ? ". Verder versmallen mag niet." : ""));
         }
       }
       go.append(nm, mt);
@@ -320,7 +318,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
     if (was === huidigType) { run.forEach(k => delete q.oever[k]); say("Oever van " + mTxt(lengte) + " weggehaald bij perceel " + nr + "."); }
     else {
       run.forEach(k => q.oever[k] = huidigType);
-      say("Oever van " + mTxt(lengte) + (was != null ? " omgezet naar " : " toegevoegd: ") + nlM(huidigType) + " (" + typeVan(huidigType).t + "), perceel " + nr + ". Bochtige sloot? Tik op het volgende stuk.");
+      say("Oever van " + mTxt(lengte) + (was != null ? " omgezet naar " : " toegevoegd: ") + typeVan(huidigType).t + " (" + nlM(typeVan(huidigType).st[0]) + "), perceel " + nr + ". Bochtige sloot? Tik op het volgende stuk.");
     }
     bewaar(); teken();
   }
@@ -348,7 +346,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
         let nat = 0, droog = 0;
         Object.entries(hits).forEach(([k, h]) => {
           if (q.oever[k] != null) return;
-          q.oever[k] = h.droog ? 0 : 3;
+          q.oever[k] = h.droog ? "droog" : "nat";
           const m = alle.find(z => z.key === k).m; if (h.droog) droog += m; else nat += m;
         });
         regels.push("Perceel " + (i + 1) + ": " + (nat || droog ? [nat ? mTxt(nat) + " water" : "", droog ? mTxt(droog) + " greppel/droge sloot" : ""].filter(Boolean).join(", ") : "geen (nieuw) water langs de rand"));
@@ -357,18 +355,18 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
     }
     bewaar(); teken();
     btn.disabled = false; btn.textContent = old;
-    say(regels.join(" · ") + (fout ? "" : ". Water staat op 3 m: zet KRW (5 m) en lang droogvallend (1 m) zelf om via Oevers aanwijzen."), !!fout);
+    say(regels.join(" · ") + (fout ? "" : ". Water staat op 'nat of kort droog' (3 m): zet KRW, ecologisch kwetsbaar en lang droogvallend zelf om via Oevers aanwijzen."), !!fout);
     ruw.textContent = JSON.stringify(ruwData, null, 2);
   });
   // Keuze type waterloop
   function renderTypes() {
     const box = $("typeSeg"); box.innerHTML = "";
     TYPES.forEach(t => {
-      const bt = document.createElement("button"); bt.type = "button"; bt.setAttribute("aria-pressed", t.b === huidigType);
-      bt.innerHTML = nlM(t.b) + "<small>" + esc(t.t) + "</small>";
+      const bt = document.createElement("button"); bt.type = "button"; bt.setAttribute("aria-pressed", t.id === huidigType);
+      bt.innerHTML = nlM(t.st[0]) + "<small>" + esc(t.t) + "</small>";
       const streep = document.createElement("i"); streep.style.borderTopColor = t.c; if (t.d) streep.style.borderTopStyle = "dashed";
       bt.appendChild(streep);
-      bt.addEventListener("click", () => { huidigType = t.b; store.set("kaartTestType", t.b); renderTypes(); });
+      bt.addEventListener("click", () => { huidigType = t.id; store.set("kaartTestType", t.id); renderTypes(); });
       box.appendChild(bt);
     });
   }
