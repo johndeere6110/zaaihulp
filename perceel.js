@@ -72,7 +72,7 @@
       gewas: p.gewas || "", gewascode: p.gewascode != null ? p.gewascode : null,
       category: p.category || "", jaar: p.jaar != null ? p.jaar : null, status: p.status || "",
       ha: oppervlakteHa(f.geometry), bron: bron, opgehaald: f._ts || Date.now(),
-      geometry: f.geometry
+      geometry: f.geometry, eigenschappen: p
     };
   }
 

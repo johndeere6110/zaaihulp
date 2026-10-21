@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perceelkaart test</title>
+<meta name="theme-color" content="#2F5A2B">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* Testpagina: zelfde kleuren en stijl als de Zaaihulp, staat los van de app */
+:root {
+  --bg: #E9EDE6; --surface: #F8FAF6; --ink: #1C2318; --muted: #5B6653; --line: #C9D1C2;
+  --accent: #2F5A2B; --accent-ink: #F3F7EF; --warn: #A3401F; --hl: #E8B400;
+  color-scheme: light; box-sizing: border-box;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141912; --surface: #1D241A; --ink: #E6ECE0; --muted: #9BA892; --line: #34402F;
+    --accent: #8DBA6A; --accent-ink: #12180F; --warn: #F08A5F; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141912; --surface: #1D241A; --ink: #E6ECE0; --muted: #9BA892; --line: #34402F;
+  --accent: #8DBA6A; --accent-ink: #12180F; --warn: #F08A5F; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); display: flex; flex-direction: column;
+  font-family: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 17px; line-height: 1.4; -webkit-tap-highlight-color: transparent;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.num { font-family: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; font-weight: 700; font-variant-numeric: tabular-nums; }
+header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 16px; }
+header h1 { margin: 0; font: 700 22px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; }
+header .tag { font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+#map { flex: 1; min-height: 45vh; background: var(--line); }
+.leaflet-container { font: inherit; }
+.panel { background: var(--bg); padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px)); max-width: 640px; width: 100%; margin: 0 auto; }
+.row { display: flex; gap: 10px; }
+.btn { flex: 1; min-height: 52px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 17px "Barlow", system-ui, sans-serif; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .45; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: 15px; color: var(--muted); margin-top: 8px; min-height: 1.4em; }
+.hint.warn { color: var(--warn); font-weight: 600; }
+.advice { margin-top: 10px; background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px; font-size: 15px; }
+.advice .adv-main { font-size: 36px; line-height: 1.1; }
+.advice .meta { color: var(--muted); }
+details { margin-top: 10px; font-size: 14px; color: var(--muted); }
+details pre { white-space: pre-wrap; word-break: break-all; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; color: var(--ink); font: 12px ui-monospace, Menlo, Consolas, monospace; max-height: 220px; overflow: auto; }
+.me { width: 16px; height: 16px; border-radius: 50%; background: #3a6fd1; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Perceelkaart</h1><span class="tag">test, los van de app</span>
+</header>
+<div id="map" role="application" aria-label="Kaart, tik op een perceel"></div>
+<div class="panel">
+  <div class="row">
+    <button type="button" class="btn" id="bLaag" aria-pressed="false">Luchtfoto</button>
+    <button type="button" class="btn" id="bMij">Naar mijn locatie</button>
+  </div>
+  <div class="hint" id="hint">Tik op een perceel op de kaart.</div>
+  <div class="advice" id="info" aria-live="polite" hidden></div>
+  <details>
+    <summary>Ruwe data (voor het testen)</summary>
+    <pre id="ruw">Nog niks opgehaald.</pre>
+  </details>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="perceel.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const hint = $("hint"), info = $("info"), ruw = $("ruw");
+  const say = (t, warn) => { hint.textContent = t; hint.className = "hint" + (warn ? " warn" : ""); };
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const haTxt = v => v.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  if (!window.L) { say("Kaart kon niet laden. Heb je internet?", true); return; }
+  if (!window.Perceel) { say("perceel.js kon niet laden.", true); return; }
+
+  // Laatste kaartbeeld onthouden; eerste keer heel Nederland
+  const view = store.get("kaartTestView", { lat: 52.15, lon: 5.4, z: 8 });
+  const map = L.map("map", { zoomControl: true, attributionControl: true }).setView([view.lat, view.lon], view.z);
+  map.on("moveend", () => { const c = map.getCenter(); store.set("kaartTestView", { lat: c.lat, lon: c.lng, z: map.getZoom() }); });
+
+  // PDOK-achtergronden (Web Mercator, geen key)
+  const attr = 'Kaart: <a href="https://www.pdok.nl">PDOK</a>, Kadaster';
+  const brt = L.tileLayer("https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png", { minZoom: 6, maxZoom: 19, attribution: attr });
+  const foto = L.tileLayer("https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg", { minZoom: 6, maxZoom: 19, attribution: "Luchtfoto: " + attr });
+  let isFoto = store.get("kaartTestFoto", false);
+  const setLaag = () => {
+    (isFoto ? brt : foto).remove(); (isFoto ? foto : brt).addTo(map);
+    $("bLaag").setAttribute("aria-pressed", isFoto); store.set("kaartTestFoto", isFoto);
+  };
+  $("bLaag").addEventListener("click", () => { isFoto = !isFoto; setLaag(); });
+  setLaag();
+
+  let vlak = null, punt = null, mij = null, bezig = 0;
+  const stijl = () => ({ color: getComputedStyle(document.documentElement).getPropertyValue("--hl").trim() || "#E8B400", weight: 3, fillOpacity: .2 });
+
+  async function zoek(lat, lon) {
+    if (map.getZoom() < 14) { map.setView([lat, lon], 16); say("Ingezoomd. Tik nog eens op het perceel."); return; }
+    const nr = ++bezig;
+    if (punt) punt.remove();
+    punt = L.circleMarker([lat, lon], { radius: 5, color: "#fff", weight: 2, fillColor: "#1C2318", fillOpacity: 1 }).addTo(map);
+    say("Perceel ophalen…");
+    try {
+      const r = await Perceel.zoekOpPunt(lon, lat);
+      if (nr !== bezig) return; // er is intussen ergens anders getikt
+      const p = r.perceel;
+      if (vlak) vlak.remove();
+      vlak = L.geoJSON(p.geometry, { style: stijl, interactive: false }).addTo(map);
+      info.hidden = false; map.invalidateSize();
+      map.fitBounds(vlak.getBounds(), { padding: [24, 24], maxZoom: 17 });
+      info.innerHTML = '<div>' + esc(p.gewas || "Onbekend gewas") + (p.jaar ? ', BRP ' + esc(p.jaar) : '') + '</div>' +
+        '<div class="adv-main num">' + haTxt(p.ha) + ' ha</div>' +
+        '<div class="meta">' + esc(p.category || "") + (p.gewascode != null ? ', gewascode ' + esc(p.gewascode) : '') + (p.status ? ', ' + esc(p.status) : '') + '</div>' +
+        (p.bron === "opgeslagen" ? '<div style="color:var(--warn);margin-top:6px">Geen verbinding: uit opgeslagen percelen.</div>' : '');
+      info.hidden = false;
+      say("Tik op een ander perceel om te vergelijken.");
+      ruw.textContent = JSON.stringify({ punt: [+lon.toFixed(6), +lat.toFixed(6)], bron: p.bron, id: p.id, properties: p.eigenschappen,
+        geometrie: p.geometry.type + ", " + (p.geometry.type === "Polygon" ? p.geometry.coordinates[0].length : "?") + " punten",
+        opgeslagen: Perceel.aantalOpgeslagen() + (Perceel.aantalOpgeslagen() === 1 ? " perceel" : " percelen") }, null, 2);
+    } catch (e) {
+      if (nr !== bezig) return;
+      if (vlak) { vlak.remove(); vlak = null; }
+      info.hidden = true;
+      say(e && e.code === "geen-perceel" ? "Hier ligt geen landbouwperceel in de BRP. Tik binnen een perceel." : (e && e.message) || "Ophalen lukte niet.", true);
+      ruw.textContent = "Fout: " + (e && e.code ? e.code + " – " : "") + (e && e.message);
+    }
+  }
+  map.on("click", ev => zoek(ev.latlng.lat, ev.latlng.lng));
+  // Paneel eronder groeit/krimpt: kaart laten meeschalen
+  if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize()).observe($("map"));
+
+  $("bMij").addEventListener("click", async e => {
+    const btn = e.currentTarget, old = btn.textContent;
+    btn.disabled = true; btn.textContent = "Locatie zoeken…";
+    try {
+      const p = await Perceel.positie();
+      if (mij) mij.remove();
+      mij = L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "", html: '<div class="me"></div>', iconSize: [22, 22] }), interactive: false }).addTo(map);
+      map.setView([p.lat, p.lon], 16);
+      say("Tik op een perceel op de kaart.");
+    } catch (er) { say(er.message, true); }
+    finally { btn.disabled = false; btn.textContent = old; }
+  });
+})();
+</script>
+</body>
+</html>
