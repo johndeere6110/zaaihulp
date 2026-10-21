@@ -77,7 +77,13 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 .seg4 button[aria-pressed="true"] small { color: var(--accent-ink); }
 .warn4 { color: var(--warn); font-weight: 600; }
 .af { color: var(--ink); font-weight: 600; margin-top: 2px; }
-.stappen { font-size: 13px; margin-top: 2px; }
+.log .detail { grid-column: 2 / -1; font-size: 14px; color: var(--muted); margin-top: -2px; }
+.btab { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.btab th { text-align: left; font-weight: 500; font-size: 13px; color: var(--muted); padding: 0 6px 2px 0; }
+.btab td { padding: 3px 6px 3px 0; color: var(--muted); }
+.btab td.r, .btab th.r { text-align: right; }
+.btab tr.telt td { color: var(--ink); font-weight: 600; }
+.btab tr.telt td:last-child { color: var(--accent); }
 .toggle { width: 100%; margin-top: 10px; flex: none; }
 #map.oever { cursor: crosshair; }
 .me { width: 16px; height: 16px; border-radius: 50%; background: #3a6fd1; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
@@ -85,7 +91,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 </head>
 <body>
 <header>
-  <h1>Perceelkaart</h1><span class="tag">test 9, los van de app</span>
+  <h1>Perceelkaart</h1><span class="tag">test 10, los van de app</span>
 </header>
 <div id="map" role="application" aria-label="Kaart, tik op een perceel"></div>
 <div class="panel">
@@ -176,16 +182,14 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
 
   // Bufferstroken per type waterloop (RVO): breedte bij hoofdregel, 1e en 2e herberekening (>4 % van het perceel)
   const TYPES = [
-    { id: "krw", st: [5, 3, 1], t: "KRW tot 10 m breed", c: "#1d4f9e", w: 8 },
-    { id: "krwb", st: [5, 3, 3], t: "KRW breder dan 10 m", c: "#0d2a5c", w: 9 },
-    { id: "eco", st: [5, 5, 5], t: "ecologisch kwetsbaar", c: "#1f8a76", w: 8 },
+    // KRW (5/3/1 of 5/3/3) en ecologisch kwetsbaar (5/5/5) komen hier niet voor, dus weggelaten
     { id: "nat", st: [3, 1, 0.5], t: "nat of kort droog", c: "#2f7fd8", w: 6 },
     { id: "lang", st: [1, 1, 1], t: "lang droog", c: "#5fb0f0", w: 5, d: "10 6" },
     { id: "droog", st: [0, 0, 0], t: "droge sloot", c: "#8a8f86", w: 4, d: "3 7" }
   ];
   const typeVan = id => TYPES.find(t => t.id === id) || TYPES[3];
   // Oude opslag bewaarde een breedte in plaats van een type
-  const OUD = { 5: "krw", 3: "nat", 1: "lang", 0: "droog" };
+  const OUD = { 3: "nat", 1: "lang", 0: "droog" };
   const naarType = v => typeof v === "string" && TYPES.some(t => t.id === v) ? v : (OUD[v] || "nat");
   const MAX_PCT = 4;
   let huidigType = naarType(store.get("kaartTestType", "nat"));
@@ -232,21 +236,31 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
       const mt = document.createElement("div"); mt.className = "meta";
       const bf = buffer(q);
       mt.textContent = [q.jaar ? "BRP " + q.jaar : "", q.bron === "opgeslagen" ? "uit opgeslagen percelen" : ""].filter(Boolean).join(", ");
+      // Bufferstrook-uitleg onder de regel, over de volle breedte
+      let detail = null;
       if (bf.lengte) {
-        const regel = (cls, t) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = t; mt.appendChild(d); };
-        const pct = v => (v / q.ha * 100).toLocaleString("nl-NL", { maximumFractionDigits: 1 }) + " %";
-        // 1. Wat er gevonden is (type volgens hoofdregel)
+        detail = document.createElement("div"); detail.className = "detail";
         const lijst = Object.entries(bf.per).sort((x, y) => typeVan(y[0]).st[0] - typeVan(x[0]).st[0]);
-        regel("", "Oever " + lijst.map(([id, m]) => mTxt(m) + " " + typeVan(id).t + " (" + nlM(typeVan(id).st[0]) + ")").join("; "));
-        // 2. Waarmee echt gerekend wordt
-        const eff = lijst.filter(([id]) => typeVan(id).st[bf.stap] > 0).map(([id, m]) => mTxt(m) + " × " + nlM(typeVan(id).st[bf.stap]));
-        regel("af", "Aftrek: " + (eff.length ? eff.join(" + ") + " = −" + haTxt(bf.af) + " ha" : "geen (droge sloot)"));
-        // 3. Hoe de app daar kwam, alleen bij herberekening
-        if (bf.stap) {
-          const lab = ["Hoofdregel", "1e herberekening", "2e herberekening"];
-          regel("stappen", "Grens 4 % = " + haTxt(bf.max) + " ha. " + bf.stappen.map(x => lab[x.i] + ": " + haTxt(x.af) + " ha (" + pct(x.af) + ")").join(" → ") +
-            (bf.stap === 2 && bf.af > bf.max ? ". Verder versmallen mag niet." : ""));
-        }
+        const kop = document.createElement("div");
+        kop.textContent = lijst.map(([id, m]) => mTxt(m) + " oever, " + typeVan(id).t).join(" · ");
+        detail.appendChild(kop);
+        const pct = v => (v / q.ha * 100).toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %";
+        // Eén type: breedte per stap tonen; gemengd: stapnaam
+        const nat = lijst.filter(([id]) => typeVan(id).st[0] > 0);
+        const label = x => nat.length === 1 ? nlM(typeVan(nat[0][0]).st[x.i]) : ["Hoofdregel", "1e herber.", "2e herber."][x.i];
+        const tb = document.createElement("table"); tb.className = "btab";
+        tb.innerHTML = "<tr><th>" + (nat.length === 1 ? "Breedte" : "Stap") + '</th><th class="r">Strook</th><th class="r">Deel perceel</th><th></th></tr>';
+        bf.stappen.forEach(x => {
+          const tr = document.createElement("tr"), telt = x.i === bf.stap;
+          if (telt) tr.className = "telt";
+          [label(x), haTxt(x.af) + " ha", pct(x.af), telt ? "✓ telt" : "te veel"].forEach((t, k) => {
+            const td = document.createElement("td"); td.textContent = t; if (k === 1 || k === 2) td.className = "r"; tr.appendChild(td);
+          });
+          tb.appendChild(tr);
+        });
+        detail.appendChild(tb);
+        if (bf.stap) { const n = document.createElement("div"); n.textContent = "Meer dan 4 % (" + haTxt(bf.max) + " ha) mag niet, dan wordt de strook smaller."; detail.appendChild(n); }
+        if (bf.stap === 2 && bf.af > bf.max) { const n = document.createElement("div"); n.textContent = "Nog boven 4 %, maar smaller mag niet."; detail.appendChild(n); }
       }
       go.append(nm, mt);
       go.addEventListener("click", () => map.fitBounds(L.geoJSON(q.geometry).getBounds(), { padding: [24, 24], maxZoom: 17 }));
@@ -254,7 +268,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
       const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×";
       del.setAttribute("aria-label", "Haal perceel " + (i + 1) + " weg");
       del.addEventListener("click", () => { sel.splice(i, 1); bewaar(); teken(); });
-      li.append(nr, go, w, del); ul.appendChild(li);
+      li.append(nr, go, w, del); if (detail) li.appendChild(detail); ul.appendChild(li);
     });
     const bfs = sel.map(buffer), tot = sel.reduce((a, q) => a + q.ha, 0);
     const af = bfs.reduce((a, x) => a + x.af, 0), om = bfs.reduce((a, x) => a + x.lengte, 0);
@@ -355,7 +369,7 @@ details pre { white-space: pre-wrap; word-break: break-all; background: var(--su
     }
     bewaar(); teken();
     btn.disabled = false; btn.textContent = old;
-    say(regels.join(" · ") + (fout ? "" : ". Water staat op 'nat of kort droog' (3 m): zet KRW, ecologisch kwetsbaar en lang droogvallend zelf om via Oevers aanwijzen."), !!fout);
+    say(regels.join(" · ") + (fout ? "" : ". Water staat op 'nat of kort droog' (3 m): zet lang droogvallend en droge sloten zelf om via Oevers aanwijzen."), !!fout);
     ruw.textContent = JSON.stringify(ruwData, null, 2);
   });
   // Keuze type waterloop
