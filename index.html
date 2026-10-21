@@ -185,9 +185,6 @@ h2 .sum.warn { color: var(--warn); }
 .vak input { font-size: 20px; text-align: right; }
 .vak .info { grid-column: 1 / -1; font-size: 14px; color: var(--muted); min-height: 1.2em; white-space: pre-line; }
 .small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
-.hint.warn { color: var(--warn); font-weight: 600; }
-#pHint { margin-top: 6px; }
-#pHint:empty { display: none; }
 
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: no-preference) {
@@ -307,12 +304,6 @@ h2 .sum.warn { color: var(--warn); }
         <button type="button" id="mWeight" aria-pressed="false">Gewicht</button>
       </div>
     </div>
-
-    <section id="perceelSec" hidden>
-      <div class="row"><button type="button" class="btn" id="pZoek">Perceel op mijn locatie</button></div>
-      <div class="hint" id="pHint"></div>
-      <div class="advice" id="pInfo" aria-live="polite" hidden></div>
-    </section>
 
     <div class="fields">
       <div class="field wide" id="fTot" hidden>
@@ -524,7 +515,6 @@ h2 .sum.warn { color: var(--warn); }
   <datalist id="zaadDL"></datalist>
 </main>
 
-<script src="perceel.js"></script>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -816,7 +806,6 @@ h2 .sum.warn { color: var(--warn); }
     $("fWidth").hidden = mode === "area";
     $("fTot").hidden = mode !== "weight";
     $("fExtra").hidden = mode === "weight";
-    $("perceelSec").hidden = mode !== "area" || !machine || machine === "apv";
     $("fBulk").hidden = machine !== "zoc";
     updateMix();
   }
@@ -864,7 +853,6 @@ h2 .sum.warn { color: var(--warn); }
     const nl = (v, d) => v.toLocaleString("nl-NL", { maximumFractionDigits: d, useGrouping: false });
     const n2 = v => v.toLocaleString("nl-NL", { maximumFractionDigits: 2, useGrouping: false });
     $("haHint").textContent = ha ? "= " + nl(ha * 10000, 0) + " m²" : "";
-    renderPerceel();
     const vk = calcVakken(width);
 
     let fieldHa = null, machHa = null;
@@ -1058,49 +1046,6 @@ h2 .sum.warn { color: var(--warn); }
     ["ha", "norm", "tot", "extra", "width", "bulk"].forEach(id => $(id).value = m[id] || "");
     $("lim").value = "";
     renderComps(); renderVakken(); setMode("area");
-  });
-
-  /* ---------- Perceel op locatie (PDOK, zie perceel.js) ---------- */
-  const haTxt = v => v.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
-  function renderPerceel() {
-    const box = $("pInfo"), p = m.perceel;
-    if (!p || !p.ha) { box.hidden = true; return; }
-    const ha = parse(m.ha), same = ha !== null && Math.abs(ha - p.ha) < 0.005;
-    let h = '<div>' + esc(p.gewas || "Onbekend gewas") + (p.jaar ? ', BRP ' + esc(p.jaar) : '') + '</div>' +
-      '<div class="adv-main num">' + haTxt(p.ha) + ' ha</div>' +
-      '<div class="steps">';
-    if (p.bron === "opgeslagen") h += '<div style="color:var(--warn)">Geen verbinding: uit opgeslagen percelen (opgehaald ' + dateTxt(p.opgehaald) + ').</div>';
-    h += same ? '<div>Ingevuld als voorstel. Zaai je maar een deel, of gaan de kopakkers eraf? Pas de oppervlakte hieronder aan.</div>'
-      : '<div>Je zaait ' + (ha ? '<strong>' + haTxt(ha) + ' ha</strong>' : 'nog niks ingevuld') + ' van dit perceel.</div>';
-    h += '<div>Berekend uit de perceelgrens; dat kan iets afwijken van je opgave.</div></div>';
-    if (!same) h += '<div class="row"><button type="button" class="btn" id="pTerug">Zet op ' + haTxt(p.ha) + ' ha</button></div>';
-    box.innerHTML = h; box.hidden = false;
-    const tb = $("pTerug");
-    if (tb) tb.addEventListener("click", () => { m.ha = haTxt(p.ha); $("ha").value = m.ha; saveMix(); updateMix(); });
-  }
-  $("pZoek").addEventListener("click", async e => {
-    const btn = e.currentTarget, hint = $("pHint");
-    if (btn.disabled) return;
-    if (!window.Perceel) { hint.textContent = "Perceel zoeken is niet geladen. Vul de oppervlakte zelf in."; hint.className = "hint warn"; return; }
-    const mm = m, old = btn.textContent;
-    btn.disabled = true; hint.className = "hint"; hint.textContent = "";
-    try {
-      btn.textContent = "Locatie zoeken…";
-      const pos = await Perceel.positie();
-      btn.textContent = "Perceel ophalen…";
-      const r = await Perceel.zoekOpPunt(pos.lon, pos.lat);
-      if (m !== mm) return; // intussen andere machine gekozen
-      const p = r.perceel;
-      m.perceel = { gewas: p.gewas, jaar: p.jaar, ha: p.ha, bron: p.bron, opgehaald: p.opgehaald, ts: Date.now() };
-      m.ha = haTxt(p.ha); $("ha").value = m.ha;
-      saveMix(); updateMix();
-      if (pos.nauwkeurigheid > 50) hint.textContent = "GPS is onnauwkeurig (± " + Math.round(pos.nauwkeurigheid) + " m). Klopt het gewas niet, loop dan verder de kavel op en probeer opnieuw.";
-    } catch (er) {
-      hint.textContent = (er && er.message) || "Perceel zoeken lukte niet. Vul de oppervlakte zelf in.";
-      hint.className = "hint warn";
-    } finally {
-      btn.disabled = false; btn.textContent = old;
-    }
   });
 
   /* ---------- Zocon ---------- */
