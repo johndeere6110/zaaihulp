@@ -193,6 +193,9 @@ h2 .sum.warn { color: var(--warn); }
 .rolknop { display: flex; gap: 8px; margin-top: 8px; }
 .rolknop .btn { flex: none; min-height: 40px; padding: 0 12px; font-size: 15px; }
 .seg.asseg button svg { display: block; width: 40px; height: 40px; margin: 0 auto 4px; }
+.advrow { display: flex; gap: 10px; align-items: flex-start; }
+.advpic { flex: none; width: 34px; height: 34px; }
+.advpic svg, .advpic img { width: 34px; height: 34px; object-fit: cover; border-radius: 6px; display: block; }
 .rolfoto svg { width: 100%; height: 100%; display: block; }
 #aStd li { grid-template-columns: 1fr; }
 .seg.asseg button img { display: block; width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin: 0 auto 4px; }
@@ -1671,7 +1674,7 @@ h2 .sum.warn { color: var(--warn); }
     { n: "Chia", tag: ["chia"], d: { ffb: [0.04,0.09,0.18,0.26,0.35,0.46,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_] } },
     { n: "Slakkenkorrel", tag: ["slak"], d: { ffb: [_,0.06,0.12,0.18,0.24,0.3,0.36,0.42,0.48,0.54,0.6,0.66,0.72,0.78,0.84,0.9,0.96,1.02,1.08,1.14,1.2], flex20: [_,0.22,0.44,0.65,0.87,1.09,1.31,1.53,1.74,1.96,2.18,2.4,2.62,2.84,3.05,3.27,3.49,3.71,3.93,4.14,4.36] } }
   ];
-  const AS_STD = [{ id: "flex20", name: "Flex 20" }, { id: "ff", name: "ff (2 genokt)" }, { id: "ffb", name: "f-fb (1 genokt)" }];
+  const AS_STD = [{ id: "flex20", name: "Flex 20 (geel, grof)" }, { id: "ff", name: "ff (alles fijn)" }, { id: "ffb", name: "f-fb (fijn + blind)" }];
   const ap = Object.assign({ zaad: "", norm: "", speed: "", width: "1,6", uitg: 6, tabFor: {}, as: "ff", kgha: "", lspeed: "", pct: "", note: "", comp: true }, store.get("apvZaai", {}));
   const saveAp = () => store.set("apvZaai", ap);
   let apLog = store.get("apvLog", []);
@@ -1877,7 +1880,7 @@ h2 .sum.warn { color: var(--warn); }
     AS_STD.forEach(a => {
       const li = document.createElement("li"), left = document.createElement("div");
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = a.name;
-      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = { flex20: "6× Flex 20, grofgetand", ff: "12× f, fijngetand", ffb: "6× f + 6× blind fb" }[a.id];
+      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = { flex20: "6× gele Flex 20, grofgetand (wiel 3 in de handleiding)", ff: "12× f, fijngetand (wiel 1)", ffb: "6× f + 6× blinde plaat fb (wiel 1 + 2); de blinde plaat geeft niks af" }[a.id];
       left.append(nm, mt); fotoBlok(a.id, a.name, left);
       li.appendChild(left); us.appendChild(li);
     });
@@ -1981,7 +1984,8 @@ h2 .sum.warn { color: var(--warn); }
       if (k20 && k80) range = '; 20–80 % bij ' + nl(speedAt(k20), 1) + '–' + nl(speedAt(k80), 1) + ' km/h';
       const why = r.est ? 'schatting via ' + r.est : r.lk ? 'logboek ' + r.lk.n + '×' + (r.tr ? ', tabel ' + (r.tr.low ? '<' + r.tr.p : r.tr.high ? '>' + r.tr.p : nl(r.tr.p, 0)) + ' %' : '') : 'tabel ' + t.n;
       const st = r.out ? '<span class="bad">' + (r.p < 20 || (r.tr && r.tr.low && !r.lk) ? 'te laag' : 'te hoog') + '</span>' : '<span class="ok">goed</span>';
-      h += '<div><strong>' + esc(r.a.name) + '</strong>: ' + pTxt(r) + ' ' + st + ' <span style="color:var(--muted)">(' + esc(why) + range + ')</span></div>';
+      const pic = apFoto[r.a.id] ? '<img src="' + apFoto[r.a.id] + '" alt="">' : (ICON[r.a.id] || "");
+      h += '<div class="advrow">' + (pic ? '<span class="advpic">' + pic + '</span>' : '') + '<span><strong>' + esc(r.a.name) + '</strong>: ' + pTxt(r) + ' ' + st + ' <span style="color:var(--muted)">(' + esc(why) + range + ')</span></span></div>';
     });
     h += '</div>';
     if (u !== 6) h += '<div style="margin-top:8px;color:var(--muted)">Met ' + u + ' van de 6 uitgangen rekent de app met ' + nl(u / 6 * 100, 0) + ' % van de tabel. Dat is een schatting.</div>';
