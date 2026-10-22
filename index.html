@@ -189,6 +189,9 @@ h2 .sum.warn { color: var(--warn); }
 .vak input { font-size: 20px; text-align: right; }
 .vak .info { grid-column: 1 / -1; font-size: 14px; color: var(--muted); min-height: 1.2em; white-space: pre-line; }
 .small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+.extrarow { display: flex; gap: 10px; align-items: center; }
+.extrarow input { flex: 1; min-width: 0; }
+.extrarow .seg button { min-height: 44px; padding: 0 14px; }
 
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: no-preference) {
@@ -349,8 +352,14 @@ h2 .sum.warn { color: var(--warn); }
         <div class="hint" id="normHint">&nbsp;</div>
       </div>
       <div class="field wide" id="fExtra">
-        <label for="extra">Extra voor afdraaien en restant (%)</label>
-        <input id="extra" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+        <label for="extra">Extra voor afdraaien en restant (<span id="extraLbl">%</span>)</label>
+        <div class="extrarow">
+          <input id="extra" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+          <div class="seg" role="group" aria-label="Extra in">
+            <button type="button" id="exPct" aria-pressed="true">%</button>
+            <button type="button" id="exKg" aria-pressed="false">kg</button>
+          </div>
+        </div>
       </div>
       <div class="field wide" id="fBulk" hidden>
         <label for="bulk">Stortgewicht zaad (kg/L)</label>
@@ -880,14 +889,18 @@ h2 .sum.warn { color: var(--warn); }
     let fieldHa = null, machHa = null;
     if (m.mode === "area") { fieldHa = ha || null; machHa = fieldHa; }
     else if (m.mode === "length") { fieldHa = vk.vakHa || null; machHa = vk.machHa || null; }
-    const extraIn = m.mode === "weight" ? 0 : (parse(m.extra) || 0);
-    let extra = extraIn, base = null, limited = false;
+    let base = null, limited = false;
     if (m.mode === "weight") base = tot || null;
     else base = (machHa && norm) ? machHa * norm : null;
 
     // Beperkte hoeveelheid zaad
     const limOn = m.mode !== "weight" && !!m.lim;
-    $("fExtra").hidden = m.mode === "weight";
+    // Extra bovenop, in % of in kg. Bij beperkt zaad telt hij niet mee: dan komt alleen het restant in de machine erbij.
+    const extraKgMode = m.extraUnit === "kg";
+    const extraPct = parse(m.extra) || 0;
+    let extraAdd = 0, restAdd = 0;
+    if (base !== null && m.mode !== "weight" && !limOn) extraAdd = extraKgMode ? (parse(m.extraKg) || 0) : base * extraPct / 100;
+    $("fExtra").hidden = m.mode === "weight" || limOn;
     $("limSec").hidden = m.mode === "weight";
     $("limBody").hidden = !limOn;
     $("limToggle").setAttribute("aria-pressed", limOn);
@@ -902,6 +915,7 @@ h2 .sum.warn { color: var(--warn); }
     $("lim").placeholder = autoAvail ? kg(autoAvail) : "0";
     $("limHint").textContent = limEach ? "Vul in wat je per soort hebt. Leeg = genoeg. De krapste soort bepaalt hoeveel mengsel je kunt maken."
       : autoAvail ? "Leeg = precies genoeg voor de vakoppervlakte, zonder overlap." : "Hoeveel mengsel je in totaal hebt.";
+    if (limOn) $("limHint").textContent += " Extra telt hier niet mee; wat in de machine blijft komt er wel bij.";
 
     let mixAvail = null, limIdx = -1;
     if (limOn) {
@@ -921,7 +935,7 @@ h2 .sum.warn { color: var(--warn); }
     } else if (limOn && mixAvail && base && machHa && norm) {
       const normal = base;
       if (mixAvail - rest < normal - 1e-9) {
-        limited = true; extra = 0; base = mixAvail;
+        limited = true; base = mixAvail;
         const usable = Math.max(0, mixAvail - rest);
         const need = usable / machHa, pct = (need / norm - 1) * 100;
         const restTxt = rest ? ', bovenop de ' + (rest >= 1 ? kg(rest) + ' kg' : gStr(rest * 1000)) + ' die in de machine blijft' : '';
@@ -957,15 +971,14 @@ h2 .sum.warn { color: var(--warn); }
             '<div>Gebruik dit als norm bij Afdraaien' + (rest ? ', het restant in de machine is er al af' : '') + '. Met de knop bovenaan neem je hem over.</div>';
         }
         adv.innerHTML = h;
-      } else if (mixAvail < normal * (1 + extraIn / 100)) {
-        limited = true; extra = 0; base = mixAvail;
-        adv.innerHTML = '<div class="adv-main">Genoeg zaad</div><div>' + (machine === "apv" ? 'Kast' : 'Norm') + ' op ' + n2(norm) + ' kg/ha laten. Je houdt maar ongeveer ' + gStr((mixAvail - normal) * 1000) + ' restant, minder dan je extra %.</div>';
       } else {
-        adv.innerHTML = '<div class="adv-main">Genoeg zaad</div><div>' + (machine === "apv" ? 'Kast' : 'Norm') + ' op ' + n2(norm) + ' kg/ha laten. Je hebt ' + (limEach ? "van alles " : "") + 'meer dan nodig, inclusief extra %.</div>';
+        const amt = v => v >= 1 ? kg(v) + " kg" : gStr(v * 1000);
+        adv.innerHTML = '<div class="adv-main">Genoeg zaad</div><div>' + (machine === "apv" ? 'Kast' : 'Norm') + ' op ' + n2(norm) + ' kg/ha laten. Weeg af wat je nodig hebt' + (rest ? ', plus de ' + amt(rest) + ' die in de machine blijft' : '') + '.</div>';
       }
       adv.hidden = false;
     }
-    const total = base === null ? null : base * (1 + extra / 100);
+    if (limOn && base !== null && !limited) restAdd = rest;
+    const total = base === null ? null : base + extraAdd + restAdd;
     const uv = useVal != null ? useVal : norm;
     $("useRow").hidden = machine === "apv" || !uv;
     if (uv) { $("useNorm").textContent = "Neem " + n2(uv) + " kg/ha over bij Afdraaien"; $("useNorm")._v = uv; }
@@ -992,7 +1005,8 @@ h2 .sum.warn { color: var(--warn); }
         fill = "≈ " + nl(L, 0) + " L, " + (n <= 1 ? "past in 1 vulling" : nl(n, 1) + " bak = " + Math.ceil(n - 1e-9) + " vullingen") + " (300 L)";
       }
       note.textContent = "= " + gStr(total * 1000) + (reach ? "\n" + reach : "") + (ovl ? "\n" + ovl : "") + (fill ? "\n" + fill : "");
-      $("mBase").textContent = limited ? "beperkt door " + limName : extra ? kg(base) + " kg + " + kg(extra, extra % 1 ? 1 : 0) + " %" : "";
+      $("mBase").textContent = limited ? "beperkt door " + limName : extraAdd ? kg(base) + " kg + " + (extraKgMode ? kg(extraAdd) + " kg" : kg(extraPct, extraPct % 1 ? 1 : 0) + " %")
+        : restAdd ? kg(base) + " kg + " + kg(restAdd) + " kg in machine" : "";
     }
     setText($("mTotal"), total === null ? "0" : kg(total));
 
@@ -1030,10 +1044,23 @@ h2 .sum.warn { color: var(--warn); }
     if (off && total !== null) { note.textContent = offTxt.charAt(0).toUpperCase() + offTxt.slice(1) + " (samen " + rounded.toLocaleString("nl-NL") + " %)"; note.className = "lcd-note warn"; }
   }
 
-  [["ha", "ha"], ["norm", "norm"], ["tot", "tot"], ["extra", "extra"], ["width", "width"], ["lim", "limKg"], ["bulk", "bulk"]].forEach(([id, key]) => {
+  [["ha", "ha"], ["norm", "norm"], ["tot", "tot"], ["width", "width"], ["lim", "limKg"], ["bulk", "bulk"]].forEach(([id, key]) => {
     const el = $(id); el.value = m[key] || "";
     el.addEventListener("input", () => { m[key] = el.value; saveMix(); updateMix(); });
   });
+  // Extra in % of in kg (bij veel zaad is 5 % al gauw een hele zak)
+  const extraKey = () => m.extraUnit === "kg" ? "extraKg" : "extra";
+  function syncExtra() {
+    const kgM = m.extraUnit === "kg";
+    $("extra").value = m[extraKey()] || "";
+    $("extraLbl").textContent = kgM ? "kg" : "%";
+    $("exPct").setAttribute("aria-pressed", !kgM);
+    $("exKg").setAttribute("aria-pressed", kgM);
+  }
+  $("extra").addEventListener("input", () => { m[extraKey()] = $("extra").value; saveMix(); updateMix(); });
+  $("exPct").addEventListener("click", () => { m.extraUnit = "pct"; saveMix(); syncExtra(); updateMix(); });
+  $("exKg").addEventListener("click", () => { m.extraUnit = "kg"; saveMix(); syncExtra(); updateMix(); });
+  syncExtra();
   $("mArea").addEventListener("click", () => setMode("area"));
   $("mLen").addEventListener("click", () => setMode("length"));
   $("mWeight").addEventListener("click", () => setMode("weight"));
@@ -1065,7 +1092,7 @@ h2 .sum.warn { color: var(--warn); }
     m.comps = [{ name: "", pct: "", done: false }, { name: "", pct: "", done: false }];
     m.vakken = [{ l: "", b: "", g: "" }];
     saveMix();
-    ["ha", "norm", "tot", "extra", "width", "bulk"].forEach(id => $(id).value = m[id] || "");
+    ["ha", "norm", "tot", "width", "bulk"].forEach(id => $(id).value = m[id] || ""); syncExtra();
     $("lim").value = "";
     renderComps(); renderVakken(); setMode("area");
   });
@@ -1463,7 +1490,7 @@ h2 .sum.warn { color: var(--warn); }
     if (!Array.isArray(m.comps) || !m.comps.length) m.comps = defMix.comps.map(c => Object.assign({}, c));
     if (!Array.isArray(m.vakken) || !m.vakken.length) m.vakken = [{ l: m.len || "", b: "", g: "" }];
     if (m.limBy !== "all" && m.limBy !== "each") m.limBy = "all";
-    ["ha", "norm", "tot", "extra", "width", "bulk"].forEach(id => $(id).value = m[id] || "");
+    ["ha", "norm", "tot", "width", "bulk"].forEach(id => $(id).value = m[id] || ""); syncExtra();
     $("lim").value = m.limKg || "";
     renderComps(); renderVakken();
     setMode(["area", "length", "weight"].includes(m.mode) ? m.mode : "area");
