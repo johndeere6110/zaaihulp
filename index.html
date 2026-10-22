@@ -189,6 +189,9 @@ h2 .sum.warn { color: var(--warn); }
 .vak input { font-size: 20px; text-align: right; }
 .vak .info { grid-column: 1 / -1; font-size: 14px; color: var(--muted); min-height: 1.2em; white-space: pre-line; }
 .small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+.fields > .wide { grid-column: 1 / -1; }
+#fBulk .toggle { margin-top: 0; }
+#bulkBody { margin-top: 10px; }
 .extrarow { display: flex; gap: 10px; align-items: center; }
 .extrarow input { flex: 1; min-width: 0; }
 .extrarow .seg button { min-height: 44px; padding: 0 14px; }
@@ -366,10 +369,13 @@ h2 .sum.warn { color: var(--warn); }
         <input id="rest" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
         <div class="hint">wat er in bak, doseerwals en slangen achterblijft; komt bij wat je afweegt; wordt onthouden</div>
       </div>
-      <div class="field wide" id="fBulk" hidden>
-        <label for="bulk">Stortgewicht zaad (kg/L)</label>
-        <input id="bulk" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0,3">
-        <div class="hint" id="bulkHint">voor het aantal vullingen van de bak (300 L). Grof: gras ±0,3, rogge ±0,7. Beter: weeg een emmer met bekende inhoud.</div>
+      <div class="wide" id="fBulk" hidden>
+        <button type="button" class="btn toggle" id="bulkToggle" aria-pressed="false" aria-expanded="false" aria-controls="bulkBody">Vullingen van de bak (300 L)</button>
+        <div class="field" id="bulkBody" hidden>
+          <label for="bulk">Stortgewicht zaad (kg/L)</label>
+          <input id="bulk" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0,3">
+          <div class="hint" id="bulkHint">voor het aantal vullingen van de bak (300 L). Grof: gras ±0,3, rogge ±0,7. Beter: weeg een emmer met bekende inhoud.</div>
+        </div>
       </div>
     </div>
 
@@ -840,6 +846,7 @@ h2 .sum.warn { color: var(--warn); }
     $("fTot").hidden = mode !== "weight";
     $("fExtra").hidden = mode === "weight";
     $("fBulk").hidden = machine !== "zoc";
+    syncBulk();
     updateMix();
   }
 
@@ -1001,7 +1008,7 @@ h2 .sum.warn { color: var(--warn); }
       note.textContent = m.mode === "area" ? "Vul oppervlakte en norm in." : m.mode === "length" ? "Vul lengte, werkbreedte en norm in." : "Vul het totaalgewicht in.";
       $("mBase").textContent = "";
     } else {
-      // Zocon: aantal vullingen van de 300 L-bak
+      // Zocon: aantal vullingen van de 300 L-bak (veld is inklapbaar)
       const bulk = parse(m.bulk);
       let fill = "";
       if (machine === "zoc" && bulk > 0) {
@@ -1065,6 +1072,18 @@ h2 .sum.warn { color: var(--warn); }
   $("exPct").addEventListener("click", () => { m.extraUnit = "pct"; saveMix(); syncExtra(); updateMix(); });
   $("exKg").addEventListener("click", () => { m.extraUnit = "kg"; saveMix(); syncExtra(); updateMix(); });
   syncExtra();
+  // Stortgewicht inklapbaar: dicht zie je alleen de knop, met de ingevulde waarde erop
+  function syncBulk() {
+    const open = !!m.bulkOpen, b = String(m.bulk || "").trim();
+    $("bulkBody").hidden = !open;
+    $("bulkToggle").setAttribute("aria-pressed", open);
+    $("bulkToggle").setAttribute("aria-expanded", open);
+    $("bulkToggle").textContent = "Vullingen van de bak (300 L)" + (!open && b ? ": " + b + " kg/L" : "");
+  }
+  $("bulkToggle").addEventListener("click", () => {
+    m.bulkOpen = !m.bulkOpen; saveMix(); syncBulk();
+    if (m.bulkOpen) $("bulk").focus();
+  });
   $("mArea").addEventListener("click", () => setMode("area"));
   $("mLen").addEventListener("click", () => setMode("length"));
   $("mWeight").addEventListener("click", () => setMode("weight"));
