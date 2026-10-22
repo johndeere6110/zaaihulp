@@ -55,6 +55,7 @@ main { max-width: 480px; margin: 0 auto; padding: 12px 16px 32px; }
 
 body:not(.m-zoc) #tabZoc { display: none; }
 body:not(.m-kop) #tabKop { display: none; }
+body:not(.m-apv) #tabZaai { display: none; }
 body.m-zoc #tabZoc, body.m-kop #tabKop { order: -1; }
 .home h1 { font-size: 26px; font-weight: 600; margin: 12px 0 12px; }
 .home { display: grid; gap: 14px; }
@@ -174,6 +175,13 @@ h2 .sum.warn { color: var(--warn); }
 .seg.six button { padding: 0; min-height: 50px; font: 700 22px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; }
 .seg.rolseg { grid-template-columns: repeat(5, 1fr); margin-top: 8px; }
 .seg.rolseg button { padding: 6px 0; min-height: 60px; font-size: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.seg.uitg { grid-template-columns: repeat(6, 1fr); margin-top: 8px; }
+.seg.uitg button { padding: 0; min-height: 50px; font: 700 22px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; }
+.seg.asseg { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); margin-top: 8px; }
+.seg.asseg button { padding: 6px 4px; min-height: 52px; font-size: 15px; line-height: 1.15; }
+.log .meta.pre { white-space: pre-line; }
+.advice .ok { color: var(--accent); font-weight: 600; }
+.advice .bad { color: var(--warn); font-weight: 600; }
 .seg.rolseg .dot { width: 16px; height: 16px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(128,128,128,.5); }
 .frac { display: flex; align-items: center; gap: 10px; font-size: 32px; padding-top: 2px; }
 .frac input { flex: 1; min-width: 0; width: auto; border-bottom: 2px solid var(--line) !important; text-align: center; }
@@ -270,6 +278,7 @@ h2 .sum.warn { color: var(--warn); }
     <button type="button" role="tab" id="tabMeng" aria-selected="false" aria-controls="pMeng">Mengen</button>
     <button type="button" role="tab" id="tabZoc" aria-selected="false" aria-controls="pZoc">Afdraaien</button>
     <button type="button" role="tab" id="tabKop" aria-selected="false" aria-controls="pKop">Afdraaien</button>
+    <button type="button" role="tab" id="tabZaai" aria-selected="false" aria-controls="pZaai">Zaaias</button>
   </div>
   </div>
 
@@ -473,6 +482,89 @@ h2 .sum.warn { color: var(--warn); }
     <p class="small">Hoeveel slingeromwentelingen bij 1/40 of 1/10 ha horen staat in de handleiding of op de sticker van je machine. De nieuwe stand gaat ervan uit dat de afgifte recht evenredig is met de variatorstand. Dat klopt bij de meeste variatoren ongeveer, maar niet altijd precies. Doe daarom op de nieuwe stand een controleproef.</p>
   </section>
 
+  <!-- APV: ZAAIAS -->
+  <section id="pZaai" role="tabpanel" aria-labelledby="tabZaai" hidden>
+    <div class="lcd" aria-live="polite">
+      <div class="lcd-top"><span>Zaai-as</span><span id="aTop"></span></div>
+      <div class="lcd-value num"><span class="live" id="aVal">–</span></div>
+      <div class="lcd-note" id="aNote">Vul soort, norm, rijsnelheid en werkbreedte in.</div>
+    </div>
+
+    <div class="fields">
+      <div class="field wide">
+        <label>Mengsel / soort</label>
+        <div id="aZaadPick"></div>
+        <div class="hint" id="aZaadHint">&nbsp;</div>
+      </div>
+      <div class="field">
+        <label for="aNorm">Norm (kg/ha)</label>
+        <input id="aNorm" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="25">
+      </div>
+      <div class="field">
+        <label for="aSpeed">Rijsnelheid (km/h)</label>
+        <input id="aSpeed" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="8">
+      </div>
+      <div class="field">
+        <label for="aWidth">Werkbreedte (m)</label>
+        <input id="aWidth" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="1,6">
+        <div class="hint">wordt onthouden</div>
+      </div>
+      <div class="field">
+        <label for="aTab">Zaaitabel</label>
+        <select id="aTab"></select>
+        <div class="hint" id="aTabHint">&nbsp;</div>
+      </div>
+      <div class="field wide">
+        <label>Uitgangen in gebruik</label>
+        <div class="seg full uitg" role="group" aria-label="Uitgangen" id="aUitgSeg">
+          <button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button><button type="button" data-v="4">4</button><button type="button" data-v="5">5</button><button type="button" data-v="6">6</button>
+        </div>
+      </div>
+    </div>
+    <div class="advice" id="aAdvice" aria-live="polite" hidden></div>
+
+    <h2>Logboek</h2>
+    <p class="small" style="margin-top:0">Noteer welke zaaias je gebruikte. Snelheid en zaai-as % kun je later aanvullen: tik dan op de regel. Hoe vaker je het invult, hoe beter het advies hierboven.</p>
+    <div class="fields">
+      <div class="field wide">
+        <label>Zaaias</label>
+        <div class="seg full asseg" role="group" aria-label="Zaaias" id="aAsSeg"></div>
+      </div>
+      <div class="field">
+        <label for="lKgha">Gezaaid (kg/ha)</label>
+        <input id="lKgha" class="num" type="text" inputmode="decimal" autocomplete="off">
+        <div class="hint">leeg = norm</div>
+      </div>
+      <div class="field">
+        <label for="lSpeed">Rijsnelheid (km/h)</label>
+        <input id="lSpeed" class="num" type="text" inputmode="decimal" autocomplete="off">
+        <div class="hint">leeg = zoals boven</div>
+      </div>
+      <div class="field wide">
+        <label for="lPct">Zaai-as (%) van het display</label>
+        <input id="lPct" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="–">
+        <div class="hint">mag later</div>
+      </div>
+      <div class="field wide">
+        <label for="lNote">Notitie</label>
+        <input id="lNote" class="text" type="text" autocomplete="off" placeholder="optioneel">
+      </div>
+    </div>
+    <label class="chk"><input type="checkbox" id="lComp"> <span>Samenstelling van Mengen meenemen <span class="cnt" id="lCompTxt"></span></span></label>
+    <div class="row"><button type="button" class="btn" id="lNew" hidden>Nieuwe regel</button><button type="button" class="btn primary" id="lSave">Bewaar in logboek</button></div>
+    <div class="hint" id="lHint"></div>
+    <ul class="log" id="aLog"></ul>
+
+    <h2>Eigen zaaiassen</h2>
+    <p class="small" style="margin-top:0">Bijvoorbeeld een zelf geprinte zaaias. Daar is geen tabel voor; het advies komt dan uit je logboek.</p>
+    <ul class="log" id="aAssen"></ul>
+    <div class="newsoort">
+      <input id="aAsNew" class="text" type="text" autocomplete="off" enterkeyhint="done" placeholder="Naam, bv. geprint klein">
+      <button type="button" class="btn primary" id="aAsAdd">Toevoegen</button>
+    </div>
+    <p class="small">De zaaitabellen komen uit de handleiding van APV (MDD/MDP/MDG, voor 6 uitgangen) en zijn richtwaarden: vocht en korrelgewicht maken veel uit. Ideaal staat de zaai-as tussen 20 en 80 %. Doe altijd een afdraaiproef.</p>
+  </section>
+
   <!-- ZOCON -->
   <section id="pZoc" role="tabpanel" aria-labelledby="tabZoc" hidden>
     <div class="lcd" aria-live="polite">
@@ -629,7 +721,7 @@ h2 .sum.warn { color: var(--warn); }
 
   /* ---------- Tabs ---------- */
   function showTab(t) {
-    [["weeg", "tabWeeg", "pWeeg"], ["meng", "tabMeng", "pMeng"], ["zoc", "tabZoc", "pZoc"], ["kop", "tabKop", "pKop"]].forEach(([k, tb, pn]) => {
+    [["weeg", "tabWeeg", "pWeeg"], ["meng", "tabMeng", "pMeng"], ["zoc", "tabZoc", "pZoc"], ["kop", "tabKop", "pKop"], ["zaai", "tabZaai", "pZaai"]].forEach(([k, tb, pn]) => {
       $(tb).setAttribute("aria-selected", t === k);
       $(pn).hidden = t !== k;
     });
@@ -637,6 +729,7 @@ h2 .sum.warn { color: var(--warn); }
   }
   $("tabZoc").addEventListener("click", () => showTab("zoc"));
   $("tabKop").addEventListener("click", () => showTab("kop"));
+  $("tabZaai").addEventListener("click", () => showTab("zaai"));
   $("tabWeeg").addEventListener("click", () => showTab("weeg"));
   $("tabMeng").addEventListener("click", () => showTab("meng"));
 
@@ -1221,7 +1314,7 @@ h2 .sum.warn { color: var(--warn); }
   let zAdding = false;
   function zaadList() {
     const mp = new Map();
-    [...ZAAD_DEF, ...zaadCustom, ...Object.values(zProf).map(q => q.zaad), z.zaad, ...(m && m.comps ? m.comps.map(c => c.name) : []), ...log.map(l => l.mix), mixEl.value, ...(() => { try { return [k.zaad, ...kCustom.map(e => e.zaad)]; } catch (er) { return []; } })()].forEach(n => {
+    [...ZAAD_DEF, ...zaadCustom, ...Object.values(zProf).map(q => q.zaad), z.zaad, ...(m && m.comps ? m.comps.map(c => c.name) : []), ...log.map(l => l.mix), mixEl.value, ...(() => { try { return [k.zaad, ...kCustom.map(e => e.zaad), ap.zaad, ...apLog.map(e => e.zaad)]; } catch (er) { return []; } })()].forEach(n => {
       n = String(n || "").trim(); if (n && !mp.has(n.toLowerCase())) mp.set(n.toLowerCase(), n);
     });
     const hid = new Set(zaadHidden);
@@ -1511,6 +1604,226 @@ h2 .sum.warn { color: var(--warn); }
     });
   }
 
+  /* ---------- APV: zaaias-advies en logboek ---------- */
+  // Zaaitabellen uit de handleiding (MDD/MDP/MDG, 6 uitgangen): kg/min bij zaai-as 2, 5, 10 … 100 %
+  const AP_PCT = [2, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
+  const _ = null;
+  const ATAB = [
+    { n: "Gras", tag: ["gras", "weide", "lolium"], d: { ff: [0.02,0.08,0.18,0.29,0.39,0.49,0.52,0.55,0.58,0.62,0.65,0.68,0.72,0.76,0.8,0.84,0.88,0.92,0.95,1,1.05] } },
+    { n: "Tarwe", tag: ["tarwe"], d: { ff: [0.05,0.06,0.08,0.09,0.11,0.12,0.59,1.07,1.54,2.01,2.49,2.61,2.73,2.85,2.97,3.1,3.22,3.34,3.46,3.7,3.93], flex20: [0.26,0.44,0.74,1.04,1.34,1.64,1.94,2.24,2.54,2.84,3.14,3.44,3.75,4.05,4.35,4.65,4.95,5.25,5.55,5.85,6.15] } },
+    { n: "Gerst", tag: ["gerst"], d: { ff: [0.07,0.18,0.36,0.55,0.74,0.92,1.11,1.29,1.48,1.66,1.85,1.88,1.92,1.96,2,2.03,2.07,2.1,2.14,2.18,2.21] } },
+    { n: "Radijs", tag: ["radijs"], d: { ff: [0.09,0.23,0.48,0.72,0.96,1.2,1.35,1.61,1.87,_,_,_,_,_,_,_,_,_,_,_,_] } },
+    { n: "Wikke", tag: ["wikke"], d: { ffb: [0.57,1.07,1.88,2.71,3.53,4.36,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_], ff: [1.26,1.46,1.78,2.1,2.43,2.75,3,_,_,_,_,_,_,_,_,_,_,_,_,_,_] } },
+    { n: "Boekweit", tag: ["boekweit"], d: { ff: [0.03,0.15,0.34,0.53,0.72,0.91,1.07,1.24,1.4,1.57,1.73,1.82,1.9,1.98,2.06,2.15,2.23,2.31,2.39,_,_], flex20: [0.25,0.38,0.59,0.8,1.01,1.23,1.44,1.66,1.87,2.09,2.3,2.51,2.73,2.94,3.16,3.37,3.59,3.8,4.01,4.22,4.44] } },
+    { n: "Haver", tag: ["haver"], d: { ffb: [0.01,0.02,0.03,0.05,0.05,0.07,0.09,0.11,0.13,0.14,0.17,0.17,0.18,0.19,0.2,0.2,0.2,0.2,0.2,0.21,0.23] } },
+    { n: "Mosterd", tag: ["mosterd"], d: { ffb: [0.03,0.11,0.25,0.38,0.51,0.65,0.75,0.86,0.97,1.07,1.19,1.24,1.29,1.34,1.4,1.45,1.5,1.55,1.61,1.73,1.86], ff: [0.12,0.28,0.54,0.81,1.07,1.34,1.59,1.83,2.09,2.33,2.58,2.72,2.85,2.99,3.12,3.26,3.39,3.53,3.66,3.88,4.1] } },
+    { n: "Luzerne", tag: ["luzerne"], d: { ffb: [0.08,0.16,0.3,0.45,0.59,0.74,0.86,0.99,1.12,1.24,1.37,1.4,1.43,1.45,1.48,1.51,1.53,1.56,1.59,1.68,1.77], ff: [0.11,0.26,0.52,0.77,1.02,1.28,1.52,1.77,2.01,2.25,2.5,2.64,2.78,2.91,3.05,3.19,3.33,3.47,3.6,3.87,4.15] } },
+    { n: "Rode klaver", tag: ["klaver"], d: { ffb: [0.03,0.11,0.25,0.38,0.53,0.66,0.8,0.92,1.06,1.19,1.32,1.37,1.4,1.45,1.49,1.53,1.57,1.61,1.65,1.75,1.85], ff: [0.21,0.51,1.02,1.52,2.03,2.54,2.62,2.71,2.79,2.88,2.97,3.05,3.14,3.22,3.31,3.39,3.48,3.57,3.65,3.88,4.1] } },
+    { n: "Phacelia", tag: ["phacelia", "facelia"], d: { ffb: [0.11,0.23,0.46,0.68,0.89,1.12,1.14,1.17,1.19,1.22,1.25,1.31,1.39,1.46,1.53,1.6,1.67,1.74,1.82,1.89,1.97], ff: [0.13,0.29,0.56,0.83,1.1,1.37,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_] } },
+    { n: "Erwten", tag: ["erwt"], d: { flex20: [0.35,0.5,0.77,1.03,1.29,1.55,1.82,2.08,2.34,2.61,2.87,3.14,3.4,3.66,3.92,4.19,4.45,4.71,4.98,5.24,5.51] } },
+    { n: "Koolzaad", tag: ["koolzaad"], d: { ffb: [0.08,0.16,0.29,0.41,0.54,0.66,0.77,0.88,0.99,1.1,1.21,1.26,1.32,1.37,1.42,1.47,1.52,1.57,1.63,1.73,1.83] } },
+    { n: "Tuinbonen", tag: ["tuinbo"], d: { flex20: [0.35,0.5,0.75,1.01,1.26,1.52,1.77,2.03,2.28,2.54,2.78,3.04,3.29,3.55,3.8,4.06,4.31,4.57,4.82,5.08,5.33] } },
+    { n: "Chia", tag: ["chia"], d: { ffb: [0.04,0.09,0.18,0.26,0.35,0.46,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_] } },
+    { n: "Slakkenkorrel", tag: ["slak"], d: { ffb: [_,0.06,0.12,0.18,0.24,0.3,0.36,0.42,0.48,0.54,0.6,0.66,0.72,0.78,0.84,0.9,0.96,1.02,1.08,1.14,1.2], flex20: [_,0.22,0.44,0.65,0.87,1.09,1.31,1.53,1.74,1.96,2.18,2.4,2.62,2.84,3.05,3.27,3.49,3.71,3.93,4.14,4.36] } }
+  ];
+  const AS_STD = [{ id: "flex20", name: "Flex 20" }, { id: "ff", name: "ff (2 genokt)" }, { id: "ffb", name: "f-fb (1 genokt)" }];
+  const ap = Object.assign({ zaad: "", norm: "", speed: "", width: "1,6", uitg: 6, tabFor: {}, as: "ff", kgha: "", lspeed: "", pct: "", note: "", comp: true }, store.get("apvZaai", {}));
+  const saveAp = () => store.set("apvZaai", ap);
+  let apLog = store.get("apvLog", []);
+  if (!Array.isArray(apLog)) apLog = [];
+  let apAssen = store.get("apvAssen", []);
+  if (!Array.isArray(apAssen)) apAssen = [];
+  if (!ap.tabFor || typeof ap.tabFor !== "object") ap.tabFor = {};
+  let apEdit = null;
+  // Gekozen zaaitabel per soort (rogge staat er niet in; dan kies je bijv. tarwe, alleen voor rogge)
+  const tabChoice = () => ap.tabFor[normK(ap.zaad)] || "auto";
+  const asAll = () => [...AS_STD, ...apAssen];
+  const asName = (id, fallback) => (asAll().find(a => a.id === id) || { name: fallback || id }).name;
+  const tabAuto = () => { const zz = normK(ap.zaad); return zz ? ATAB.find(t => t.tag.some(g => zz.includes(g))) || null : null; };
+  const tabSel = () => { const c = tabChoice(); return c === "geen" ? null : c === "auto" ? tabAuto() : (ATAB.find(t => t.n === c) || null); };
+  // Welke zaai-as % geeft kgmin? Lineair tussen de tabelwaarden
+  function pctFor(arr, kgmin) {
+    const pts = AP_PCT.map((p, i) => [p, arr[i]]).filter(q => q[1] != null);
+    if (!pts.length) return null;
+    if (kgmin < pts[0][1]) return { p: pts[0][0], low: true };
+    for (let i = 1; i < pts.length; i++) if (kgmin <= pts[i][1]) {
+      const [p0, v0] = pts[i - 1], [p1, v1] = pts[i];
+      return { p: v1 === v0 ? p1 : p0 + (p1 - p0) * (kgmin - v0) / (v1 - v0) };
+    }
+    return { p: pts[pts.length - 1][0], high: true };
+  }
+  // Eigen ervaring: kg/min per zaai-as % (omgerekend naar 6 uitgangen), gemiddeld over je logboek
+  function logK(asId) {
+    const zz = normK(ap.zaad); if (!zz) return null;
+    const ks = apLog.filter(e => normK(e.zaad) === zz && e.as === asId).map(e => {
+      const kgha = parse(e.kgha), v = parse(e.speed), p = parse(e.pct), w = parse(e.width), u = +e.uitg || 6;
+      return kgha && v && p && w ? kgha * v * w / 600 / p * 6 / u : null;
+    }).filter(x => x);
+    return ks.length ? { k: ks.reduce((a, b) => a + b, 0) / ks.length, n: ks.length } : null;
+  }
+  function compTxt() {
+    const mx = machine === "apv" ? m : store.get("menger", {});
+    const cs = (mx && Array.isArray(mx.comps) ? mx.comps : []).filter(c => String(c.name || "").trim());
+    const km = mx && mx.compMode === "kgha";
+    return cs.map(c => c.name.trim() + ((km ? c.kgha : c.pct) ? " " + (km ? c.kgha + " kg/ha" : c.pct + " %") : "")).join(", ");
+  }
+  [["aNorm", "norm"], ["aSpeed", "speed"], ["aWidth", "width"], ["lKgha", "kgha"], ["lSpeed", "lspeed"], ["lPct", "pct"], ["lNote", "note"]].forEach(([id, key]) => {
+    const el = $(id); el.value = ap[key] || "";
+    el.addEventListener("input", () => { ap[key] = el.value; saveAp(); updateAp(); });
+  });
+  $("aTab").addEventListener("change", e => {
+    const zz = normK(ap.zaad); if (!zz) { e.target.value = "auto"; return; }
+    if (e.target.value === "auto") delete ap.tabFor[zz]; else ap.tabFor[zz] = e.target.value;
+    saveAp(); updateAp();
+  });
+  $("aUitgSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { ap.uitg = +b.dataset.v; saveAp(); updateAp(); }));
+  $("lComp").checked = !!ap.comp;
+  $("lComp").addEventListener("change", e => { ap.comp = e.target.checked; if (!apEdit) ap.compPref = ap.comp; saveAp(); });
+  function setLogForm(e) {
+    apEdit = e ? e.ts : null;
+    if (e) { ap.zaad = e.zaad; ap.as = e.as; ap.kgha = e.kgha || ""; ap.lspeed = e.speed || ""; ap.pct = e.pct || ""; ap.note = e.note || ""; ap.comp = !!e.comp; }
+    else { ap.kgha = ""; ap.lspeed = ""; ap.pct = ""; ap.note = ""; ap.comp = ap.compPref !== false; }
+    [["lKgha", "kgha"], ["lSpeed", "lspeed"], ["lPct", "pct"], ["lNote", "note"]].forEach(([id, key]) => $(id).value = ap[key]);
+    $("lComp").checked = !!ap.comp;
+    saveAp(); refreshAllPickers(); updateAp();
+  }
+  $("lNew").addEventListener("click", () => { setLogForm(null); $("lHint").textContent = ""; });
+  $("lSave").addEventListener("click", e => {
+    if (!String(ap.zaad || "").trim()) { flash(e.currentTarget, "Kies eerst een soort"); return; }
+    const old = apEdit ? apLog.find(x => x.ts === apEdit) : null;
+    const entry = { ts: old ? old.ts : Date.now(), zaad: ap.zaad.trim(), as: ap.as, asName: asName(ap.as), kgha: ap.kgha || ap.norm || "", speed: ap.lspeed || ap.speed || "",
+      pct: ap.pct || "", width: ap.width || "", uitg: ap.uitg || 6, note: String(ap.note || "").trim(), comp: ap.comp ? ((old && old.comp) || compTxt()) : "" };
+    if (old) apLog = apLog.map(x => x === old ? entry : x); else apLog.push(entry);
+    store.set("apvLog", apLog);
+    setLogForm(null);
+    $("lHint").textContent = old ? "Regel bijgewerkt." : (entry.pct ? "Bewaard in het logboek." : "Bewaard. Zaai-as % kun je later aanvullen: tik op de regel.");
+  });
+  function addAs() {
+    const n = $("aAsNew").value.trim();
+    if (!n) { flash($("aAsAdd"), "Naam?"); return; }
+    if (!asAll().some(a => a.name.toLowerCase() === n.toLowerCase())) { apAssen.push({ id: "e" + Date.now(), name: n }); store.set("apvAssen", apAssen); }
+    $("aAsNew").value = ""; updateAp();
+  }
+  $("aAsAdd").addEventListener("click", addAs);
+  $("aAsNew").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addAs(); } });
+
+  function renderApLists() {
+    // Keuze zaaias
+    const seg = $("aAsSeg"); seg.innerHTML = "";
+    asAll().forEach(a => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = a.name;
+      b.setAttribute("aria-pressed", ap.as === a.id);
+      b.addEventListener("click", () => { ap.as = a.id; saveAp(); updateAp(); });
+      seg.appendChild(b);
+    });
+    // Logboek, nieuwste boven; regels van de gekozen soort gemarkeerd
+    const ul = $("aLog"); ul.innerHTML = "";
+    const zz = normK(ap.zaad);
+    if (!apLog.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "Nog niks genoteerd."; ul.appendChild(li); }
+    apLog.slice().sort((a, b) => b.ts - a.ts).forEach(e => {
+      const li = document.createElement("li");
+      if (apEdit === e.ts) li.className = "sel"; else if (zz && normK(e.zaad) === zz) li.className = "match";
+      const left = document.createElement("button"); left.type = "button";
+      left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
+      left.setAttribute("aria-label", "Bewerk " + e.zaad);
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + (e.kgha ? ", " + e.kgha + " kg/ha" : "");
+      const mt = document.createElement("div"); mt.className = "meta pre";
+      mt.textContent = asName(e.as, e.asName) + (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : ", zaai-as % nog invullen") + ", " + dateTxt(e.ts) +
+        (+e.uitg && +e.uitg !== 6 ? ", " + e.uitg + " uitgangen" : "") + (e.comp ? "\n" + e.comp : "") + (e.note ? "\n" + e.note : "");
+      left.append(nm, mt);
+      left.addEventListener("click", () => { setLogForm(e); $("lHint").textContent = "Je bewerkt de regel van " + dateTxt(e.ts) + "."; try { $("aAsSeg").scrollIntoView({ block: "center" }); } catch (er) {} });
+      const w = document.createElement("span");
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder regel");
+      del.addEventListener("click", () => { if (armed(del, "Wis?")) { apLog = apLog.filter(x => x !== e); store.set("apvLog", apLog); if (apEdit === e.ts) setLogForm(null); else updateAp(); } });
+      li.append(left, w, del); ul.appendChild(li);
+    });
+    // Eigen zaaiassen
+    const ua = $("aAssen"); ua.innerHTML = "";
+    if (!apAssen.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "Nog geen eigen zaaiassen."; ua.appendChild(li); }
+    apAssen.forEach(a => {
+      const li = document.createElement("li");
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = a.name;
+      const n = apLog.filter(e => e.as === a.id).length;
+      const mt = document.createElement("div"); mt.className = "meta tabw"; mt.textContent = n ? n + "× in logboek" : "";
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder " + a.name);
+      del.addEventListener("click", () => { if (armed(del, "Wis?")) { apAssen = apAssen.filter(x => x !== a); store.set("apvAssen", apAssen); if (ap.as === a.id) ap.as = "ff"; saveAp(); updateAp(); } });
+      li.append(nm, mt, del); ua.appendChild(li);
+    });
+  }
+
+  function updateAp() {
+    const nl = (v, d) => v.toLocaleString("nl-NL", { maximumFractionDigits: d, useGrouping: false });
+    if (!asAll().some(a => a.id === ap.as)) ap.as = "ff";
+    // Keuzelijst zaaitabel
+    const sel = $("aTab"), auto = tabAuto();
+    if (!sel.options.length) {
+      const add = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o); };
+      add("auto", "Automatisch"); add("geen", "Geen tabel"); ATAB.forEach(t => add(t.n, t.n));
+    }
+    sel.options[0].textContent = auto ? "Automatisch (" + auto.n + ")" : "Automatisch";
+    const ch = tabChoice();
+    sel.value = ch === "geen" || ATAB.some(t => t.n === ch) ? ch : "auto";
+    const t = tabSel();
+    $("aTabHint").textContent = ch !== "auto" ? "alleen voor deze soort" : !auto ? (ap.zaad ? "niet in de tabellen; je logboek telt" : " ") : " ";
+    $("aUitgSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.v === +ap.uitg));
+    $("lKgha").placeholder = ap.norm || "0"; $("lSpeed").placeholder = ap.speed || "0";
+    const ct = compTxt(); $("lCompTxt").textContent = ct ? "(" + ct + ")" : "(bij Mengen staat nu niks)";
+    $("lNew").hidden = !apEdit; $("lSave").textContent = apEdit ? "Regel bijwerken" : "Bewaar in logboek";
+    renderApLists();
+
+    const zz = normK(ap.zaad);
+    const prev = zz ? apLog.filter(e => normK(e.zaad) === zz).sort((a, b) => b.ts - a.ts)[0] : null;
+    $("aZaadHint").textContent = prev ? "Vorige keer (" + dateTxt(prev.ts) + "): " + asName(prev.as, prev.asName) + (prev.kgha ? ", " + prev.kgha + " kg/ha" : "") + (prev.speed ? ", " + prev.speed + " km/h" : "") + (prev.pct ? ", " + prev.pct + " %" : "") : " ";
+
+    const adv = $("aAdvice"), note = $("aNote"); adv.hidden = true; note.className = "lcd-note"; $("aTop").textContent = "";
+    const norm = parse(ap.norm), v = parse(ap.speed), w = parse(ap.width), u = +ap.uitg || 6;
+    if (!norm || !v || !w) { setText($("aVal"), "–"); note.textContent = "Vul norm, rijsnelheid en werkbreedte in."; return; }
+    const need = norm * v * w / 600; // kg/min
+    const speedAt = kgmin => kgmin * 600 / (norm * w);
+    const rows = [];
+    asAll().forEach(a => {
+      const lk = logK(a.id);
+      const arr = t && t.d[a.id] ? t.d[a.id].map(x => x == null ? null : x * u / 6) : null;
+      const tr = arr ? pctFor(arr, need) : null;
+      if (!lk && !tr) return;
+      const r = { a, lk, tr, arr };
+      r.p = lk ? need / (lk.k * u / 6) : tr.p;
+      r.out = lk ? (r.p < 20 || r.p > 80) : (tr.low || tr.high || tr.p < 20 || tr.p > 80);
+      rows.push(r);
+    });
+    if (!rows.length) {
+      setText($("aVal"), "–");
+      note.textContent = "Nodig: " + nl(need, 2) + " kg/min";
+      adv.innerHTML = '<div>Geen zaaitabel en nog niks in je logboek voor deze soort. Doe een afdraaiproef op het display en noteer hieronder welke zaaias en welke % je gebruikte.</div>';
+      adv.hidden = false; return;
+    }
+    // Beste: binnen 20–80 %, eigen ervaring gaat voor, dan zo dicht mogelijk bij 50 %
+    const score = r => (r.out ? 1000 : 0) + (r.lk ? 0 : 100) + Math.abs(r.p - 50);
+    const best = rows.slice().sort((a, b) => score(a) - score(b))[0];
+    const pTxt = r => r.tr && !r.lk && r.tr.low ? "<" + r.tr.p + " %" : r.tr && !r.lk && r.tr.high ? ">" + r.tr.p + " %" : nl(r.p, 0) + " %";
+    setText($("aVal"), pTxt(best));
+    $("aTop").textContent = best.a.name;
+    note.textContent = "Nodig: " + nl(need, 2) + " kg/min" + (best.out ? ". Buiten 20–80 %" : "");
+    if (best.out) note.className = "lcd-note warn";
+    let h = '<div class="steps">';
+    rows.forEach(r => {
+      let range = "";
+      // Met de snelheidssensor: bij welke snelheden blijf je tussen 20 en 80 %
+      const kgAt = p => r.lk ? r.lk.k * u / 6 * p : (r.arr[AP_PCT.indexOf(p)]);
+      const k20 = kgAt(20), k80 = kgAt(80);
+      if (k20 && k80) range = '; 20–80 % bij ' + nl(speedAt(k20), 1) + '–' + nl(speedAt(k80), 1) + ' km/h';
+      const why = r.lk ? 'logboek ' + r.lk.n + '×' + (r.tr ? ', tabel ' + (r.tr.low ? '<' + r.tr.p : r.tr.high ? '>' + r.tr.p : nl(r.tr.p, 0)) + ' %' : '') : 'tabel ' + t.n;
+      const st = r.out ? '<span class="bad">' + (r.p < 20 || (r.tr && r.tr.low && !r.lk) ? 'te laag' : 'te hoog') + '</span>' : '<span class="ok">goed</span>';
+      h += '<div><strong>' + esc(r.a.name) + '</strong>: ' + pTxt(r) + ' ' + st + ' <span style="color:var(--muted)">(' + esc(why) + range + ')</span></div>';
+    });
+    h += '</div>';
+    if (u !== 6) h += '<div style="margin-top:8px;color:var(--muted)">Met ' + u + ' van de 6 uitgangen rekent de app met ' + nl(u / 6 * 100, 0) + ' % van de tabel. Dat is een schatting.</div>';
+    if (best.out) h += '<div style="margin-top:8px" class="bad">Geen zaaias komt tussen 20 en 80 %. Pas de rijsnelheid aan, of probeer een (eigen) zaaias met meer of minder nokken.</div>';
+    adv.innerHTML = h; adv.hidden = false;
+  }
+  $("aZaadPick").appendChild(makeSoortPicker(() => ap.zaad, val => { ap.zaad = val; saveAp(); updateAp(); }, { empty: "Kies een soort…", label: "Zaadsoort APV" }));
+  updateAp();
+
   /* ---------- Init ---------- */
   tareEl.value = fmtInput(tareG);
   setUnit(unit);
@@ -1553,12 +1866,12 @@ h2 .sum.warn { color: var(--warn); }
     document.body.classList.toggle("m-kop", mc === "kop");
     $("pHome").hidden = !!mc;
     $("appHead").hidden = !mc;
-    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); renderBackup(); return; }
+    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop", "pZaai"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); renderBackup(); return; }
     $("mName").textContent = { apv: "APV 5.2", zoc: "Zocon Z300", kop: "Kopeg-zaaier" }[mc];
     $("weegLabel").textContent = mc === "apv" ? "Invullen op kast" : "Netto afgedraaid";
     loadWeeg();
     loadMix();
-    const allowed = { apv: ["weeg", "meng"], zoc: ["zoc", "weeg", "meng"], kop: ["kop", "weeg", "meng"] }[mc];
+    const allowed = { apv: ["weeg", "meng", "zaai"], zoc: ["zoc", "weeg", "meng"], kop: ["kop", "weeg", "meng"] }[mc];
     const t = store.get("tab_" + mc, allowed[0]);
     showTab(allowed.includes(t) ? t : allowed[0]);
     try { window.scrollTo(0, 0); } catch (e) {}
@@ -1613,6 +1926,7 @@ h2 .sum.warn { color: var(--warn); }
         if (!zaadHidden.includes(lw)) { zaadHidden.push(lw); store.set("zaadVerborgen", zaadHidden); }
         if (String(z.zaad || "").toLowerCase() === lw) { z.zaad = ""; saveZ(); }
         if (String(k.zaad || "").toLowerCase() === lw) { k.zaad = ""; saveK(); }
+        if (String(ap.zaad || "").toLowerCase() === lw) { ap.zaad = ""; saveAp(); updateAp(); }
         if (String(mixEl.value || "").toLowerCase() === lw) { mixEl.value = ""; store.set(wk("mix"), ""); }
         refreshAllPickers(); updateZ(); updateK(); renderSoortList(); refreshShareCounts();
       });
@@ -1763,7 +2077,7 @@ h2 .sum.warn { color: var(--warn); }
   // ---------- Back-up: alles uit localStorage, terug te zetten op elke telefoon ----------
   const BK_PREFIX = "ZAAIHULP-BACKUP1:";
   // Alleen de sleutels van de Zaaihulp: de Perceelkaart staat op hetzelfde domein en deelt de opslag
-  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
+  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
   function backupData() {
     const data = {};
     try { for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) data[key] = localStorage.getItem(key); } } catch (e) {}

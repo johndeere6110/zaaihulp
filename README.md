@@ -9,7 +9,7 @@ Hulp-app voor het afdraaien, wegen en mengen bij de zaaimachine. Werkt op je tel
 
 | Machine | Wat de app doet |
 |---|---|
-| **APV 5.2** | Afdraaien met de emmer, mengsel samenstellen, vakken uitrekenen en de kast bijstellen in stappen van 5 %. |
+| **APV 5.2** (MDP 100 M1) | Afdraaien met de emmer, mengsel samenstellen, vakken uitrekenen en de kast bijstellen in stappen van 5 %. Tab **Zaaias**: welke zaaias (Flex 20, ff, f-fb of een eigen) en welke zaai-as % bij jouw norm, snelheid en werkbreedte, uit de zaaitabellen van APV en je eigen logboek. |
 | **Zocon Z300** (BASIC-kastje, gele rol) | Afdraaiproef met timer, zaaistand 1–24 bij jouw rijsnelheid, borstelstand −1 t/m 3. Bewaarde proeven op meerdere standen maken de berekening steeds nauwkeuriger. Rekent ook het aantal vullingen van de bak (300 L) uit. |
 | **Kopeg-zaaier** | Afdraaien met de slinger (1/40, 1/10 of eigen deel van een hectare) en de nieuwe variatorstand. Eigen proeven bewaar je in de ervaringstabel. |
 
@@ -48,7 +48,7 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 ## Voor wie eraan werkt
 
 - **Alles in `index.html`:** HTML, CSS en JavaScript in één bestand. Geen build-stap, geen frameworks.
-- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v32` → `v33`), anders krijgen telefoons de update niet.
+- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v33` → `v34`), anders krijgen telefoons de update niet.
 - **`installeren.html`:** de installatiepagina. Herkent Android, iPhone of computer.
 - **`fonts/`:** het lettertype Barlow, zelf gehost, zodat er geen verzoeken naar Google gaan. **`vendor/`:** externe bibliotheken als eigen kopie (QR-code), niets van een CDN.
 - **Opslag:** `localStorage`. **Verander bestaande sleutels niet**, anders zijn gebruikers hun proeven kwijt. De Perceelkaart staat op hetzelfde domein en deelt de opslag; de back-up neemt daarom alleen de sleutels van de Zaaihulp mee.
