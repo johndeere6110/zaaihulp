@@ -1787,15 +1787,27 @@ h2 .sum.warn { color: var(--warn); }
   });
   // Getekende icoontjes van de standaard zaaiwielen (eigen tekening, geen foto van APV)
   const hexPath = (r) => { let d = ""; for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i; d += (i ? "L" : "M") + (50 + r * Math.cos(a)).toFixed(1) + " " + (50 + r * Math.sin(a)).toFixed(1); } return d + "Z"; };
-  const gear = (n, ro, ri) => { let d = ""; for (let i = 0; i < n; i++) { const a0 = Math.PI * 2 / n * i, w = Math.PI / n * 0.5;
-    [[ri, a0 - w * 1.4], [ro, a0 - w * 0.6], [ro, a0 + w * 0.6], [ri, a0 + w * 1.4]].forEach(([r, a], j) => { d += (i || j ? "L" : "M") + (50 + r * Math.cos(a)).toFixed(1) + " " + (50 + r * Math.sin(a)).toFixed(1); }); } return d + "Z"; };
-  const blind = () => { let d = "M6 50a44 44 0 1 0 88 0a44 44 0 1 0-88 0Z"; for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i + Math.PI / 6, x = 50 + 28 * Math.cos(a), y = 50 + 28 * Math.sin(a); d += "M" + (x - 9).toFixed(1) + " " + y.toFixed(1) + "a9 9 0 1 0 18 0a9 9 0 1 0-18 0Z"; } return d; };
+  const P = (r, a) => (50 + r * Math.cos(a)).toFixed(1) + " " + (50 + r * Math.sin(a)).toFixed(1);
+  // f: smalle ring met dunne gebogen nokjes, open zeskant in het midden
+  const fWiel = (kleur, donker) => {
+    let t = ""; for (let i = 0; i < 17; i++) { const a = Math.PI * 2 / 17 * i; t += "M" + P(32, a) + "Q" + P(41, a + 0.04) + " " + P(46, a + 0.22); }
+    let st = ""; for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i + Math.PI / 6; st += '<circle cx="' + (50 + 25 * Math.cos(a)).toFixed(1) + '" cy="' + (50 + 25 * Math.sin(a)).toFixed(1) + '" r="3.2"/>'; }
+    return '<path fill="' + (donker || "#5A6056") + '" fill-rule="evenodd" d="M16 50a34 34 0 1 0 68 0a34 34 0 1 0-68 0Z' + hexPath(15) + '"/>' +
+      '<g fill="none" stroke="' + kleur + '" stroke-linecap="round" stroke-linejoin="round"><circle cx="50" cy="50" r="32" stroke-width="5"/><path stroke-width="5" d="' + t + '"/><path stroke-width="5" d="' + hexPath(17) + '"/></g>' +
+      '<g fill="' + kleur + '">' + st + '</g>';
+  };
+  // fb: dichte schijf met spaken (vakken tussen de spaken zijn verdiept, niet open)
+  const blind = (kleur, donker) => {
+    let v = ""; for (let i = 0; i < 6; i++) { const a0 = Math.PI / 3 * i + 0.12, a1 = Math.PI / 3 * (i + 1) - 0.12;
+      v += "M" + P(19, a0) + "L" + P(38, a0) + "A38 38 0 0 1 " + P(38, a1) + "L" + P(19, a1) + "A19 19 0 0 0 " + P(19, a0) + "Z"; }
+    return '<path fill="' + kleur + '" fill-rule="evenodd" d="M6 50a44 44 0 1 0 88 0a44 44 0 1 0-88 0Z' + hexPath(11) + '"/><path fill="' + donker + '" d="' + v + '"/>';
+  };
   const svgWiel = (d, kleur, sw) => '<path fill-rule="evenodd" fill="' + kleur + '" stroke="' + kleur + '" stroke-width="' + (sw || 3) + '" stroke-linejoin="round" d="' + d + hexPath(11) + '"/>';
   const ICON = {
     flex20: '<svg viewBox="0 0 100 100" aria-hidden="true"><g stroke="#E3B23C" stroke-linecap="round" fill="none"><circle cx="50" cy="50" r="18" stroke-width="13"/>' +
       [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = Math.PI / 4 * i + Math.PI / 8, c = Math.cos(a), sn = Math.sin(a); return '<line stroke-width="14" x1="' + (50 + 20 * c).toFixed(1) + '" y1="' + (50 + 20 * sn).toFixed(1) + '" x2="' + (50 + 41 * c).toFixed(1) + '" y2="' + (50 + 41 * sn).toFixed(1) + '"/>'; }).join("") + '</g></svg>',
-    ff: '<svg viewBox="0 0 100 100" aria-hidden="true">' + svgWiel(gear(16, 46, 38), "#8A9184") + '</svg>',
-    ffb: '<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(-14 0) scale(.72) translate(19 19)">' + svgWiel(gear(16, 46, 38), "#8A9184") + '</g><g transform="translate(14 0) scale(.72) translate(19 19)">' + svgWiel(blind(), "#5E655A") + '</g></svg>'
+    ff: '<svg viewBox="0 0 100 100" aria-hidden="true">' + fWiel("#8A9184") + '</svg>',
+    ffb: '<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(-14 0) scale(.72) translate(19 19)">' + fWiel("#8A9184") + '</g><g transform="translate(14 0) scale(.72) translate(19 19)">' + blind("#6A7166", "#4A5047") + '</g></svg>'
   };
   // Foto of icoon bovenaan een element; tik maakt hem groot
   function fotoBlok(id, label, left) {
