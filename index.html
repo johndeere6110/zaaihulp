@@ -810,8 +810,10 @@ h2 .sum.warn { color: var(--warn); }
   }
 
   const restEl = $("rest");
-  restEl.value = store.get("restKg", "");
-  restEl.addEventListener("input", () => { store.set("restKg", restEl.value); updateMix(); });
+  // Restant per machine: APV houdt de oude sleutel restKg, Zocon en kopeg krijgen eenmalig die waarde als begin
+  try { const oud = localStorage.getItem("restKg"); if (oud !== null) ["zoc", "kop"].forEach(mc => { if (localStorage.getItem("restKg_" + mc) === null) localStorage.setItem("restKg_" + mc, oud); }); } catch (e) {}
+  restEl.value = store.get(wk("restKg"), "");
+  restEl.addEventListener("input", () => { store.set(wk("restKg"), restEl.value); updateMix(); });
   $("limAll").addEventListener("click", () => { m.limBy = "all"; saveMix(); updateMix(); });
   $("limEach").addEventListener("click", () => { m.limBy = "each"; saveMix(); updateMix(); });
   $("useNorm").addEventListener("click", () => {
@@ -1494,6 +1496,7 @@ h2 .sum.warn { color: var(--warn); }
     if (m.limBy !== "all" && m.limBy !== "each") m.limBy = "all";
     ["ha", "norm", "tot", "width", "bulk"].forEach(id => $(id).value = m[id] || ""); syncExtra();
     $("lim").value = m.limKg || "";
+    restEl.value = store.get(wk("restKg"), "");
     renderComps(); renderVakken();
     setMode(["area", "length", "weight"].includes(m.mode) ? m.mode : "area");
   }
@@ -1639,7 +1642,8 @@ h2 .sum.warn { color: var(--warn); }
     if ($("shInst").checked) data.inst = {
       tare: { apv: store.get("tareG", null), zoc: store.get("tareG_zoc", null), kop: store.get("tareG_kop", null) },
       unit: { apv: store.get("unit", "g"), zoc: store.get("unit_zoc", "g"), kop: store.get("unit_kop", "g") },
-      restKg: store.get("restKg", ""), zWidth: z.width || ""
+      // restKg los voor oudere versies van de app, rest per machine voor de nieuwe
+      restKg: store.get("restKg", ""), rest: { apv: store.get("restKg", ""), zoc: store.get("restKg_zoc", ""), kop: store.get("restKg_kop", "") }, zWidth: z.width || ""
     };
     if (!data.zocon && !data.kopeg && !data.soorten && !data.inst) { $("shOutHint").textContent = "Niks aangevinkt om te delen."; return; }
     const code = SH_PREFIX + enc(data);
@@ -1698,7 +1702,9 @@ h2 .sum.warn { color: var(--warn); }
       const t = data.inst.tare || {}, u = data.inst.unit || {};
       if (t.apv != null) store.set("tareG", t.apv); if (t.zoc != null) store.set("tareG_zoc", t.zoc); if (t.kop != null) store.set("tareG_kop", t.kop);
       if (u.apv) store.set("unit", u.apv); if (u.zoc) store.set("unit_zoc", u.zoc); if (u.kop) store.set("unit_kop", u.kop);
-      if (data.inst.restKg) { store.set("restKg", data.inst.restKg); $("rest").value = data.inst.restKg; }
+      const r = data.inst.rest && typeof data.inst.rest === "object" ? data.inst.rest : (data.inst.restKg ? { apv: data.inst.restKg, zoc: data.inst.restKg, kop: data.inst.restKg } : {});
+      if (r.apv) store.set("restKg", r.apv); if (r.zoc) store.set("restKg_zoc", r.zoc); if (r.kop) store.set("restKg_kop", r.kop);
+      $("rest").value = store.get(wk("restKg"), "");
       if (data.inst.zWidth) { z.width = data.inst.zWidth; $("zWidth").value = z.width; saveZ(); }
       res.push("instellingen");
     }
@@ -1724,7 +1730,7 @@ h2 .sum.warn { color: var(--warn); }
   // ---------- Back-up: alles uit localStorage, terug te zetten op elke telefoon ----------
   const BK_PREFIX = "ZAAIHULP-BACKUP1:";
   // Alleen de sleutels van de Zaaihulp: de Perceelkaart staat op hetzelfde domein en deelt de opslag
-  const isZaaiKey = k => /^(machine|theme|restKg|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger)(_(zoc|kop))?)$/.test(k);
+  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
   function backupData() {
     const data = {};
     try { for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) data[key] = localStorage.getItem(key); } } catch (e) {}
