@@ -311,6 +311,7 @@ h2 .sum.warn { color: var(--warn); }
       <button type="button" class="btn" id="clear">Wis weging</button>
       <button type="button" class="btn primary" id="save" disabled>Bewaar weging</button>
     </div>
+    <div class="row" id="toAfdRow" hidden><button type="button" class="btn primary" id="toAfd" disabled>Naar Afdraaien</button></div>
 
     <h2>Wegingen <button type="button" id="clearLog">Lijst legen</button></h2>
     <ul class="log" id="log"></ul>
@@ -683,6 +684,11 @@ h2 .sum.warn { color: var(--warn); }
     setText(netEl, net === null ? "0" : kg(net / 1000));
     lastNet = net;
     saveBtn.disabled = !net;
+    // Zocon en kopeg: netto in één tik naar de afdraaiproef
+    const ta = $("toAfd");
+    $("toAfdRow").hidden = machine !== "zoc" && machine !== "kop";
+    ta.disabled = !net;
+    ta.textContent = net ? "Naar Afdraaien: " + (machine === "zoc" ? gStr(net) : kg(net / 1000) + " kg") : "Naar Afdraaien";
   }
 
   function renderLog() {
@@ -721,6 +727,14 @@ h2 .sum.warn { color: var(--warn); }
     if (log.length > 200) log = log.slice(-200);
     store.set(wk("log"), log);
     grossEl.value = ""; updateWeeg(); renderLog();
+  });
+  $("toAfd").addEventListener("click", () => {
+    if (!lastNet || (machine !== "zoc" && machine !== "kop")) return;
+    $(machine === "zoc" ? "zFromWeeg" : "kFromWeeg").click();
+    showTab(machine);
+    const veld = $(machine === "zoc" ? "zGram" : "kGram");
+    try { veld.scrollIntoView({ block: "center" }); } catch (e) {}
+    bump(veld);
   });
   $("clearLog").addEventListener("click", e => {
     if (log.length && armed(e.currentTarget, "Tik nog eens om te legen")) { log = []; store.set(wk("log"), log); renderLog(); }
