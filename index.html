@@ -1995,7 +1995,11 @@ h2 .sum.warn { color: var(--warn); }
       const k20 = kgAt(20), k80 = kgAt(80);
       if (k20 && k80) range = '; 20–80 % bij ' + nl(speedAt(k20), 1) + '–' + nl(speedAt(k80), 1) + ' km/h';
       const why = r.est ? 'schatting via ' + r.est : r.lk ? 'logboek ' + r.lk.n + '×' + (r.tr ? ', tabel ' + (r.tr.low ? '<' + r.tr.p : r.tr.high ? '>' + r.tr.p : nl(r.tr.p, 0)) + ' %' : '') : 'tabel ' + t.n;
-      const st = r.out ? '<span class="bad">' + (r.p < 20 || (r.tr && r.tr.low && !r.lk) ? 'te laag' : 'te hoog') + '</span>' : '<span class="ok">goed</span>';
+      // Duidelijk zeggen wat er mis is: buiten de tabel, of de % onder 20 / boven 80
+      const tabOnly = r.tr && !r.lk;
+      const st = tabOnly && r.tr.high ? '<span class="bad">buiten de tabel</span> (die stopt bij ' + r.tr.p + ' %, daar komt nog te weinig uit)'
+        : tabOnly && r.tr.low ? '<span class="bad">te veel afgifte, zelfs op 2 %</span>'
+        : r.out ? '<span class="bad">zaai-as ' + (r.p < 20 ? 'onder 20 %' : 'boven 80 %') + '</span>' : '<span class="ok">goed</span>';
       const pic = apFoto[r.a.id] ? '<img src="' + apFoto[r.a.id] + '" alt="">' : (ICON[r.a.id] || "");
       h += '<div class="advrow">' + (pic ? '<span class="advpic">' + pic + '</span>' : '') + '<span><strong>' + esc(r.a.name) + '</strong>: ' + pTxt(r) + ' ' + st + ' <span style="color:var(--muted)">(' + esc(why) + range + ')</span></span></div>';
     });

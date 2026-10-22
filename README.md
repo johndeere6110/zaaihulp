@@ -48,7 +48,7 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 ## Voor wie eraan werkt
 
 - **Alles in `index.html`:** HTML, CSS en JavaScript in één bestand. Geen build-stap, geen frameworks.
-- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v38` → `v39`), anders krijgen telefoons de update niet.
+- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v39` → `v40`), anders krijgen telefoons de update niet.
 - **`installeren.html`:** de installatiepagina. Herkent Android, iPhone of computer.
 - **`fonts/`:** het lettertype Barlow, zelf gehost, zodat er geen verzoeken naar Google gaan. **`vendor/`:** externe bibliotheken als eigen kopie (QR-code), niets van een CDN.
 - **Opslag:** `localStorage`. **Verander bestaande sleutels niet**, anders zijn gebruikers hun proeven kwijt. De Perceelkaart staat op hetzelfde domein en deelt de opslag; de back-up neemt daarom alleen de sleutels van de Zaaihulp mee.
