@@ -178,7 +178,14 @@ h2 .sum.warn { color: var(--warn); }
 .seg.uitg { grid-template-columns: repeat(6, 1fr); margin-top: 8px; }
 .seg.uitg button { padding: 0; min-height: 50px; font: 700 22px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; }
 .seg.asseg { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); margin-top: 8px; }
-.seg.asseg button { padding: 6px 4px; min-height: 52px; font-size: 15px; line-height: 1.15; }
+.seg.asseg button { padding: 6px 4px; min-height: 52px; font-size: 15px; line-height: 1.15; white-space: pre-line; }
+.seg.uitmini { display: grid; grid-template-columns: repeat(6, 1fr); width: 100%; margin-top: 6px; }
+.seg.uitmini button { padding: 0; min-height: 44px; font: 700 17px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; color: var(--ink); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05; }
+.seg.uitmini button small { font: 500 11px "Barlow", system-ui, sans-serif; color: var(--muted); }
+.seg.uitmini button.d { background: var(--accent); color: var(--accent-ink); }
+.seg.uitmini button.d small { color: var(--accent-ink); }
+.seg.uitmini button.x { color: var(--muted); }
+#aAssen li { grid-template-columns: 1fr auto; }
 .log .meta.pre { white-space: pre-line; }
 .advice .ok { color: var(--accent); font-weight: 600; }
 .advice .bad { color: var(--warn); font-weight: 600; }
@@ -555,12 +562,17 @@ h2 .sum.warn { color: var(--warn); }
     <div class="hint" id="lHint"></div>
     <ul class="log" id="aLog"></ul>
 
-    <h2>Eigen zaaiassen</h2>
-    <p class="small" style="margin-top:0">Bijvoorbeeld een zelf geprinte zaaias. Daar is geen tabel voor; het advies komt dan uit je logboek.</p>
+    <h2>Eigen rollen</h2>
+    <p class="small" style="margin-top:0">Je zelf geprinte rollen, op nummer. Tik per uitgang om te wisselen: <strong>E</strong> = enkel, <strong>D</strong> = dubbel, <strong>–</strong> = dicht. Er is geen tabel voor; het advies komt uit je logboek. Heb je één rol al gebruikt, dan schat de app de andere rollen naar verhouding (dubbel telt als 2× enkel).</p>
     <ul class="log" id="aAssen"></ul>
-    <div class="newsoort">
-      <input id="aAsNew" class="text" type="text" autocomplete="off" enterkeyhint="done" placeholder="Naam, bv. geprint klein">
-      <button type="button" class="btn primary" id="aAsAdd">Toevoegen</button>
+    <div class="field wide" style="margin-top:10px">
+      <label for="aAsNr">Nieuwe rol</label>
+      <div class="newsoort">
+        <input id="aAsNr" class="num" type="text" inputmode="numeric" autocomplete="off" placeholder="nr" style="flex:none;width:76px">
+        <input id="aAsNew" class="text" type="text" autocomplete="off" enterkeyhint="done" placeholder="Naam (optioneel)">
+      </div>
+      <div class="seg uitmini" role="group" aria-label="Uitgangen nieuwe rol" id="aAsUit"></div>
+      <div class="row" style="margin-top:8px"><button type="button" class="btn primary" id="aAsAdd">Rol toevoegen</button></div>
     </div>
     <p class="small">De zaaitabellen komen uit de handleiding van APV (MDD/MDP/MDG, voor 6 uitgangen) en zijn richtwaarden: vocht en korrelgewicht maken veel uit. Ideaal staat de zaai-as tussen 20 en 80 %. Doe altijd een afdraaiproef.</p>
   </section>
@@ -1637,7 +1649,12 @@ h2 .sum.warn { color: var(--warn); }
   let apEdit = null;
   // Gekozen zaaitabel per soort (rogge staat er niet in; dan kies je bijv. tarwe, alleen voor rogge)
   const tabChoice = () => ap.tabFor[normK(ap.zaad)] || "auto";
-  const asAll = () => [...AS_STD, ...apAssen];
+  // Eigen rollen: nummer, optioneel naam, per uitgang e (enkel), d (dubbel) of x (dicht)
+  const UIT_TXT = { e: "E", d: "D", x: "–" }, UIT_NEXT = { e: "d", d: "x", x: "e" };
+  const asLabel = a => a.nr ? "Rol " + a.nr + (a.name ? " " + a.name : "") : a.name;
+  const uitTxt = a => Array.isArray(a.uit) ? a.uit.map(x => UIT_TXT[x] || "?").join(" ") : "";
+  const capOf = a => Array.isArray(a.uit) ? a.uit.reduce((t, x) => t + (x === "d" ? 2 : x === "e" ? 1 : 0), 0) : 0;
+  const asAll = () => [...AS_STD, ...apAssen.map(a => ({ id: a.id, name: asLabel(a), uitTxt: uitTxt(a), cap: capOf(a) }))];
   const asName = (id, fallback) => (asAll().find(a => a.id === id) || { name: fallback || id }).name;
   const tabAuto = () => { const zz = normK(ap.zaad); return zz ? ATAB.find(t => t.tag.some(g => zz.includes(g))) || null : null; };
   const tabSel = () => { const c = tabChoice(); return c === "geen" ? null : c === "auto" ? tabAuto() : (ATAB.find(t => t.n === c) || null); };
@@ -1691,18 +1708,31 @@ h2 .sum.warn { color: var(--warn); }
   $("lSave").addEventListener("click", e => {
     if (!String(ap.zaad || "").trim()) { flash(e.currentTarget, "Kies eerst een soort"); return; }
     const old = apEdit ? apLog.find(x => x.ts === apEdit) : null;
-    const entry = { ts: old ? old.ts : Date.now(), zaad: ap.zaad.trim(), as: ap.as, asName: asName(ap.as), kgha: ap.kgha || ap.norm || "", speed: ap.lspeed || ap.speed || "",
+    const entry = { ts: old ? old.ts : Date.now(), zaad: ap.zaad.trim(), as: ap.as, asName: asName(ap.as), asUit: (asAll().find(a => a.id === ap.as) || {}).uitTxt || "", kgha: ap.kgha || ap.norm || "", speed: ap.lspeed || ap.speed || "",
       pct: ap.pct || "", width: ap.width || "", uitg: ap.uitg || 6, note: String(ap.note || "").trim(), comp: ap.comp ? ((old && old.comp) || compTxt()) : "" };
     if (old) apLog = apLog.map(x => x === old ? entry : x); else apLog.push(entry);
     store.set("apvLog", apLog);
     setLogForm(null);
     $("lHint").textContent = old ? "Regel bijgewerkt." : (entry.pct ? "Bewaard in het logboek." : "Bewaard. Zaai-as % kun je later aanvullen: tik op de regel.");
   });
+  let newUit = ["e", "e", "e", "e", "e", "e"];
+  const nextNr = () => String(apAssen.reduce((mx, a) => Math.max(mx, parseInt(a.nr, 10) || 0), 0) + 1);
+  // Zes knoppen per rol; tik wisselt E → D → – → E
+  function uitButtons(box, uit, onChange) {
+    box.innerHTML = "";
+    uit.forEach((x, i) => {
+      const b = document.createElement("button"); b.type = "button"; b.className = x;
+      b.innerHTML = UIT_TXT[x] + "<small>uitg. " + (i + 1) + "</small>";
+      b.setAttribute("aria-label", "Uitgang " + (i + 1) + ": " + { e: "enkel", d: "dubbel", x: "dicht" }[x]);
+      b.addEventListener("click", () => { uit[i] = UIT_NEXT[x]; onChange(); });
+      box.appendChild(b);
+    });
+  }
   function addAs() {
-    const n = $("aAsNew").value.trim();
-    if (!n) { flash($("aAsAdd"), "Naam?"); return; }
-    if (!asAll().some(a => a.name.toLowerCase() === n.toLowerCase())) { apAssen.push({ id: "e" + Date.now(), name: n }); store.set("apvAssen", apAssen); }
-    $("aAsNew").value = ""; updateAp();
+    const nr = String(parseInt($("aAsNr").value, 10) || "").trim() || nextNr(), n = $("aAsNew").value.trim();
+    if (apAssen.some(a => String(a.nr) === nr)) { flash($("aAsAdd"), "Rol " + nr + " bestaat al"); return; }
+    apAssen.push({ id: "e" + Date.now(), nr, name: n, uit: newUit.slice() }); store.set("apvAssen", apAssen);
+    $("aAsNr").value = ""; $("aAsNew").value = ""; newUit = ["e", "e", "e", "e", "e", "e"]; updateAp();
   }
   $("aAsAdd").addEventListener("click", addAs);
   $("aAsNew").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addAs(); } });
@@ -1711,7 +1741,7 @@ h2 .sum.warn { color: var(--warn); }
     // Keuze zaaias
     const seg = $("aAsSeg"); seg.innerHTML = "";
     asAll().forEach(a => {
-      const b = document.createElement("button"); b.type = "button"; b.textContent = a.name;
+      const b = document.createElement("button"); b.type = "button"; b.textContent = a.name + (a.uitTxt ? "\n" + a.uitTxt : "");
       b.setAttribute("aria-pressed", ap.as === a.id);
       b.addEventListener("click", () => { ap.as = a.id; saveAp(); updateAp(); });
       seg.appendChild(b);
@@ -1728,7 +1758,7 @@ h2 .sum.warn { color: var(--warn); }
       left.setAttribute("aria-label", "Bewerk " + e.zaad);
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + (e.kgha ? ", " + e.kgha + " kg/ha" : "");
       const mt = document.createElement("div"); mt.className = "meta pre";
-      mt.textContent = asName(e.as, e.asName) + (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : ", zaai-as % nog invullen") + ", " + dateTxt(e.ts) +
+      mt.textContent = asName(e.as, e.asName) + (e.asUit ? " (" + e.asUit + ")" : "") + (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : ", zaai-as % nog invullen") + ", " + dateTxt(e.ts) +
         (+e.uitg && +e.uitg !== 6 ? ", " + e.uitg + " uitgangen" : "") + (e.comp ? "\n" + e.comp : "") + (e.note ? "\n" + e.note : "");
       left.append(nm, mt);
       left.addEventListener("click", () => { setLogForm(e); $("lHint").textContent = "Je bewerkt de regel van " + dateTxt(e.ts) + "."; try { $("aAsSeg").scrollIntoView({ block: "center" }); } catch (er) {} });
@@ -1740,15 +1770,25 @@ h2 .sum.warn { color: var(--warn); }
     // Eigen zaaiassen
     const ua = $("aAssen"); ua.innerHTML = "";
     if (!apAssen.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "Nog geen eigen zaaiassen."; ua.appendChild(li); }
-    apAssen.forEach(a => {
+    apAssen.slice().sort((a, b) => (parseInt(a.nr, 10) || 1e9) - (parseInt(b.nr, 10) || 1e9)).forEach(a => {
       const li = document.createElement("li");
-      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = a.name;
+      const left = document.createElement("div");
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = asLabel(a);
       const n = apLog.filter(e => e.as === a.id).length;
-      const mt = document.createElement("div"); mt.className = "meta tabw"; mt.textContent = n ? n + "× in logboek" : "";
-      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder " + a.name);
+      const mt = document.createElement("div"); mt.className = "meta";
+      mt.textContent = (Array.isArray(a.uit) ? "telt als " + capOf(a) + "× enkel" : "") + (n ? (Array.isArray(a.uit) ? ", " : "") + n + "× in logboek" : "");
+      left.append(nm, mt);
+      if (Array.isArray(a.uit)) {
+        const box = document.createElement("div"); box.className = "seg uitmini"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "Uitgangen " + asLabel(a));
+        uitButtons(box, a.uit, () => { store.set("apvAssen", apAssen); updateAp(); });
+        left.appendChild(box);
+      }
+      const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder " + asLabel(a));
       del.addEventListener("click", () => { if (armed(del, "Wis?")) { apAssen = apAssen.filter(x => x !== a); store.set("apvAssen", apAssen); if (ap.as === a.id) ap.as = "ff"; saveAp(); updateAp(); } });
-      li.append(nm, mt, del); ua.appendChild(li);
+      li.append(left, del); ua.appendChild(li);
     });
+    uitButtons($("aAsUit"), newUit, () => renderApLists());
+    $("aAsNr").placeholder = nextNr();
   }
 
   function updateAp() {
@@ -1782,11 +1822,16 @@ h2 .sum.warn { color: var(--warn); }
     const speedAt = kgmin => kgmin * 600 / (norm * w);
     const rows = [];
     asAll().forEach(a => {
-      const lk = logK(a.id);
+      let lk = logK(a.id), est = null;
+      // Eigen rol zonder logboek: schatten naar verhouding van een rol die je wel gebruikte
+      if (!lk && a.cap) {
+        const src = asAll().filter(b => b.cap && b.id !== a.id).map(b => ({ b, k: logK(b.id) })).filter(q => q.k).sort((x, y) => y.k.n - x.k.n)[0];
+        if (src) { lk = { k: src.k.k * a.cap / src.b.cap, n: src.k.n }; est = src.b.name; }
+      }
       const arr = t && t.d[a.id] ? t.d[a.id].map(x => x == null ? null : x * u / 6) : null;
       const tr = arr ? pctFor(arr, need) : null;
       if (!lk && !tr) return;
-      const r = { a, lk, tr, arr };
+      const r = { a, lk, tr, arr, est };
       r.p = lk ? need / (lk.k * u / 6) : tr.p;
       r.out = lk ? (r.p < 20 || r.p > 80) : (tr.low || tr.high || tr.p < 20 || tr.p > 80);
       rows.push(r);
@@ -1798,7 +1843,7 @@ h2 .sum.warn { color: var(--warn); }
       adv.hidden = false; return;
     }
     // Beste: binnen 20–80 %, eigen ervaring gaat voor, dan zo dicht mogelijk bij 50 %
-    const score = r => (r.out ? 1000 : 0) + (r.lk ? 0 : 100) + Math.abs(r.p - 50);
+    const score = r => (r.out ? 1000 : 0) + (r.lk ? (r.est ? 50 : 0) : 100) + Math.abs(r.p - 50);
     const best = rows.slice().sort((a, b) => score(a) - score(b))[0];
     const pTxt = r => r.tr && !r.lk && r.tr.low ? "<" + r.tr.p + " %" : r.tr && !r.lk && r.tr.high ? ">" + r.tr.p + " %" : nl(r.p, 0) + " %";
     setText($("aVal"), pTxt(best));
@@ -1812,7 +1857,7 @@ h2 .sum.warn { color: var(--warn); }
       const kgAt = p => r.lk ? r.lk.k * u / 6 * p : (r.arr[AP_PCT.indexOf(p)]);
       const k20 = kgAt(20), k80 = kgAt(80);
       if (k20 && k80) range = '; 20–80 % bij ' + nl(speedAt(k20), 1) + '–' + nl(speedAt(k80), 1) + ' km/h';
-      const why = r.lk ? 'logboek ' + r.lk.n + '×' + (r.tr ? ', tabel ' + (r.tr.low ? '<' + r.tr.p : r.tr.high ? '>' + r.tr.p : nl(r.tr.p, 0)) + ' %' : '') : 'tabel ' + t.n;
+      const why = r.est ? 'schatting via ' + r.est : r.lk ? 'logboek ' + r.lk.n + '×' + (r.tr ? ', tabel ' + (r.tr.low ? '<' + r.tr.p : r.tr.high ? '>' + r.tr.p : nl(r.tr.p, 0)) + ' %' : '') : 'tabel ' + t.n;
       const st = r.out ? '<span class="bad">' + (r.p < 20 || (r.tr && r.tr.low && !r.lk) ? 'te laag' : 'te hoog') + '</span>' : '<span class="ok">goed</span>';
       h += '<div><strong>' + esc(r.a.name) + '</strong>: ' + pTxt(r) + ' ' + st + ' <span style="color:var(--muted)">(' + esc(why) + range + ')</span></div>';
     });
