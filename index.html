@@ -252,7 +252,6 @@ h2 .sum.warn { color: var(--warn); }
     <input type="file" id="bkFileIn" accept=".txt,text/plain" hidden>
     <div class="row"><button type="button" class="btn" id="bkPick">Kies bestand</button><button type="button" class="btn" id="bkRestore">Terugzetten</button></div>
     <div class="hint" id="bkInHint" style="margin-top:6px"></div>
-  </div>
   </section>
   <div id="appHead" hidden>
   <div class="apphead"><span class="mname" id="mName"></span><button type="button" id="mSwitch">Andere machine</button></div>
@@ -1053,7 +1052,7 @@ h2 .sum.warn { color: var(--warn); }
   $("cKgha").addEventListener("click", () => setCompMode("kgha"));
   $("addComp").addEventListener("click", () => {
     m.comps.push({ name: "", pct: "", done: false }); saveMix(); renderComps(); updateMix();
-    const inputs = compEl.querySelectorAll(".cname"); inputs[inputs.length - 1].focus();
+    const sels = compEl.querySelectorAll("select"); if (sels.length) sels[sels.length - 1].focus();
   });
   $("resetChecks").addEventListener("click", () => { m.comps.forEach(c => c.done = false); saveMix(); renderComps(); updateMix(); });
   $("resetMix").addEventListener("click", e => {
@@ -1604,12 +1603,12 @@ h2 .sum.warn { color: var(--warn); }
     if ($("shZoc").checked && zs.length) data.zocon = Object.fromEntries(zs);
     if ($("shKop").checked && ks.length) data.kopeg = ks;
     if ($("shSoort").checked && ss.length) data.soorten = ss;
-    if (!data.zocon && !data.kopeg && !data.soorten && !data.inst) { $("shOutHint").textContent = "Niks aangevinkt om te delen."; return; }
     if ($("shInst").checked) data.inst = {
       tare: { apv: store.get("tareG", null), zoc: store.get("tareG_zoc", null), kop: store.get("tareG_kop", null) },
       unit: { apv: store.get("unit", "g"), zoc: store.get("unit_zoc", "g"), kop: store.get("unit_kop", "g") },
       restKg: store.get("restKg", ""), zWidth: z.width || ""
     };
+    if (!data.zocon && !data.kopeg && !data.soorten && !data.inst) { $("shOutHint").textContent = "Niks aangevinkt om te delen."; return; }
     const code = SH_PREFIX + enc(data);
     const out = $("shOut"); out.value = code; out.hidden = false;
     let how = "";
@@ -1624,7 +1623,8 @@ h2 .sum.warn { color: var(--warn); }
   });
   $("shImport").addEventListener("click", () => {
     const hint = $("shInHint");
-    const mt = $("shIn").value.match(/ZAAIHULP1:\s*([A-Za-z0-9+/]+={0,2})/);
+    // Witruimte eruit: WhatsApp of mail breekt lange codes soms af over meerdere regels
+    const mt = $("shIn").value.replace(/\s+/g, "").match(/ZAAIHULP1:([A-Za-z0-9+/]+={0,2})/);
     if (!mt) { hint.textContent = "Geen geldige code gevonden. Die begint met ZAAIHULP1:"; hint.style.color = "var(--warn)"; return; }
     let data = null, raw = mt[1];
     for (let tries = 0; tries < 12 && raw.length >= 8 && data === null; tries++) {
@@ -1724,7 +1724,7 @@ h2 .sum.warn { color: var(--warn); }
   });
   $("bkRestore").addEventListener("click", e => {
     const hint = $("bkInHint"), bad = t => { hint.textContent = t; hint.style.color = "var(--warn)"; };
-    const mt = $("bkIn").value.match(/ZAAIHULP-BACKUP1:\s*([A-Za-z0-9+/]+={0,2})/);
+    const mt = $("bkIn").value.replace(/\s+/g, "").match(/ZAAIHULP-BACKUP1:([A-Za-z0-9+/]+={0,2})/);
     if (!mt) { bad($("bkIn").value.includes("ZAAIHULP1:") ? "Dit is een deelcode, geen back-up. Plak hem hierboven bij Importeren." : "Geen back-up gevonden. Die begint met ZAAIHULP-BACKUP1:"); return; }
     let b = null;
     try { b = dec(mt[1]); } catch (er) {}

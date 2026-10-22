@@ -1,5 +1,5 @@
 // Zaaihulp service worker: werkt offline, haalt updates op zodra er internet is.
-const CACHE = "zaaihulp-v24";
+const CACHE = "zaaihulp-v25";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "./fonts/barlow-latin-400-normal.woff2", "./fonts/barlow-latin-500-normal.woff2", "./fonts/barlow-latin-600-normal.woff2",
   "./fonts/barlow-semi-condensed-latin-500-normal.woff2", "./fonts/barlow-semi-condensed-latin-700-normal.woff2"];
@@ -22,7 +22,8 @@ self.addEventListener("fetch", e => {
   const eigen = new URL(e.request.url).origin === location.origin;
   e.respondWith(
     (eigen ? fetch(e.request.url, { cache: "no-cache", redirect: e.request.mode === "navigate" ? "manual" : "follow" }) : fetch(e.request))
-      .then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res; })
+      // Alleen goede antwoorden bewaren: een storing (404/500) mag de offline-versie niet overschrijven
+      .then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); } return res; })
       .catch(() => caches.match(e.request).then(m => m || caches.match("./index.html")))
   );
 });
