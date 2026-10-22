@@ -352,7 +352,7 @@ h2 .sum.warn { color: var(--warn); }
         <div class="hint" id="normHint">&nbsp;</div>
       </div>
       <div class="field wide" id="fExtra">
-        <label for="extra">Extra voor afdraaien en restant (<span id="extraLbl">%</span>)</label>
+        <label for="extra">Extra voor afdraaien (<span id="extraLbl">%</span>)</label>
         <div class="extrarow">
           <input id="extra" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
           <div class="seg" role="group" aria-label="Extra in">
@@ -360,6 +360,11 @@ h2 .sum.warn { color: var(--warn); }
             <button type="button" id="exKg" aria-pressed="false">kg</button>
           </div>
         </div>
+      </div>
+      <div class="field wide" id="fRest">
+        <label for="rest">Blijft achter in machine (kg)</label>
+        <input id="rest" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+        <div class="hint">wat er in bak, doseerwals en slangen achterblijft; komt bij wat je afweegt; wordt onthouden</div>
       </div>
       <div class="field wide" id="fBulk" hidden>
         <label for="bulk">Stortgewicht zaad (kg/L)</label>
@@ -398,11 +403,6 @@ h2 .sum.warn { color: var(--warn); }
         <div id="haveSec" hidden>
           <div class="comphead have" aria-hidden="true"><span>Soort</span><span>Heb ik (kg)</span><span>Houd je over</span></div>
           <ul class="comp have" id="haveList"></ul>
-        </div>
-        <div class="field" style="margin-top:10px">
-          <label for="rest">Blijft achter in machine (kg)</label>
-          <input id="rest" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
-          <div class="hint">wat er in bak, doseerwals en slangen achterblijft; wordt onthouden</div>
         </div>
         <div class="hint" id="limHint" style="margin-top:6px"></div>
         <div class="advice" id="limAdvice" aria-live="polite" hidden></div>
@@ -901,6 +901,7 @@ h2 .sum.warn { color: var(--warn); }
     let extraAdd = 0, restAdd = 0;
     if (base !== null && m.mode !== "weight" && !limOn) extraAdd = extraKgMode ? (parse(m.extraKg) || 0) : base * extraPct / 100;
     $("fExtra").hidden = m.mode === "weight" || limOn;
+    $("fRest").hidden = m.mode === "weight";
     $("limSec").hidden = m.mode === "weight";
     $("limBody").hidden = !limOn;
     $("limToggle").setAttribute("aria-pressed", limOn);
@@ -977,7 +978,8 @@ h2 .sum.warn { color: var(--warn); }
       }
       adv.hidden = false;
     }
-    if (limOn && base !== null && !limited) restAdd = rest;
+    // Wat in de machine achterblijft komt er altijd bij (behalve bij Gewicht); bij te weinig zaad is het al verrekend
+    if (m.mode !== "weight" && base !== null && !limited) restAdd = rest;
     const total = base === null ? null : base + extraAdd + restAdd;
     const uv = useVal != null ? useVal : norm;
     $("useRow").hidden = machine === "apv" || !uv;
@@ -1005,8 +1007,8 @@ h2 .sum.warn { color: var(--warn); }
         fill = "≈ " + nl(L, 0) + " L, " + (n <= 1 ? "past in 1 vulling" : nl(n, 1) + " bak = " + Math.ceil(n - 1e-9) + " vullingen") + " (300 L)";
       }
       note.textContent = "= " + gStr(total * 1000) + (reach ? "\n" + reach : "") + (ovl ? "\n" + ovl : "") + (fill ? "\n" + fill : "");
-      $("mBase").textContent = limited ? "beperkt door " + limName : extraAdd ? kg(base) + " kg + " + (extraKgMode ? kg(extraAdd) + " kg" : kg(extraPct, extraPct % 1 ? 1 : 0) + " %")
-        : restAdd ? kg(base) + " kg + " + kg(restAdd) + " kg in machine" : "";
+      const plus = [extraAdd ? (extraKgMode ? kg(extraAdd) + " kg" : kg(extraPct, extraPct % 1 ? 1 : 0) + " %") : "", restAdd ? kg(restAdd) + " kg machine" : ""].filter(Boolean);
+      $("mBase").textContent = limited ? "beperkt door " + limName : plus.length ? kg(base) + " kg + " + plus.join(" + ") : "";
     }
     setText($("mTotal"), total === null ? "0" : kg(total));
 

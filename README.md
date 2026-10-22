@@ -16,7 +16,7 @@ Hulp-app voor het afdraaien, wegen en mengen bij de zaaimachine. Werkt op je tel
 Voor alle machines:
 
 - **Wegen:** emmergewicht wordt onthouden, je ziet meteen het netto gewicht.
-- **Mengen:** samenstelling in procenten of kg/ha, totaal op oppervlakte, vakken of gewicht, extra in % of in kg, en wat je moet doen als je beperkt zaad hebt (dan telt het restant in de machine mee in plaats van de extra).
+- **Mengen:** samenstelling in procenten of kg/ha, totaal op oppervlakte, vakken of gewicht, extra in % of in kg, wat er in de machine achterblijft, en wat je moet doen als je beperkt zaad hebt (dan telt de extra niet mee).
 
 ## Gebruik
 
@@ -48,7 +48,7 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 ## Voor wie eraan werkt
 
 - **Alles in `index.html`:** HTML, CSS en JavaScript in één bestand. Geen build-stap, geen frameworks.
-- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v28` → `v29`), anders krijgen telefoons de update niet.
+- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v29` → `v30`), anders krijgen telefoons de update niet.
 - **`installeren.html`:** de installatiepagina. Herkent Android, iPhone of computer.
 - **`fonts/`:** het lettertype Barlow, zelf gehost, zodat er geen verzoeken naar Google gaan. **`vendor/`:** externe bibliotheken als eigen kopie (QR-code), niets van een CDN.
 - **Opslag:** `localStorage`. **Verander bestaande sleutels niet**, anders zijn gebruikers hun proeven kwijt. De Perceelkaart staat op hetzelfde domein en deelt de opslag; de back-up neemt daarom alleen de sleutels van de Zaaihulp mee.
