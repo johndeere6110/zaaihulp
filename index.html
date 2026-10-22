@@ -186,6 +186,13 @@ h2 .sum.warn { color: var(--warn); }
 .seg.uitmini button.d small { color: var(--accent-ink); }
 .seg.uitmini button.x { color: var(--muted); }
 #aAssen li { grid-template-columns: 1fr auto; }
+.rolfoto { display: block; width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); margin-top: 8px; padding: 0; background: none; }
+.rolfoto img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; display: block; }
+.rolfoto.big { width: 100%; height: auto; }
+.rolfoto.big img { height: auto; }
+.rolknop { display: flex; gap: 8px; margin-top: 8px; }
+.rolknop .btn { flex: none; min-height: 40px; padding: 0 12px; font-size: 15px; }
+.seg.asseg button img { display: block; width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin: 0 auto 4px; }
 .log .meta.pre { white-space: pre-line; }
 .advice .ok { color: var(--accent); font-weight: 600; }
 .advice .bad { color: var(--warn); font-weight: 600; }
@@ -531,18 +538,22 @@ h2 .sum.warn { color: var(--warn); }
     <div class="advice" id="aAdvice" aria-live="polite" hidden></div>
 
     <h2>Logboek</h2>
-    <p class="small" style="margin-top:0">Noteer welke zaaias je gebruikte. Snelheid en zaai-as % kun je later aanvullen: tik dan op de regel. Hoe vaker je het invult, hoe beter het advies hierboven.</p>
+    <p class="small" style="margin-top:0">Noteer welke zaaias je gebruikte bij het <strong>zaaien</strong> (snelheid en zaai-as % mag later: tik op de regel), of doe een <strong>afdraaiproef</strong>: draai bijv. 60 s op een vaste %, weeg en stuur het netto vanaf Wegen door. Hoe vaker je het invult, hoe beter het advies hierboven.</p>
+    <div class="seg full two" role="group" aria-label="Soort regel" id="lModeSeg">
+      <button type="button" id="lmZaai" aria-pressed="true">Zaaien</button>
+      <button type="button" id="lmProef" aria-pressed="false">Afdraaiproef</button>
+    </div>
     <div class="fields">
       <div class="field wide">
         <label>Zaaias</label>
         <div class="seg full asseg" role="group" aria-label="Zaaias" id="aAsSeg"></div>
       </div>
-      <div class="field">
+      <div class="field" id="fLKgha">
         <label for="lKgha">Gezaaid (kg/ha)</label>
         <input id="lKgha" class="num" type="text" inputmode="decimal" autocomplete="off">
         <div class="hint">leeg = norm</div>
       </div>
-      <div class="field">
+      <div class="field" id="fLSpeed">
         <label for="lSpeed">Rijsnelheid (km/h)</label>
         <input id="lSpeed" class="num" type="text" inputmode="decimal" autocomplete="off">
         <div class="hint">leeg = zoals boven</div>
@@ -550,7 +561,19 @@ h2 .sum.warn { color: var(--warn); }
       <div class="field wide">
         <label for="lPct">Zaai-as (%) van het display</label>
         <input id="lPct" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="–">
-        <div class="hint">mag later</div>
+        <div class="hint" id="lPctHint">mag later</div>
+      </div>
+      <div class="field" id="fLSec" hidden>
+        <label for="lSec">Tijd (s)</label>
+        <input id="lSec" class="num" type="text" inputmode="numeric" autocomplete="off" placeholder="60">
+      </div>
+      <div class="field" id="fLGram" hidden>
+        <label for="lGram">Afgedraaid (g)</label>
+        <input id="lGram" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </div>
+      <div class="field wide" id="fLFromWeeg" hidden style="background:none;border:0;padding:0">
+        <button type="button" class="btn" id="lFromWeeg" style="width:100%">Netto van Wegen overnemen</button>
+        <div class="hint" id="lProefHint">&nbsp;</div>
       </div>
       <div class="field wide">
         <label for="lNote">Notitie</label>
@@ -563,8 +586,9 @@ h2 .sum.warn { color: var(--warn); }
     <ul class="log" id="aLog"></ul>
 
     <h2>Eigen rollen</h2>
-    <p class="small" style="margin-top:0">Je zelf geprinte rollen, op nummer. Tik per uitgang om te wisselen: <strong>E</strong> = enkel, <strong>D</strong> = dubbel, <strong>–</strong> = dicht. Er is geen tabel voor; het advies komt uit je logboek. Heb je één rol al gebruikt, dan schat de app de andere rollen naar verhouding (dubbel telt als 2× enkel).</p>
+    <p class="small" style="margin-top:0">Je zelf geprinte rollen, op nummer. Met een foto zie je meteen welke rol het is; tik op de foto voor groot. Tik per uitgang om te wisselen: <strong>E</strong> = enkel, <strong>D</strong> = dubbel, <strong>–</strong> = dicht. Er is geen tabel voor; het advies komt uit je logboek. Heb je één rol al gebruikt, dan schat de app de andere rollen naar verhouding (dubbel telt als 2× enkel).</p>
     <ul class="log" id="aAssen"></ul>
+    <input type="file" id="aFotoIn" accept="image/*" capture="environment" hidden>
     <div class="field wide" style="margin-top:10px">
       <label for="aAsNr">Nieuwe rol</label>
       <div class="newsoort">
@@ -791,9 +815,10 @@ h2 .sum.warn { color: var(--warn); }
     saveBtn.disabled = !net;
     // Zocon en kopeg: netto in één tik naar de afdraaiproef
     const ta = $("toAfd");
-    $("toAfdRow").hidden = machine !== "zoc" && machine !== "kop";
+    $("toAfdRow").hidden = !machine;
     ta.disabled = !net;
-    ta.textContent = net ? "Naar Afdraaien: " + (machine === "zoc" ? gStr(net) : kg(net / 1000) + " kg") : "Naar Afdraaien";
+    const naar = machine === "apv" ? "Naar afdraaiproef (Zaaias)" : "Naar Afdraaien";
+    ta.textContent = net ? naar + ": " + (machine === "kop" ? kg(net / 1000) + " kg" : gStr(net)) : naar;
   }
 
   function renderLog() {
@@ -834,7 +859,8 @@ h2 .sum.warn { color: var(--warn); }
     grossEl.value = ""; updateWeeg(); renderLog();
   });
   $("toAfd").addEventListener("click", () => {
-    if (!lastNet || (machine !== "zoc" && machine !== "kop")) return;
+    if (!lastNet || !machine) return;
+    if (machine === "apv") { apProefGram(); showTab("zaai"); try { $("lGram").scrollIntoView({ block: "center" }); } catch (e) {} bump($("lGram")); return; }
     $(machine === "zoc" ? "zFromWeeg" : "kFromWeeg").click();
     showTab(machine);
     const veld = $(machine === "zoc" ? "zGram" : "kGram");
@@ -1673,7 +1699,9 @@ h2 .sum.warn { color: var(--warn); }
   function logK(asId) {
     const zz = normK(ap.zaad); if (!zz) return null;
     const ks = apLog.filter(e => normK(e.zaad) === zz && e.as === asId).map(e => {
-      const kgha = parse(e.kgha), v = parse(e.speed), p = parse(e.pct), w = parse(e.width), u = +e.uitg || 6;
+      const p = parse(e.pct), u = +e.uitg || 6;
+      if (e.type === "proef") { const g = parse(e.gram), sec = parse(e.sec) || 60; return g && p ? g / 1000 / (sec / 60) / p * 6 / u : null; }
+      const kgha = parse(e.kgha), v = parse(e.speed), w = parse(e.width);
       return kgha && v && p && w ? kgha * v * w / 600 / p * 6 / u : null;
     }).filter(x => x);
     return ks.length ? { k: ks.reduce((a, b) => a + b, 0) / ks.length, n: ks.length } : null;
@@ -1684,7 +1712,7 @@ h2 .sum.warn { color: var(--warn); }
     const km = mx && mx.compMode === "kgha";
     return cs.map(c => c.name.trim() + ((km ? c.kgha : c.pct) ? " " + (km ? c.kgha + " kg/ha" : c.pct + " %") : "")).join(", ");
   }
-  [["aNorm", "norm"], ["aSpeed", "speed"], ["aWidth", "width"], ["lKgha", "kgha"], ["lSpeed", "lspeed"], ["lPct", "pct"], ["lNote", "note"]].forEach(([id, key]) => {
+  [["aNorm", "norm"], ["aSpeed", "speed"], ["aWidth", "width"], ["lKgha", "kgha"], ["lSpeed", "lspeed"], ["lPct", "pct"], ["lNote", "note"], ["lSec", "sec"], ["lGram", "gram"]].forEach(([id, key]) => {
     const el = $(id); el.value = ap[key] || "";
     el.addEventListener("input", () => { ap[key] = el.value; saveAp(); updateAp(); });
   });
@@ -1696,24 +1724,56 @@ h2 .sum.warn { color: var(--warn); }
   $("aUitgSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { ap.uitg = +b.dataset.v; saveAp(); updateAp(); }));
   $("lComp").checked = !!ap.comp;
   $("lComp").addEventListener("change", e => { ap.comp = e.target.checked; if (!apEdit) ap.compPref = ap.comp; saveAp(); });
+  // Logboekregel: zaaien op het veld, of een afdraaiproef (gram in een aantal seconden bij een zaai-as %)
+  const setLMode = md => { ap.lmode = md; saveAp(); updateAp(); };
+  $("lmZaai").addEventListener("click", () => setLMode("zaai"));
+  $("lmProef").addEventListener("click", () => setLMode("proef"));
+  function apProefGram() {
+    ap.lmode = "proef"; ap.gram = String(Math.round(lastNet * 10) / 10).replace(".", ","); $("lGram").value = ap.gram; saveAp(); updateAp();
+  }
+  $("lFromWeeg").addEventListener("click", e => { if (!lastNet) { flash(e.currentTarget, "Nog geen netto bij Wegen"); return; } apProefGram(); });
   function setLogForm(e) {
     apEdit = e ? e.ts : null;
-    if (e) { ap.zaad = e.zaad; ap.as = e.as; ap.kgha = e.kgha || ""; ap.lspeed = e.speed || ""; ap.pct = e.pct || ""; ap.note = e.note || ""; ap.comp = !!e.comp; }
-    else { ap.kgha = ""; ap.lspeed = ""; ap.pct = ""; ap.note = ""; ap.comp = ap.compPref !== false; }
-    [["lKgha", "kgha"], ["lSpeed", "lspeed"], ["lPct", "pct"], ["lNote", "note"]].forEach(([id, key]) => $(id).value = ap[key]);
+    if (e) { ap.zaad = e.zaad; ap.as = e.as; ap.kgha = e.kgha || ""; ap.lspeed = e.speed || ""; ap.pct = e.pct || ""; ap.note = e.note || ""; ap.comp = !!e.comp; ap.lmode = e.type === "proef" ? "proef" : "zaai"; ap.sec = e.sec || ""; ap.gram = e.gram || ""; }
+    else { ap.kgha = ""; ap.lspeed = ""; ap.pct = ""; ap.note = ""; ap.gram = ""; ap.comp = ap.compPref !== false; }
+    [["lKgha", "kgha"], ["lSpeed", "lspeed"], ["lPct", "pct"], ["lNote", "note"], ["lSec", "sec"], ["lGram", "gram"]].forEach(([id, key]) => $(id).value = ap[key] || "");
     $("lComp").checked = !!ap.comp;
     saveAp(); refreshAllPickers(); updateAp();
   }
   $("lNew").addEventListener("click", () => { setLogForm(null); $("lHint").textContent = ""; });
   $("lSave").addEventListener("click", e => {
     if (!String(ap.zaad || "").trim()) { flash(e.currentTarget, "Kies eerst een soort"); return; }
+    const proef = ap.lmode === "proef";
+    if (proef && (!parse(ap.pct) || !parse(ap.gram))) { flash(e.currentTarget, "Vul zaai-as % en gewicht in"); return; }
     const old = apEdit ? apLog.find(x => x.ts === apEdit) : null;
-    const entry = { ts: old ? old.ts : Date.now(), zaad: ap.zaad.trim(), as: ap.as, asName: asName(ap.as), asUit: (asAll().find(a => a.id === ap.as) || {}).uitTxt || "", kgha: ap.kgha || ap.norm || "", speed: ap.lspeed || ap.speed || "",
-      pct: ap.pct || "", width: ap.width || "", uitg: ap.uitg || 6, note: String(ap.note || "").trim(), comp: ap.comp ? ((old && old.comp) || compTxt()) : "" };
+    const base = { ts: old ? old.ts : Date.now(), zaad: ap.zaad.trim(), as: ap.as, asName: asName(ap.as), asUit: (asAll().find(a => a.id === ap.as) || {}).uitTxt || "",
+      pct: ap.pct || "", uitg: ap.uitg || 6, note: String(ap.note || "").trim(), comp: ap.comp ? ((old && old.comp) || compTxt()) : "" };
+    const entry = proef ? Object.assign(base, { type: "proef", sec: ap.sec || "60", gram: ap.gram })
+      : Object.assign(base, { kgha: ap.kgha || ap.norm || "", speed: ap.lspeed || ap.speed || "", width: ap.width || "" });
     if (old) apLog = apLog.map(x => x === old ? entry : x); else apLog.push(entry);
     store.set("apvLog", apLog);
     setLogForm(null);
-    $("lHint").textContent = old ? "Regel bijgewerkt." : (entry.pct ? "Bewaard in het logboek." : "Bewaard. Zaai-as % kun je later aanvullen: tik op de regel.");
+    $("lHint").textContent = old ? "Regel bijgewerkt." : proef ? "Afdraaiproef bewaard. Het advies hierboven rekent er nu mee." : (entry.pct ? "Bewaard in het logboek." : "Bewaard. Zaai-as % kun je later aanvullen: tik op de regel.");
+  });
+  // Foto per eigen rol: verkleind (max 320 px) zodat hij in de opslag past
+  let apFoto = store.get("apvRolFoto", {});
+  if (!apFoto || typeof apFoto !== "object" || Array.isArray(apFoto)) apFoto = {};
+  let fotoVoor = null;
+  $("aFotoIn").addEventListener("change", async e => {
+    const f = e.target.files && e.target.files[0], id = fotoVoor; e.target.value = ""; fotoVoor = null;
+    if (!f || !id) return;
+    try {
+      const url = URL.createObjectURL(f);
+      const img = await new Promise((ok, fout) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fout; i.src = url; });
+      const sc = Math.min(1, 320 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      const data = c.toDataURL("image/jpeg", 0.7);
+      const prev = apFoto[id]; apFoto[id] = data;
+      try { localStorage.setItem("apvRolFoto", JSON.stringify(apFoto)); }
+      catch (er) { if (prev) apFoto[id] = prev; else delete apFoto[id]; $("lHint").textContent = "Foto past niet meer in de opslag. Haal een andere foto weg."; }
+      updateAp();
+    } catch (er) { $("lHint").textContent = "Foto lezen lukte niet."; }
   });
   let newUit = ["e", "e", "e", "e", "e", "e"];
   const nextNr = () => String(apAssen.reduce((mx, a) => Math.max(mx, parseInt(a.nr, 10) || 0), 0) + 1);
@@ -1742,6 +1802,7 @@ h2 .sum.warn { color: var(--warn); }
     const seg = $("aAsSeg"); seg.innerHTML = "";
     asAll().forEach(a => {
       const b = document.createElement("button"); b.type = "button"; b.textContent = a.name + (a.uitTxt ? "\n" + a.uitTxt : "");
+      if (apFoto[a.id]) { const im = document.createElement("img"); im.src = apFoto[a.id]; im.alt = ""; b.prepend(im); }
       b.setAttribute("aria-pressed", ap.as === a.id);
       b.addEventListener("click", () => { ap.as = a.id; saveAp(); updateAp(); });
       seg.appendChild(b);
@@ -1756,9 +1817,13 @@ h2 .sum.warn { color: var(--warn); }
       const left = document.createElement("button"); left.type = "button";
       left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
       left.setAttribute("aria-label", "Bewerk " + e.zaad);
-      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + (e.kgha ? ", " + e.kgha + " kg/ha" : "");
+      const pf = e.type === "proef";
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + (pf ? ", afdraaiproef" : e.kgha ? ", " + e.kgha + " kg/ha" : "");
       const mt = document.createElement("div"); mt.className = "meta pre";
-      mt.textContent = asName(e.as, e.asName) + (e.asUit ? " (" + e.asUit + ")" : "") + (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : ", zaai-as % nog invullen") + ", " + dateTxt(e.ts) +
+      const kpm = pf ? parse(e.gram) / 1000 / ((parse(e.sec) || 60) / 60) : null;
+      mt.textContent = asName(e.as, e.asName) + (e.asUit ? " (" + e.asUit + ")" : "") +
+        (pf ? ", zaai-as " + e.pct + " %, " + e.gram + " g in " + (e.sec || 60) + " s (" + kpm.toLocaleString("nl-NL", { maximumFractionDigits: 2 }) + " kg/min)"
+          : (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : ", zaai-as % nog invullen")) + ", " + dateTxt(e.ts) +
         (+e.uitg && +e.uitg !== 6 ? ", " + e.uitg + " uitgangen" : "") + (e.comp ? "\n" + e.comp : "") + (e.note ? "\n" + e.note : "");
       left.append(nm, mt);
       left.addEventListener("click", () => { setLogForm(e); $("lHint").textContent = "Je bewerkt de regel van " + dateTxt(e.ts) + "."; try { $("aAsSeg").scrollIntoView({ block: "center" }); } catch (er) {} });
@@ -1778,6 +1843,23 @@ h2 .sum.warn { color: var(--warn); }
       const mt = document.createElement("div"); mt.className = "meta";
       mt.textContent = (Array.isArray(a.uit) ? "telt als " + capOf(a) + "× enkel" : "") + (n ? (Array.isArray(a.uit) ? ", " : "") + n + "× in logboek" : "");
       left.append(nm, mt);
+      const foto = apFoto[a.id];
+      if (foto) {
+        const fb = document.createElement("button"); fb.type = "button"; fb.className = "rolfoto"; fb.setAttribute("aria-label", "Foto groter of kleiner");
+        const im = document.createElement("img"); im.src = foto; im.alt = "Foto " + asLabel(a); fb.appendChild(im);
+        fb.addEventListener("click", () => fb.classList.toggle("big"));
+        left.appendChild(fb);
+      }
+      const knop = document.createElement("div"); knop.className = "rolknop";
+      const fk = document.createElement("button"); fk.type = "button"; fk.className = "btn"; fk.textContent = foto ? "Andere foto" : "Foto maken";
+      fk.addEventListener("click", () => { fotoVoor = a.id; $("aFotoIn").click(); });
+      knop.appendChild(fk);
+      if (foto) {
+        const fw = document.createElement("button"); fw.type = "button"; fw.className = "btn"; fw.textContent = "Foto weg";
+        fw.addEventListener("click", () => { if (armed(fw, "Zeker?")) { delete apFoto[a.id]; store.set("apvRolFoto", apFoto); updateAp(); } });
+        knop.appendChild(fw);
+      }
+      left.appendChild(knop);
       if (Array.isArray(a.uit)) {
         const box = document.createElement("div"); box.className = "seg uitmini"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "Uitgangen " + asLabel(a));
         uitButtons(box, a.uit, () => { store.set("apvAssen", apAssen); updateAp(); });
@@ -1809,6 +1891,13 @@ h2 .sum.warn { color: var(--warn); }
     $("lKgha").placeholder = ap.norm || "0"; $("lSpeed").placeholder = ap.speed || "0";
     const ct = compTxt(); $("lCompTxt").textContent = ct ? "(" + ct + ")" : "(bij Mengen staat nu niks)";
     $("lNew").hidden = !apEdit; $("lSave").textContent = apEdit ? "Regel bijwerken" : "Bewaar in logboek";
+    const proef = ap.lmode === "proef";
+    $("lmZaai").setAttribute("aria-pressed", !proef); $("lmProef").setAttribute("aria-pressed", proef);
+    $("fLKgha").hidden = proef; $("fLSpeed").hidden = proef;
+    $("fLSec").hidden = !proef; $("fLGram").hidden = !proef; $("fLFromWeeg").hidden = !proef;
+    $("lPctHint").textContent = proef ? "stand tijdens de proef" : "mag later";
+    { const g = parse(ap.gram), sec = parse(ap.sec) || 60, p = parse(ap.pct);
+      $("lProefHint").textContent = proef && g ? "= " + (g / 1000 / (sec / 60)).toLocaleString("nl-NL", { maximumFractionDigits: 2 }) + " kg/min" + (p ? " bij " + p.toLocaleString("nl-NL") + " %" : "") : "\u00a0"; }
     renderApLists();
 
     const zz = normK(ap.zaad);
@@ -2122,7 +2211,7 @@ h2 .sum.warn { color: var(--warn); }
   // ---------- Back-up: alles uit localStorage, terug te zetten op elke telefoon ----------
   const BK_PREFIX = "ZAAIHULP-BACKUP1:";
   // Alleen de sleutels van de Zaaihulp: de Perceelkaart staat op hetzelfde domein en deelt de opslag
-  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
+  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|apvRolFoto|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
   function backupData() {
     const data = {};
     try { for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) data[key] = localStorage.getItem(key); } } catch (e) {}
