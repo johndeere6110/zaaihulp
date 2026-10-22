@@ -238,6 +238,10 @@ h2 .sum.warn { color: var(--warn); }
     <div class="row"><button type="button" class="btn" id="shImport">Importeren</button></div>
     <div class="hint" id="shInHint" style="margin-top:6px"></div>
 
+    <p class="small">Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit.</p>
+    <div class="row" style="margin-top:8px"><button type="button" class="btn" id="shLink">Stuur installatielink</button></div>
+    <div class="hint" id="shLinkHint"></div>
+
     <h2>Back-up</h2>
     <p class="small" style="margin-top:0">Alles uit de Zaaihulp, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf of in je mail. Telefoon kapot of een nieuwe? Dan zet je hem hier terug.</p>
     <div class="hint" id="bkLast"></div>
@@ -1673,6 +1677,19 @@ h2 .sum.warn { color: var(--warn); }
     hint.style.color = "";
     hint.textContent = res.length ? "Toegevoegd: " + res.join(", ") + ". Bestaande eigen proeven zijn niet overschreven." : "Er zat niks in om te importeren.";
     $("shIn").value = "";
+  });
+
+  $("shLink").addEventListener("click", async () => {
+    const url = new URL("installeren.html", location.href).href, hint = $("shLinkHint");
+    let how = "";
+    try {
+      if (navigator.share) { await navigator.share({ title: "Zaaihulp", text: "Zaaihulp installeren op je telefoon:", url }); how = "Gedeeld."; }
+    } catch (e) { if (e && e.name === "AbortError") { hint.textContent = "Delen geannuleerd."; return; } }
+    if (!how) {
+      try { await navigator.clipboard.writeText(url); how = "Link gekopieerd: " + url; }
+      catch (e) { how = "Stuur deze link: " + url; }
+    }
+    hint.textContent = how;
   });
 
   // ---------- Back-up: alles uit localStorage, terug te zetten op elke telefoon ----------
