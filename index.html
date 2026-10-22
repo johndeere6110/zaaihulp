@@ -192,6 +192,9 @@ h2 .sum.warn { color: var(--warn); }
 .rolfoto.big img { height: auto; }
 .rolknop { display: flex; gap: 8px; margin-top: 8px; }
 .rolknop .btn { flex: none; min-height: 40px; padding: 0 12px; font-size: 15px; }
+.seg.asseg button svg { display: block; width: 40px; height: 40px; margin: 0 auto 4px; }
+.rolfoto svg { width: 100%; height: 100%; display: block; }
+#aStd li { grid-template-columns: 1fr; }
 .seg.asseg button img { display: block; width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin: 0 auto 4px; }
 .log .meta.pre { white-space: pre-line; }
 .advice .ok { color: var(--accent); font-weight: 600; }
@@ -584,6 +587,10 @@ h2 .sum.warn { color: var(--warn); }
     <div class="row"><button type="button" class="btn" id="lNew" hidden>Nieuwe regel</button><button type="button" class="btn primary" id="lSave">Bewaar in logboek</button></div>
     <div class="hint" id="lHint"></div>
     <ul class="log" id="aLog"></ul>
+
+    <h2>Standaard zaaiassen</h2>
+    <p class="small" style="margin-top:0">Getekend voorbeeld; met je eigen foto herken je hem beter.</p>
+    <ul class="log" id="aStd"></ul>
 
     <h2>Eigen rollen</h2>
     <p class="small" style="margin-top:0">Je zelf geprinte rollen, op nummer. Met een foto zie je meteen welke rol het is; tik op de foto voor groot. Tik per uitgang om te wisselen: <strong>E</strong> = enkel, <strong>D</strong> = dubbel, <strong>–</strong> = dicht. Er is geen tabel voor; het advies komt uit je logboek. Heb je één rol al gebruikt, dan schat de app de andere rollen naar verhouding (dubbel telt als 2× enkel).</p>
@@ -1775,6 +1782,38 @@ h2 .sum.warn { color: var(--warn); }
       updateAp();
     } catch (er) { $("lHint").textContent = "Foto lezen lukte niet."; }
   });
+  // Getekende icoontjes van de standaard zaaiwielen (eigen tekening, geen foto van APV)
+  const hexPath = (r) => { let d = ""; for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i; d += (i ? "L" : "M") + (50 + r * Math.cos(a)).toFixed(1) + " " + (50 + r * Math.sin(a)).toFixed(1); } return d + "Z"; };
+  const gear = (n, ro, ri) => { let d = ""; for (let i = 0; i < n; i++) { const a0 = Math.PI * 2 / n * i, w = Math.PI / n * 0.5;
+    [[ri, a0 - w * 1.4], [ro, a0 - w * 0.6], [ro, a0 + w * 0.6], [ri, a0 + w * 1.4]].forEach(([r, a], j) => { d += (i || j ? "L" : "M") + (50 + r * Math.cos(a)).toFixed(1) + " " + (50 + r * Math.sin(a)).toFixed(1); }); } return d + "Z"; };
+  const blind = () => { let d = "M6 50a44 44 0 1 0 88 0a44 44 0 1 0-88 0Z"; for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i + Math.PI / 6, x = 50 + 28 * Math.cos(a), y = 50 + 28 * Math.sin(a); d += "M" + (x - 9).toFixed(1) + " " + y.toFixed(1) + "a9 9 0 1 0 18 0a9 9 0 1 0-18 0Z"; } return d; };
+  const svgWiel = (d, kleur, sw) => '<path fill-rule="evenodd" fill="' + kleur + '" stroke="' + kleur + '" stroke-width="' + (sw || 3) + '" stroke-linejoin="round" d="' + d + hexPath(11) + '"/>';
+  const ICON = {
+    flex20: '<svg viewBox="0 0 100 100" aria-hidden="true"><g stroke="#E3B23C" stroke-linecap="round" fill="none"><circle cx="50" cy="50" r="18" stroke-width="13"/>' +
+      [0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = Math.PI / 4 * i + Math.PI / 8, c = Math.cos(a), sn = Math.sin(a); return '<line stroke-width="14" x1="' + (50 + 20 * c).toFixed(1) + '" y1="' + (50 + 20 * sn).toFixed(1) + '" x2="' + (50 + 41 * c).toFixed(1) + '" y2="' + (50 + 41 * sn).toFixed(1) + '"/>'; }).join("") + '</g></svg>',
+    ff: '<svg viewBox="0 0 100 100" aria-hidden="true">' + svgWiel(gear(16, 46, 38), "#8A9184") + '</svg>',
+    ffb: '<svg viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(-14 0) scale(.72) translate(19 19)">' + svgWiel(gear(16, 46, 38), "#8A9184") + '</g><g transform="translate(14 0) scale(.72) translate(19 19)">' + svgWiel(blind(), "#5E655A") + '</g></svg>'
+  };
+  // Foto of icoon bovenaan een element; tik maakt hem groot
+  function fotoBlok(id, label, left) {
+    const foto = apFoto[id];
+    if (foto || ICON[id]) {
+      const fb = document.createElement("button"); fb.type = "button"; fb.className = "rolfoto"; fb.setAttribute("aria-label", "Foto groter of kleiner");
+      if (foto) { const im = document.createElement("img"); im.src = foto; im.alt = "Foto " + label; fb.appendChild(im); } else fb.innerHTML = ICON[id];
+      fb.addEventListener("click", () => fb.classList.toggle("big"));
+      left.appendChild(fb);
+    }
+    const knop = document.createElement("div"); knop.className = "rolknop";
+    const fk = document.createElement("button"); fk.type = "button"; fk.className = "btn"; fk.textContent = foto ? "Andere foto" : "Foto maken";
+    fk.addEventListener("click", () => { fotoVoor = id; $("aFotoIn").click(); });
+    knop.appendChild(fk);
+    if (foto) {
+      const fw = document.createElement("button"); fw.type = "button"; fw.className = "btn"; fw.textContent = "Foto weg";
+      fw.addEventListener("click", () => { if (armed(fw, "Zeker?")) { delete apFoto[id]; store.set("apvRolFoto", apFoto); updateAp(); } });
+      knop.appendChild(fw);
+    }
+    left.appendChild(knop);
+  }
   let newUit = ["e", "e", "e", "e", "e", "e"];
   const nextNr = () => String(apAssen.reduce((mx, a) => Math.max(mx, parseInt(a.nr, 10) || 0), 0) + 1);
   // Zes knoppen per rol; tik wisselt E → D → – → E
@@ -1803,6 +1842,7 @@ h2 .sum.warn { color: var(--warn); }
     asAll().forEach(a => {
       const b = document.createElement("button"); b.type = "button"; b.textContent = a.name + (a.uitTxt ? "\n" + a.uitTxt : "");
       if (apFoto[a.id]) { const im = document.createElement("img"); im.src = apFoto[a.id]; im.alt = ""; b.prepend(im); }
+      else if (ICON[a.id]) b.insertAdjacentHTML("afterbegin", ICON[a.id]);
       b.setAttribute("aria-pressed", ap.as === a.id);
       b.addEventListener("click", () => { ap.as = a.id; saveAp(); updateAp(); });
       seg.appendChild(b);
@@ -1832,6 +1872,15 @@ h2 .sum.warn { color: var(--warn); }
       del.addEventListener("click", () => { if (armed(del, "Wis?")) { apLog = apLog.filter(x => x !== e); store.set("apvLog", apLog); if (apEdit === e.ts) setLogForm(null); else updateAp(); } });
       li.append(left, w, del); ul.appendChild(li);
     });
+    // Standaard zaaiassen: icoon of eigen foto
+    const us = $("aStd"); us.innerHTML = "";
+    AS_STD.forEach(a => {
+      const li = document.createElement("li"), left = document.createElement("div");
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = a.name;
+      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = { flex20: "6× Flex 20, grofgetand", ff: "12× f, fijngetand", ffb: "6× f + 6× blind fb" }[a.id];
+      left.append(nm, mt); fotoBlok(a.id, a.name, left);
+      li.appendChild(left); us.appendChild(li);
+    });
     // Eigen zaaiassen
     const ua = $("aAssen"); ua.innerHTML = "";
     if (!apAssen.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "Nog geen eigen zaaiassen."; ua.appendChild(li); }
@@ -1843,23 +1892,7 @@ h2 .sum.warn { color: var(--warn); }
       const mt = document.createElement("div"); mt.className = "meta";
       mt.textContent = (Array.isArray(a.uit) ? "telt als " + capOf(a) + "× enkel" : "") + (n ? (Array.isArray(a.uit) ? ", " : "") + n + "× in logboek" : "");
       left.append(nm, mt);
-      const foto = apFoto[a.id];
-      if (foto) {
-        const fb = document.createElement("button"); fb.type = "button"; fb.className = "rolfoto"; fb.setAttribute("aria-label", "Foto groter of kleiner");
-        const im = document.createElement("img"); im.src = foto; im.alt = "Foto " + asLabel(a); fb.appendChild(im);
-        fb.addEventListener("click", () => fb.classList.toggle("big"));
-        left.appendChild(fb);
-      }
-      const knop = document.createElement("div"); knop.className = "rolknop";
-      const fk = document.createElement("button"); fk.type = "button"; fk.className = "btn"; fk.textContent = foto ? "Andere foto" : "Foto maken";
-      fk.addEventListener("click", () => { fotoVoor = a.id; $("aFotoIn").click(); });
-      knop.appendChild(fk);
-      if (foto) {
-        const fw = document.createElement("button"); fw.type = "button"; fw.className = "btn"; fw.textContent = "Foto weg";
-        fw.addEventListener("click", () => { if (armed(fw, "Zeker?")) { delete apFoto[a.id]; store.set("apvRolFoto", apFoto); updateAp(); } });
-        knop.appendChild(fw);
-      }
-      left.appendChild(knop);
+      fotoBlok(a.id, asLabel(a), left);
       if (Array.isArray(a.uit)) {
         const box = document.createElement("div"); box.className = "seg uitmini"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "Uitgangen " + asLabel(a));
         uitButtons(box, a.uit, () => { store.set("apvAssen", apAssen); updateAp(); });
