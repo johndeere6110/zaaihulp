@@ -41,7 +41,7 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 
 ## Zie ook
 
-**[Perceelkaart](https://github.com/johndeere6110/perceelkaart):** percelen kiezen op de kaart, totaal ha, bufferstroken langs water en spuitsporen. Een aparte app, op termijn de basis voor een kunstmest-app.
+**[Perceelkaart](https://github.com/johndeere6110/perceelkaart):** percelen kiezen op de kaart, totaal ha, bufferstroken langs water (vanaf de insteek), spuitsporen, een zaaiplan voor mais (spuitpaden, rijen dicht, GPS-lijnen) en AB-lijnen uitmeten. Een aparte app, op termijn de basis voor een kunstmest-app. Installeren: https://johndeere6110.github.io/perceelkaart/installeren.html (ook te vinden onderaan de installatiepagina van de Zaaihulp).
 
 ---
 
