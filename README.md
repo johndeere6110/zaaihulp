@@ -24,6 +24,8 @@ Voor alle machines:
 2. Kies je machine.
 3. Vul de tabbladen **Afdraaien**, **Wegen** en **Mengen** in. Alles wordt onthouden.
 
+Op een **tablet** is alles iets groter en staan de machines op het startscherm naast elkaar.
+
 Getallen met een komma (`2,5`), zoals je gewend bent.
 
 ## Je gegevens
