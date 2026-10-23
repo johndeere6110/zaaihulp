@@ -62,6 +62,8 @@ body.m-zoc #tabZoc, body.m-kop #tabKop { order: -1; }
 .mach { text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 16px; padding: 22px 20px; min-height: 130px; font-family: inherit; }
 .mach .mn { display: block; font: 700 38px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; line-height: 1.05; }
 .mach .md { display: block; font-size: 16px; color: var(--muted); margin-top: 6px; }
+.mach.ander { display: block; text-decoration: none; min-height: 0; padding: 14px 18px; }
+.mach.ander .mn { font-size: 24px; }
 .mach:active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .apphead { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
 .apphead .mname { font: 700 26px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; }
@@ -243,6 +245,7 @@ h2 .sum.warn { color: var(--warn); }
       <button type="button" class="mach" id="mApv"><span class="mn">APV 5.2</span><span class="md">Afdraaien met emmer, mengen, vakken en bijstellen in stappen van 5 %</span></button>
       <button type="button" class="mach" id="mZoc"><span class="mn">Zocon Z300</span><span class="md">BASIC-kastje: afdraaiproef met timer, zaaistand 1–24 op rijsnelheid, mengen</span></button>
       <button type="button" class="mach" id="mKop"><span class="mn">Kopeg-zaaier</span><span class="md">Mechanisch: afdraaien met de slinger en variatorstand bijstellen</span></button>
+      <a class="mach ander" href="../perceelkaart/"><span class="mn">Perceelkaart →</span><span class="md">Aparte app: percelen en ha, bufferstroken, spuitsporen, zaaiplan mais en AB-lijnen</span></a>
     </div>
 
     <h2>Soortenlijst</h2>
@@ -2252,7 +2255,7 @@ h2 .sum.warn { color: var(--warn); }
     const url = new URL("installeren.html", location.href).href, hint = $("shLinkHint");
     let how = "";
     try {
-      if (navigator.share) { await navigator.share({ title: "Zaaihulp", text: "Zaaihulp installeren op je telefoon:", url }); how = "Gedeeld."; }
+      if (navigator.share) { await navigator.share({ title: "Zaaihulp", text: "Zaaihulp (en de Perceelkaart) installeren op je telefoon:", url }); how = "Gedeeld."; }
     } catch (e) { if (e && e.name === "AbortError") { hint.textContent = "Delen geannuleerd."; return; } }
     if (!how) {
       try { await navigator.clipboard.writeText(url); how = "Link gekopieerd: " + url; }
