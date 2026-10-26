@@ -232,6 +232,9 @@ h2 .sum.warn { color: var(--warn); }
 .extrarow input { flex: 1; min-width: 0; }
 .extrarow .seg button { min-height: 44px; padding: 0 14px; }
 
+.opslagvol { position: sticky; top: 0; z-index: 5; margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; border: 0; width: 100%; text-align: left;
+  background: var(--warn); color: var(--accent-ink); font: 600 16px/1.35 "Barlow", system-ui, sans-serif; }
+.opslagvol small { display: block; font-weight: 500; margin-top: 4px; opacity: .9; }
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: no-preference) {
   .bump { animation: bump .25s ease-out; }
@@ -241,6 +244,7 @@ h2 .sum.warn { color: var(--warn); }
 </head>
 <body>
 <main>
+  <button type="button" id="opslagVol" class="opslagvol" role="alert" hidden>Let op: de opslag is vol. Wat je net invulde is NIET bewaard.<small>Haal foto's weg bij Zaaias of ruim op in de Perceelkaart (die deelt de opslag), en maak een back-up. Tik om deze melding te sluiten.</small></button>
   <div class="tools">
     <button type="button" id="themeBtn">◐ Auto</button>
     <button type="button" id="wakeBtn" aria-pressed="false">Scherm blijft aan: uit</button>
@@ -705,7 +709,8 @@ h2 .sum.warn { color: var(--warn); }
   const $ = id => document.getElementById(id);
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    // Lukt bewaren niet (opslag vol), dan een duidelijke melding: anders lijkt het bewaard en is het na herladen weg
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { const el = document.getElementById("opslagVol"); if (el) el.hidden = false; } }
   };
   let machine = store.get("machine", null);
   if (!["apv", "zoc", "kop"].includes(machine)) machine = null;
@@ -1276,6 +1281,7 @@ h2 .sum.warn { color: var(--warn); }
   $("resetMix").addEventListener("click", e => {
     if (!armed(e.currentTarget, "Nog eens = leeg")) return;
     m = JSON.parse(JSON.stringify(defMix));
+    if (machine === "zoc") m.width = "";
     m.comps = [{ name: "", pct: "", done: false }, { name: "", pct: "", done: false }];
     m.vakken = [{ l: "", b: "", g: "" }];
     saveMix();
@@ -1655,8 +1661,12 @@ h2 .sum.warn { color: var(--warn); }
     adv.innerHTML = h; adv.hidden = false;
     const sb = $("kSaveTab");
     if (sb) sb.addEventListener("click", () => {
-      kCustom.push({ zaad: k.zaad, kg: Math.round(dose * 10) / 10, st: stand, own: true, ts: Date.now() });
-      store.set("kopegTab", kCustom); updateK();
+      const kgR = Math.round(dose * 10) / 10;
+      if (!kCustom.some(x => x.zaad.toLowerCase() === k.zaad.toLowerCase() && x.kg === kgR && x.st === stand)) {
+        kCustom.push({ zaad: k.zaad, kg: kgR, st: stand, own: true, ts: Date.now() });
+        store.set("kopegTab", kCustom);
+      }
+      updateK();
       const nb = $("kSaveTab"); if (nb) { nb.textContent = "Bewaard in tabel"; nb.disabled = true; }
     });
   }
@@ -1923,7 +1933,7 @@ h2 .sum.warn { color: var(--warn); }
         left.appendChild(box);
       }
       const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder " + asLabel(a));
-      del.addEventListener("click", () => { if (armed(del, "Wis?")) { apAssen = apAssen.filter(x => x !== a); store.set("apvAssen", apAssen); if (ap.as === a.id) ap.as = "ff"; saveAp(); updateAp(); } });
+      del.addEventListener("click", () => { if (armed(del, "Wis?")) { apAssen = apAssen.filter(x => x !== a); store.set("apvAssen", apAssen); if (apFoto[a.id]) { delete apFoto[a.id]; store.set("apvRolFoto", apFoto); } if (ap.as === a.id) ap.as = "ff"; saveAp(); updateAp(); } });
       li.append(left, del); ua.appendChild(li);
     });
     uitButtons($("aAsUit"), newUit, () => renderApLists());
@@ -2076,6 +2086,7 @@ h2 .sum.warn { color: var(--warn); }
   $("mZoc").addEventListener("click", () => setMachine("zoc"));
   $("mKop").addEventListener("click", () => setMachine("kop"));
   $("mSwitch").addEventListener("click", () => setMachine(null));
+  $("opslagVol").addEventListener("click", e => { e.currentTarget.hidden = true; });
   // Licht / donker
   const themes = ["auto", "light", "dark"], tLabel = { auto: "◐ Auto", light: "☀ Licht", dark: "☾ Donker" };
   let theme = store.get("theme", "auto"); if (!themes.includes(theme)) theme = "auto";
