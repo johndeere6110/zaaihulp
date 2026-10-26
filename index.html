@@ -150,6 +150,10 @@ h2 .sum.warn { color: var(--warn); }
 .shitems .chk input { width: 20px; height: 20px; }
 .sharetext { width: 100%; min-height: 90px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px; font: 13px ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
 .hint.bkwarn { color: var(--warn); font-weight: 600; }
+.meter { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); margin-top: 4px; }
+.meter-zh { background: var(--accent); }
+.meter-and { background: var(--muted); }
+.meter.vol .meter-zh, .meter.vol .meter-and { background: var(--warn); }
 .empty { color: var(--muted); font-size: 15px; padding: 12px 0; display: block !important; }
 
 /* Components */
@@ -303,6 +307,11 @@ h2 .sum.warn { color: var(--warn); }
     <input type="file" id="bkFileIn" accept=".txt,text/plain" hidden>
     <div class="row"><button type="button" class="btn" id="bkPick">Kies bestand</button><button type="button" class="btn" id="bkRestore">Terugzetten</button></div>
     <div class="hint" id="bkInHint" style="margin-top:6px"></div>
+
+    <h2>Opslag</h2>
+    <div class="meter" aria-hidden="true"><div class="meter-zh" id="opZh"></div><div class="meter-and" id="opAnd"></div></div>
+    <div class="hint" id="opTxt"></div>
+    <p class="small">De browser geeft ± 5 MB voor alle apps op dit adres samen, ook de Perceelkaart. Groen is de Zaaihulp, grijs de andere apps.</p>
   </section>
   <div id="appHead" hidden>
   <div class="apphead"><span class="mname" id="mName"></span><button type="button" id="mSwitch">Andere machine</button></div>
@@ -2072,7 +2081,7 @@ h2 .sum.warn { color: var(--warn); }
     document.body.classList.toggle("m-kop", mc === "kop");
     $("pHome").hidden = !!mc;
     $("appHead").hidden = !mc;
-    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop", "pZaai"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); renderBackup(); return; }
+    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop", "pZaai"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); renderBackup(); renderOpslag(); return; }
     $("mName").textContent = { apv: "APV 5.2", zoc: "Zocon Z300", kop: "Kopeg-zaaier" }[mc];
     $("weegLabel").textContent = mc === "apv" ? "Invullen op kast" : "Netto afgedraaid";
     loadWeeg();
@@ -2297,6 +2306,27 @@ h2 .sum.warn { color: var(--warn); }
     const dagen = ts ? Math.floor((Date.now() - ts) / 864e5) : null;
     el.textContent = ts ? "Laatste back-up: " + dateTxt(ts) + (dagen >= 1 ? " (" + dagen + (dagen === 1 ? " dag" : " dagen") + " geleden)" : " (vandaag)") : "Nog nooit een back-up gemaakt.";
     el.className = "hint" + ((heeftData && (dagen === null || dagen > 30)) ? " bkwarn" : "");
+  }
+  // Opslagmeter: localStorage telt in tekens (sleutel + waarde), de browser geeft ± 5 × 1024 × 1024 voor dit hele adres
+  const OPSLAG_MAX = 5 * 1048576;
+  function renderOpslag() {
+    let zh = 0, foto = 0, ander = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i), n = key.length + (localStorage.getItem(key) || "").length;
+        if (key === "apvRolFoto") foto += n; else if (isZaaiKey(key) || key === "laatsteBackup") zh += n; else ander += n;
+      }
+    } catch (e) { $("opTxt").textContent = "Opslag uitlezen lukt hier niet."; return; }
+    // Onder 0,1 MB in kB, anders lees je alleen "0,00"
+    const mb = n => n < 104858 ? Math.round(n / 1024) + " kB" : (n / 1048576).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " MB";
+    const tot = zh + foto + ander, pct = Math.min(100, tot / OPSLAG_MAX * 100);
+    $("opZh").style.width = Math.min(100, (zh + foto) / OPSLAG_MAX * 100) + "%";
+    $("opAnd").style.width = Math.min(100, ander / OPSLAG_MAX * 100) + "%";
+    const vol = pct >= 80;
+    $("opZh").parentElement.classList.toggle("vol", vol);
+    $("opTxt").className = "hint" + (vol ? " bkwarn" : "");
+    $("opTxt").textContent = mb(tot) + " van ± 5 MB gebruikt (" + Math.round(pct) + " %). Zaaihulp " + mb(zh + foto) + (foto ? ", waarvan foto's " + mb(foto) : "") +
+      "; andere apps op dit adres (bijv. de Perceelkaart) " + mb(ander) + "." + (vol ? " Bijna vol: maak een back-up en haal foto's weg of ruim op in de Perceelkaart." : "");
   }
   const bkGemaakt = () => { store.set("laatsteBackup", Date.now()); renderBackup(); };
   $("bkMake").addEventListener("click", async () => {

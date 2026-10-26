@@ -34,6 +34,7 @@ Getallen met een komma (`2,5`), zoals je gewend bent.
 - **Delen en overzetten** (startscherm): deel je bewaarde proeven, tabelregels en soorten met iemand anders via een code. Wegingen en mengsels blijven privé.
 - **Stuur installatielink** (bij Delen en overzetten): stuurt iemand de link naar de installatiepagina.
 - **Back-up** (startscherm, onderaan): alles in één bestand, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf. Telefoon kapot of nieuw? Daar zet je hem ook terug. De app laat zien wanneer je de laatste back-up maakte.
+- **Opslag** (startscherm, helemaal onderaan): hoeveel van de ± 5 MB browseropslag in gebruik is. Die delen alle apps op dit adres, ook de Perceelkaart. Boven 80 % kleurt de meter rood.
 
 ## Offline en updates
 
@@ -50,7 +51,7 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 ## Voor wie eraan werkt
 
 - **Alles in `index.html`:** HTML, CSS en JavaScript in één bestand. Geen build-stap, geen frameworks.
-- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v45` → `v46`), anders krijgen telefoons de update niet.
+- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v46` → `v47`), anders krijgen telefoons de update niet.
 - **`installeren.html`:** de installatiepagina. Herkent Android, iPhone of computer.
 - **`fonts/`:** het lettertype Barlow, zelf gehost, zodat er geen verzoeken naar Google gaan. **`vendor/`:** externe bibliotheken als eigen kopie (QR-code), niets van een CDN.
 - **Opslag:** `localStorage`. **Verander bestaande sleutels niet**, anders zijn gebruikers hun proeven kwijt. Lukt bewaren niet (opslag vol, die wordt gedeeld met de Perceelkaart), dan toont de app bovenaan een rode melding. De Perceelkaart staat op hetzelfde domein en deelt de opslag; de back-up neemt daarom alleen de sleutels van de Zaaihulp mee.
