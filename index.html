@@ -1991,7 +1991,15 @@ h2 .sum.warn { color: var(--warn); }
     $("fLSec").hidden = !proef; $("fLGram").hidden = !proef; $("fLFromWeeg").hidden = !proef;
     $("lPctHint").textContent = proef ? "stand tijdens de proef" : "mag later";
     { const g = parse(ap.gram), sec = parse(ap.sec) || 60, p = parse(ap.pct);
-      $("lProefHint").textContent = proef && g ? "= " + (g / 1000 / (sec / 60)).toLocaleString("nl-NL", { maximumFractionDigits: 2 }) + " kg/min" + (p ? " bij " + p.toLocaleString("nl-NL") + " %" : "") : "\u00a0"; }
+      // Wat de proef betekent bij de rijsnelheid en werkbreedte van boven (evenredig gerekend, dus een schatting)
+      const kpm = g ? g / 1000 / (sec / 60) : 0, sp = parse(ap.speed), wb = parse(ap.width), nm = parse(ap.norm), f = (x, d) => x.toLocaleString("nl-NL", { maximumFractionDigits: d });
+      let uitleg = "";
+      if (p && sp && wb) {
+        const kgha = kpm * 600 / (sp * wb), pNodig = nm ? p * nm / kgha : null;
+        uitleg = ". Bij " + f(sp, 1) + " km/h en " + f(wb, 2) + " m is dat ± " + f(kgha, 0) + " kg/ha" +
+          (pNodig ? "; voor " + f(nm, 1) + " kg/ha moet de zaai-as op ± " + f(pNodig, 0) + " %" + (pNodig > 100 ? " (kan niet, meer dan 100 %)" : pNodig < 20 || pNodig > 80 ? " (buiten 20–80 %)" : "") : "");
+      }
+      $("lProefHint").textContent = proef && g ? "= " + f(kpm, 2) + " kg/min" + (p ? " bij " + f(p, 1) + " %" : "") + uitleg : "\u00a0"; }
     renderApLists();
 
     const zz = normK(ap.zaad);
