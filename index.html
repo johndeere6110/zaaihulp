@@ -150,6 +150,8 @@ h2 .sum.warn { color: var(--warn); }
 .shitems .chk input { width: 20px; height: 20px; }
 .sharetext { width: 100%; min-height: 90px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px; font: 13px ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
 .hint.bkwarn { color: var(--warn); font-weight: 600; }
+.herinner { display: block; width: 100%; text-align: left; margin: -2px 0 14px; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 10px;
+  background: transparent; color: var(--warn); font: 500 15px "Barlow", system-ui, sans-serif; }
 .meter { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); margin-top: 4px; }
 .meter-zh { background: var(--accent); }
 .meter-and { background: var(--muted); }
@@ -255,6 +257,7 @@ h2 .sum.warn { color: var(--warn); }
   </div>
   <section id="pHome" hidden>
     <h1>Welke zaaimachine?</h1>
+    <button type="button" class="herinner" id="bkHerinner" hidden></button>
     <div class="home">
       <button type="button" class="mach" id="mApv"><span class="mn">APV 5.2</span><span class="md">Afdraaien met emmer, mengen, vakken en bijstellen in stappen van 5 %</span></button>
       <button type="button" class="mach" id="mZoc"><span class="mn">Zocon Z300</span><span class="md">BASIC-kastje: afdraaiproef met timer, zaaistand 1–24 op rijsnelheid, mengen</span></button>
@@ -293,7 +296,7 @@ h2 .sum.warn { color: var(--warn); }
     <div class="row" style="margin-top:8px"><button type="button" class="btn" id="shLink">Stuur installatielink</button></div>
     <div class="hint" id="shLinkHint"></div>
 
-    <h2>Back-up</h2>
+    <h2 id="bkKop">Back-up</h2>
     <p class="small" style="margin-top:0">Alles uit de Zaaihulp, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf of in je mail. Telefoon kapot of een nieuwe? Dan zet je hem hier terug.</p>
     <div class="hint" id="bkLast"></div>
     <div class="row"><button type="button" class="btn primary" id="bkMake">Back-up maken</button></div>
@@ -301,17 +304,25 @@ h2 .sum.warn { color: var(--warn); }
     <textarea id="bkOut" class="sharetext" readonly hidden aria-label="Back-up als tekst"></textarea>
     <div class="hint" id="bkHint"></div>
     <div class="field wide" style="margin-top:14px">
-      <label for="bkIn">Back-up terugzetten</label>
-      <textarea id="bkIn" class="sharetext" placeholder="Plak hier je back-up (begint met ZAAIHULP-BACKUP1:), of kies het bestand"></textarea>
+      <label for="bkIn">Terugzetten: kies het bestand of plak de tekst</label>
+      <textarea id="bkIn" class="sharetext" placeholder="Kies het bestand (zaaihulp-backup-….json, of .txt van een oudere versie), of plak hier de tekst van je back-up"></textarea>
     </div>
-    <input type="file" id="bkFileIn" accept=".txt,text/plain" hidden>
-    <div class="row"><button type="button" class="btn" id="bkPick">Kies bestand</button><button type="button" class="btn" id="bkRestore">Terugzetten</button></div>
+    <input type="file" id="bkFileIn" accept=".json,.txt,application/json,text/plain" hidden>
+    <div class="row"><button type="button" class="btn" id="bkPick">Kies bestand</button><button type="button" class="btn" id="bkRestore">Back-up terugzetten</button></div>
     <div class="hint" id="bkInHint" style="margin-top:6px"></div>
+    <div class="advice" id="bkPreview" aria-live="polite" hidden></div>
+    <div class="row" id="bkConfirmRow" hidden><button type="button" class="btn" id="bkNee">Annuleren</button><button type="button" class="btn primary" id="bkJa">Ja, alles vervangen</button></div>
+    <div id="bkUndoRow" style="margin-top:14px" hidden>
+      <div class="hint" id="bkUndoTxt"></div>
+      <div class="row" style="margin-top:6px"><button type="button" class="btn" id="bkUndoWeg">Kopie weggooien</button><button type="button" class="btn" id="bkUndo">Terugzetten ongedaan maken</button></div>
+    </div>
 
     <h2>Opslag</h2>
     <div class="meter" aria-hidden="true"><div class="meter-zh" id="opZh"></div><div class="meter-and" id="opAnd"></div></div>
     <div class="hint" id="opTxt"></div>
     <p class="small">De browser geeft ± 5 MB voor alle apps op dit adres samen, ook de Perceelkaart. Groen is de Zaaihulp, grijs de andere apps.</p>
+    <div class="hint" id="opPersist" style="margin-top:8px"></div>
+    <div class="row" id="opPersistRow" hidden><button type="button" class="btn" id="opPersistBtn">Bescherming aanvragen</button></div>
   </section>
   <div id="appHead" hidden>
   <div class="apphead"><span class="mname" id="mName"></span><button type="button" id="mSwitch">Andere machine</button></div>
@@ -994,8 +1005,15 @@ h2 .sum.warn { color: var(--warn); }
   }
 
   const restEl = $("rest");
-  // Restant per machine: APV houdt de oude sleutel restKg, Zocon en kopeg krijgen eenmalig die waarde als begin
-  try { const oud = localStorage.getItem("restKg"); if (oud !== null) ["zoc", "kop"].forEach(mc => { if (localStorage.getItem("restKg_" + mc) === null) localStorage.setItem("restKg_" + mc, oud); }); } catch (e) {}
+  // Restant per machine: APV houdt de oude sleutel restKg, Zocon en kopeg krijgen eenmalig die waarde als begin.
+  // Eenmalig (markering restKgPerMachine), anders kreeg een later ingevuld APV-restant bij de volgende start ook Zocon en kopeg.
+  try {
+    if (localStorage.getItem("restKgPerMachine") === null) {
+      const oud = localStorage.getItem("restKg");
+      if (oud !== null) ["zoc", "kop"].forEach(mc => { if (localStorage.getItem("restKg_" + mc) === null) localStorage.setItem("restKg_" + mc, oud); });
+      localStorage.setItem("restKgPerMachine", "true");
+    }
+  } catch (e) {}
   restEl.value = store.get(wk("restKg"), "");
   restEl.addEventListener("input", () => { store.set(wk("restKg"), restEl.value); updateMix(); });
   $("limAll").addEventListener("click", () => { m.limBy = "all"; saveMix(); updateMix(); });
@@ -2290,93 +2308,241 @@ h2 .sum.warn { color: var(--warn); }
     hint.textContent = how;
   });
 
-  // ---------- Back-up: alles uit localStorage, terug te zetten op elke telefoon ----------
-  const BK_PREFIX = "ZAAIHULP-BACKUP1:";
+  // ---------- Back-up: alle Zaaihulp-gegevens als één JSON-bestand, terug te zetten op elke telefoon ----------
+  const BK_APP = "zaaihulp", BK_SCHEMA = 2;
+  const VEILIG_KEY = "zaaihulpVoorTerugzetten"; // veiligheidskopie van vlak voor het terugzetten
   // Alleen de sleutels van de Zaaihulp: de Perceelkaart staat op hetzelfde domein en deelt de opslag
-  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|apvRolFoto|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
-  function backupData() {
-    const data = {};
-    try { for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) data[key] = localStorage.getItem(key); } } catch (e) {}
-    return { v: 1, ts: Date.now(), data };
+  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|apvRolFoto|restKgPerMachine|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
+  // Verwachte vorm per sleutel, om een kapotte of vreemde back-up te herkennen
+  const bkVorm = k => /^(log(_(zoc|kop))?|zaadsoorten|zaadVerborgen|kopegTab|apvLog|apvAssen)$/.test(k) ? "lijst"
+    : /^(menger(_(zoc|kop))?|zocon|zoconProf|kopeg|apvZaai|apvRolFoto)$/.test(k) ? "object" : null;
+  // Huidige Zaaihulp-sleutels als ruwe tekst, precies zoals ze in localStorage staan
+  function huidigeRuw() {
+    const d = {};
+    try { for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) d[key] = localStorage.getItem(key); } } catch (e) {}
+    return d;
   }
-  const bkNaam = () => "zaaihulp-backup-" + new Date().toISOString().slice(0, 10) + ".txt";
+  // Bestand: appnaam, schemaversie, exportdatum en de gegevens (leesbaar). Wat geen JSON is, gaat ongewijzigd mee in "ruw".
+  function maakBackup(ruw) {
+    const data = {}, onleesbaar = {};
+    Object.entries(ruw || huidigeRuw()).forEach(([k, v]) => { try { data[k] = JSON.parse(v); } catch (e) { onleesbaar[k] = v; } });
+    const b = { app: BK_APP, schema: BK_SCHEMA, exportDatum: new Date().toISOString(), data };
+    if (Object.keys(onleesbaar).length) b.ruw = onleesbaar;
+    return b;
+  }
+  const ruwVan = b => {
+    const r = {};
+    Object.entries(b.data || {}).forEach(([k, v]) => { r[k] = JSON.stringify(v); });
+    if (b.ruw && typeof b.ruw === "object") Object.entries(b.ruw).forEach(([k, v]) => { if (typeof v === "string") r[k] = v; });
+    return r;
+  };
+  const bkNaam = extra => { const d = new Date(), t = n => String(n).padStart(2, "0");
+    return "zaaihulp-backup-" + d.getFullYear() + "-" + t(d.getMonth() + 1) + "-" + t(d.getDate()) + (extra ? "-" + extra : "") + ".json"; };
+  // Alleen Zaaihulp-sleutels; een onderdeel met de verkeerde vorm wordt overgeslagen in plaats van alles te weigeren
+  function controleer(ruw, ts) {
+    const goed = {}; let vreemd = 0; const mis = [];
+    Object.entries(ruw).forEach(([k, v]) => {
+      if (!isZaaiKey(k) || typeof v !== "string") { vreemd++; return; }
+      const vorm = bkVorm(k);
+      if (vorm) {
+        let w; try { w = JSON.parse(v); } catch (e) { mis.push(k); return; }
+        if (vorm === "lijst" ? !Array.isArray(w) : (!w || typeof w !== "object" || Array.isArray(w))) { mis.push(k); return; }
+      }
+      goed[k] = v;
+    });
+    if (!Object.keys(goed).length) return { fout: "Er staan geen Zaaihulp-gegevens in deze back-up." };
+    return { ts, ruw: goed, vreemd, mis };
+  }
+  // Leest het nieuwe JSON-bestand (schema 2) of de oude tekstcode (ZAAIHULP-BACKUP1:, v1): die wordt nog gelezen, niet meer gemaakt
+  function leesBackup(tekst) {
+    tekst = String(tekst || "");
+    const schoon = tekst.replace(/\s+/g, "");
+    const oud = schoon.match(/ZAAIHULP-BACKUP1:([A-Za-z0-9+/]+={0,2})/);
+    if (oud) {
+      let b = null; try { b = dec(oud[1]); } catch (e) {}
+      if (!b || typeof b.data !== "object" || !b.data) return { fout: "De back-up is beschadigd of niet compleet geplakt." };
+      return controleer(b.data, b.ts);
+    }
+    const i = tekst.indexOf("{"), j = tekst.lastIndexOf("}");
+    if (i >= 0 && /"app"\s*:\s*"zaaihulp"/.test(tekst)) { if (j < i) return { fout: "De back-up is beschadigd of niet compleet." }; }
+    if (i < 0 || j < i) return { fout: schoon.includes("ZAAIHULP1:") ? "Dit is een deelcode, geen back-up. Plak hem hierboven bij Importeren." : "Geen back-up gevonden. Kies het bestand (zaaihulp-backup-….json) of plak de tekst." };
+    let b; try { b = JSON.parse(tekst.slice(i, j + 1)); } catch (e) { return { fout: "De back-up is beschadigd of niet compleet." }; }
+    if (!b || b.app !== BK_APP) return { fout: "Dit is geen back-up van de Zaaihulp" + (b && typeof b.app === "string" ? " (maar van " + b.app + ")" : "") + "." };
+    if (typeof b.schema !== "number" || b.schema < 2) return { fout: "Onbekende versie van de back-up." };
+    if (b.schema > BK_SCHEMA) return { fout: "Deze back-up komt uit een nieuwere versie van de Zaaihulp. Open de app eerst met internet, zodat hij bijwerkt." };
+    if (!b.data || typeof b.data !== "object" || Array.isArray(b.data)) return { fout: "De back-up heeft geen geldige gegevens." };
+    return controleer(ruwVan(b), Date.parse(b.exportDatum) || null);
+  }
+  // Wat er in een back-up of op de telefoon staat, in gewone woorden
+  function samenvatting(ruw) {
+    const p = k => { try { return JSON.parse(ruw[k]); } catch (e) { return null; } };
+    const len = k => { const v = p(k); return Array.isArray(v) ? v.length : 0; };
+    const n = { weeg: len("log") + len("log_zoc") + len("log_kop"),
+      zoc: Object.values(p("zoconProf") || {}).reduce((t, q) => t + (q && Array.isArray(q.pts) ? q.pts.length : 0), 0),
+      kop: len("kopegTab"), apv: len("apvLog"), rol: len("apvAssen"), foto: Object.keys(p("apvRolFoto") || {}).length, soort: len("zaadsoorten"),
+      meng: ["menger", "menger_zoc", "menger_kop"].filter(k => k in ruw).length };
+    const delen = [], zet = (x, een, meer) => { if (x) delen.push(x + " " + (x === 1 ? een : meer)); };
+    zet(n.weeg, "weging", "wegingen"); zet(n.zoc, "Zocon-proef", "Zocon-proeven"); zet(n.kop, "kopeg-tabelregel", "kopeg-tabelregels");
+    zet(n.apv, "APV-logboekregel", "APV-logboekregels"); zet(n.rol, "eigen rol", "eigen rollen"); zet(n.foto, "foto", "foto's");
+    zet(n.soort, "eigen soort", "eigen soorten"); zet(n.meng, "ingevuld Mengen-scherm", "ingevulde Mengen-schermen");
+    if (Object.keys(ruw).some(k => /^(tareG|unit|restKg|theme|zaadVerborgen)/.test(k))) delen.push("instellingen");
+    return { tekst: delen.length ? delen.join(", ") : "geen eigen gegevens", aantal: n.weeg + n.zoc + n.kop + n.apv + n.rol + n.foto + n.soort };
+  }
+  const leesVeilig = () => { try { const v = JSON.parse(localStorage.getItem(VEILIG_KEY) || "null"); return v && v.app === BK_APP && v.data ? v : null; } catch (e) { return null; } };
   function renderBackup() {
     const el = $("bkLast"), ts = store.get("laatsteBackup", null);
-    const heeftData = zocItems().length || kCustom.length || zaadCustom.length || log.length;
+    const heeftData = samenvatting(huidigeRuw()).aantal > 0;
     const dagen = ts ? Math.floor((Date.now() - ts) / 864e5) : null;
     el.textContent = ts ? "Laatste back-up: " + dateTxt(ts) + (dagen >= 1 ? " (" + dagen + (dagen === 1 ? " dag" : " dagen") + " geleden)" : " (vandaag)") : "Nog nooit een back-up gemaakt.";
-    el.className = "hint" + ((heeftData && (dagen === null || dagen > 30)) ? " bkwarn" : "");
+    // Herinnering (bovenaan het startscherm en hier) als het langer dan 30 dagen geleden is of nog nooit
+    const oud = heeftData && (dagen === null || dagen > 30);
+    el.className = "hint" + (oud ? " bkwarn" : "");
+    $("bkHerinner").hidden = !oud;
+    $("bkHerinner").textContent = (dagen === null ? "Je hebt nog nooit een back-up gemaakt." : "Laatste back-up " + dagen + " dagen geleden.") + " Tik hier om er een te maken.";
+    const vk = leesVeilig();
+    $("bkUndoRow").hidden = !vk;
+    if (vk) $("bkUndoTxt").textContent = "Veiligheidskopie van vlak voor het terugzetten (" + dateTxt(Date.parse(vk.exportDatum) || Date.now()) + "): " + samenvatting(ruwVan(vk)).tekst + ".";
   }
+  $("bkHerinner").addEventListener("click", () => { try { $("bkKop").scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} });
   // Opslagmeter: localStorage telt in tekens (sleutel + waarde), de browser geeft ± 5 × 1024 × 1024 voor dit hele adres
   const OPSLAG_MAX = 5 * 1048576;
   function renderOpslag() {
-    let zh = 0, foto = 0, ander = 0;
+    let zh = 0, foto = 0, veilig = 0, ander = 0;
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i), n = key.length + (localStorage.getItem(key) || "").length;
-        if (key === "apvRolFoto") foto += n; else if (isZaaiKey(key) || key === "laatsteBackup") zh += n; else ander += n;
+        if (key === "apvRolFoto") foto += n; else if (key === VEILIG_KEY) veilig += n; else if (isZaaiKey(key) || key === "laatsteBackup") zh += n; else ander += n;
       }
     } catch (e) { $("opTxt").textContent = "Opslag uitlezen lukt hier niet."; return; }
     // Onder 0,1 MB in kB, anders lees je alleen "0,00"
     const mb = n => n < 104858 ? Math.round(n / 1024) + " kB" : (n / 1048576).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " MB";
-    const tot = zh + foto + ander, pct = Math.min(100, tot / OPSLAG_MAX * 100);
-    $("opZh").style.width = Math.min(100, (zh + foto) / OPSLAG_MAX * 100) + "%";
+    const eigen = zh + foto + veilig, tot = eigen + ander, pct = Math.min(100, tot / OPSLAG_MAX * 100);
+    $("opZh").style.width = Math.min(100, eigen / OPSLAG_MAX * 100) + "%";
     $("opAnd").style.width = Math.min(100, ander / OPSLAG_MAX * 100) + "%";
     const vol = pct >= 80;
     $("opZh").parentElement.classList.toggle("vol", vol);
     $("opTxt").className = "hint" + (vol ? " bkwarn" : "");
-    $("opTxt").textContent = mb(tot) + " van ± 5 MB gebruikt (" + Math.round(pct) + " %). Zaaihulp " + mb(zh + foto) + (foto ? ", waarvan foto's " + mb(foto) : "") +
-      "; andere apps op dit adres (bijv. de Perceelkaart) " + mb(ander) + "." + (vol ? " Bijna vol: maak een back-up en haal foto's weg of ruim op in de Perceelkaart." : "");
+    const waarvan = [foto ? "foto's " + mb(foto) : "", veilig ? "veiligheidskopie " + mb(veilig) : ""].filter(Boolean).join(", ");
+    $("opTxt").textContent = mb(tot) + " van ± 5 MB gebruikt (" + Math.round(pct) + " %). Zaaihulp " + mb(eigen) + (waarvan ? ", waarvan " + waarvan : "") +
+      "; andere apps op dit adres (bijv. de Perceelkaart) " + mb(ander) + "." + (vol ? " Bijna vol: maak een back-up en haal foto's of de veiligheidskopie weg, of ruim op in de Perceelkaart." : "");
   }
-  const bkGemaakt = () => { store.set("laatsteBackup", Date.now()); renderBackup(); };
-  $("bkMake").addEventListener("click", async () => {
-    const code = BK_PREFIX + enc(backupData()), hint = $("bkHint");
-    const file = typeof File === "function" ? new File([code], bkNaam(), { type: "text/plain" }) : null;
-    // 1. Als bestand delen (WhatsApp, mail, Drive). 2. Anders downloaden.
+  // Persistent storage: vraag de browser de gegevens niet op te ruimen bij weinig opslagruimte
+  let persistStand = "onbekend";
+  async function vraagPersist(vraag) {
     try {
-      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: "Zaaihulp back-up" });
-        bkGemaakt(); hint.textContent = "Back-up gedeeld. Bewaar hem goed."; return;
+      if (!navigator.storage || !navigator.storage.persisted) persistStand = "niet";
+      else {
+        let p = await navigator.storage.persisted();
+        if (!p && vraag && navigator.storage.persist) p = await navigator.storage.persist();
+        persistStand = p ? "ja" : "nee";
       }
-    } catch (e) { if (e && e.name === "AbortError") { hint.textContent = "Delen geannuleerd."; return; } }
+    } catch (e) { persistStand = "niet"; }
+    $("opPersist").textContent = { ja: "Beschermd: de browser ruimt deze gegevens niet op als de telefoon weinig ruimte heeft.",
+      nee: "Niet beschermd: bij weinig ruimte mag de browser deze gegevens opruimen. Installeer de app op je beginscherm (dat helpt vaak) en maak regelmatig een back-up.",
+      niet: "Deze browser laat niet zien of de gegevens beschermd zijn tegen opruimen. Maak regelmatig een back-up.", onbekend: "" }[persistStand];
+    $("opPersist").className = "hint" + (persistStand === "nee" ? " bkwarn" : "");
+    $("opPersistRow").hidden = persistStand !== "nee";
+  }
+  $("opPersistBtn").addEventListener("click", () => vraagPersist(true));
+  const bkGemaakt = () => { store.set("laatsteBackup", Date.now()); renderBackup(); };
+  // 1. Als bestand delen (WhatsApp, mail, Bestanden); werkt ook als app vanaf het beginscherm op iPhone. 2. Anders downloaden.
+  async function bewaarBestand(tekst, naam) {
+    const file = typeof File === "function" ? new File([tekst], naam, { type: "application/json" }) : null;
     try {
-      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([code], { type: "text/plain" })); a.download = bkNaam();
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Zaaihulp back-up" }); return "gedeeld"; }
+    } catch (e) { if (e && e.name === "AbortError") return "geannuleerd"; }
+    try {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([tekst], { type: "application/json" })); a.download = naam;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      bkGemaakt(); hint.textContent = "Back-up opgeslagen als " + bkNaam() + ". Zet hem ergens buiten je telefoon.";
-    } catch (e) { hint.textContent = "Bestand maken lukt hier niet. Gebruik Kopieer als tekst."; }
+      return "opgeslagen";
+    } catch (e) { return "mislukt"; }
+  }
+  $("bkMake").addEventListener("click", async () => {
+    const naam = bkNaam(), hint = $("bkHint"), r = await bewaarBestand(JSON.stringify(maakBackup()), naam);
+    if (r === "gedeeld") { bkGemaakt(); hint.textContent = "Back-up gedeeld (" + naam + "). Bewaar hem goed, buiten je telefoon."; }
+    else if (r === "opgeslagen") { bkGemaakt(); hint.textContent = "Back-up opgeslagen als " + naam + " (bij Downloads). Zet hem ergens buiten je telefoon."; }
+    else if (r === "geannuleerd") hint.textContent = "Delen geannuleerd.";
+    else hint.textContent = "Bestand maken lukt hier niet. Gebruik Kopieer als tekst.";
   });
   $("bkCopy").addEventListener("click", async () => {
-    const code = BK_PREFIX + enc(backupData()), out = $("bkOut"), hint = $("bkHint");
+    const code = JSON.stringify(maakBackup()), out = $("bkOut"), hint = $("bkHint");
     out.value = code; out.hidden = false;
     try { await navigator.clipboard.writeText(code); bkGemaakt(); hint.textContent = "Gekopieerd. Plak hem in een WhatsApp-bericht aan jezelf of in je mail."; }
     catch (e) { out.focus(); out.select(); bkGemaakt(); hint.textContent = "Houd de tekst ingedrukt om hem te kopiëren."; }
   });
+  // Terugzetten in twee stappen: eerst controleren en laten zien wat erin zit, dan pas na "Ja" vervangen
+  let bkKlaar = null;
+  const bkFout = t => { const h = $("bkInHint"); h.textContent = t; h.style.color = "var(--warn)"; };
+  function toonVoorbeeld() {
+    $("bkPreview").hidden = true; $("bkConfirmRow").hidden = true; bkKlaar = null;
+    const r = leesBackup($("bkIn").value);
+    if (r.fout) { bkFout(r.fout); return; }
+    $("bkInHint").textContent = ""; $("bkInHint").style.color = "";
+    const nieuw = samenvatting(r.ruw), nu = samenvatting(huidigeRuw());
+    $("bkPreview").innerHTML = '<div><strong>Back-up van ' + (r.ts ? esc(dateTxt(r.ts)) : "onbekende datum") + '</strong></div>' +
+      '<div>Hierin: ' + esc(nieuw.tekst) + '.</div><div class="steps"><div>Nu op deze telefoon: ' + esc(nu.tekst) + '.</div>' +
+      '<div><strong>Alles van de Zaaihulp op deze telefoon wordt vervangen door de back-up.</strong> Vlak ervoor bewaart de app een veiligheidskopie, zodat je het ongedaan kunt maken. Gegevens van de Perceelkaart blijven staan.</div>' +
+      (r.mis.length ? '<div style="color:var(--warn)">' + r.mis.length + (r.mis.length === 1 ? " onderdeel is beschadigd en wordt" : " onderdelen zijn beschadigd en worden") + ' overgeslagen (' + esc(r.mis.join(", ")) + ').</div>' : "") +
+      (r.vreemd ? '<div>' + r.vreemd + ' onbekend' + (r.vreemd === 1 ? " onderdeel wordt" : "e onderdelen worden") + ' genegeerd.</div>' : "") + '</div>';
+    $("bkPreview").hidden = false; $("bkConfirmRow").hidden = false; bkKlaar = r;
+    try { $("bkPreview").scrollIntoView({ block: "center" }); } catch (e) {}
+  }
+  $("bkRestore").addEventListener("click", toonVoorbeeld);
+  $("bkNee").addEventListener("click", () => { $("bkPreview").hidden = true; $("bkConfirmRow").hidden = true; bkKlaar = null; $("bkInHint").textContent = "Niks veranderd."; $("bkInHint").style.color = ""; });
   $("bkPick").addEventListener("click", () => $("bkFileIn").click());
   $("bkFileIn").addEventListener("change", async e => {
-    const f = e.target.files && e.target.files[0]; if (!f) return;
-    try { $("bkIn").value = await f.text(); $("bkInHint").textContent = "Bestand ingelezen. Tik op Terugzetten."; $("bkInHint").style.color = ""; }
-    catch (er) { $("bkInHint").textContent = "Bestand lezen lukte niet."; $("bkInHint").style.color = "var(--warn)"; }
-    e.target.value = "";
+    const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+    try { $("bkIn").value = await f.text(); } catch (er) { bkFout("Bestand lezen lukte niet."); return; }
+    toonVoorbeeld();
   });
-  $("bkRestore").addEventListener("click", e => {
-    const hint = $("bkInHint"), bad = t => { hint.textContent = t; hint.style.color = "var(--warn)"; };
-    const mt = $("bkIn").value.replace(/\s+/g, "").match(/ZAAIHULP-BACKUP1:([A-Za-z0-9+/]+={0,2})/);
-    if (!mt) { bad($("bkIn").value.includes("ZAAIHULP1:") ? "Dit is een deelcode, geen back-up. Plak hem hierboven bij Importeren." : "Geen back-up gevonden. Die begint met ZAAIHULP-BACKUP1:"); return; }
-    let b = null;
-    try { b = dec(mt[1]); } catch (er) {}
-    if (!b || typeof b.data !== "object" || !b.data || Object.values(b.data).some(v => typeof v !== "string")) { bad("De back-up is beschadigd of niet compleet geplakt."); return; }
-    // Bevestigen zonder pop-up: alles wordt vervangen
-    if (!armed(e.currentTarget, "Tik nog eens: alles vervangen")) return;
-    try {
-      // Alleen Zaaihulp-gegevens vervangen; die van de Perceelkaart blijven staan
-      const weg = []; for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) weg.push(key); }
-      weg.forEach(k => localStorage.removeItem(k));
-      Object.entries(b.data).forEach(([k, v]) => { if (isZaaiKey(k)) localStorage.setItem(k, v); });
-      localStorage.setItem("laatsteBackup", JSON.stringify(b.ts || Date.now()));
-    } catch (er) { bad("Terugzetten lukte niet (opslag vol of geblokkeerd)."); return; }
-    hint.style.color = ""; hint.textContent = "Teruggezet (back-up van " + dateTxt(b.ts) + "). De app start opnieuw…";
-    setTimeout(() => location.reload(), 900);
+  // Vervangt alle Zaaihulp-sleutels; mislukt het halverwege (opslag vol), dan komt de oude toestand terug
+  function vervangData(nieuw) {
+    const oud = huidigeRuw();
+    const wis = () => { const weg = []; for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (isZaaiKey(key)) weg.push(key); } weg.forEach(k => localStorage.removeItem(k)); };
+    try { wis(); Object.entries(nieuw).forEach(([k, v]) => localStorage.setItem(k, v)); return true; }
+    catch (e) { try { wis(); Object.entries(oud).forEach(([k, v]) => localStorage.setItem(k, v)); } catch (er) {} return false; }
+  }
+  // Eerst een veiligheidskopie: in de app, of (past dat niet) als bestand. Zonder kopie wordt er niks vervangen.
+  async function terugzetten(nieuw) {
+    const kopie = JSON.stringify(maakBackup());
+    let inApp = true;
+    try { localStorage.removeItem(VEILIG_KEY); localStorage.setItem(VEILIG_KEY, kopie); } catch (e) { inApp = false; }
+    if (inApp) {
+      if (vervangData(nieuw)) return "app";
+      try { localStorage.removeItem(VEILIG_KEY); } catch (e) {} // ruimte maken; de kopie gaat dan als bestand
+    }
+    const r = await bewaarBestand(kopie, bkNaam("voor-terugzetten"));
+    if (r !== "gedeeld" && r !== "opgeslagen") return "geen-kopie";
+    return vervangData(nieuw) ? "bestand" : "mislukt";
+  }
+  $("bkJa").addEventListener("click", async () => {
+    const r = bkKlaar; if (!r) return;
+    $("bkConfirmRow").hidden = true;
+    const uit = await terugzetten(r.ruw);
+    if (uit === "geen-kopie") { bkFout("Er kon geen veiligheidskopie worden gemaakt, dus er is niks teruggezet. Je gegevens zijn niet veranderd."); return; }
+    if (uit === "mislukt") { bkFout("Terugzetten lukte niet (opslag vol of geblokkeerd). Je oude gegevens staan er nog."); return; }
+    try { localStorage.setItem("laatsteBackup", JSON.stringify(r.ts || Date.now())); } catch (e) {}
+    $("bkPreview").hidden = true; $("bkInHint").style.color = "";
+    $("bkInHint").textContent = "Teruggezet (back-up van " + (r.ts ? dateTxt(r.ts) : "onbekende datum") + "). " +
+      (uit === "app" ? "Ongedaan maken kan onderaan bij Back-up. " : "De veiligheidskopie is als bestand bewaard. ") + "De app start opnieuw…";
+    setTimeout(() => location.reload(), 1500);
   });
+  $("bkUndo").addEventListener("click", e => {
+    if (!armed(e.currentTarget, "Tik nog eens: kopie terugzetten")) return;
+    const vk = leesVeilig(), c = vk ? controleer(ruwVan(vk), null) : { fout: "Geen veiligheidskopie gevonden." };
+    if (c.fout) { bkFout(c.fout); return; }
+    if (!vervangData(c.ruw)) { bkFout("Ongedaan maken lukte niet (opslag vol). Er is niks veranderd."); return; }
+    try { localStorage.removeItem(VEILIG_KEY); } catch (er) {}
+    $("bkInHint").style.color = ""; $("bkInHint").textContent = "Teruggezet naar de toestand van vóór het terugzetten. De app start opnieuw…";
+    setTimeout(() => location.reload(), 1500);
+  });
+  $("bkUndoWeg").addEventListener("click", e => {
+    if (!armed(e.currentTarget, "Zeker? Tik nog eens")) return;
+    try { localStorage.removeItem(VEILIG_KEY); } catch (er) {}
+    renderBackup(); renderOpslag();
+  });
+
+  vraagPersist(true);
 
   setMachine(machine);
 })();

@@ -21,8 +21,11 @@ Hij moet één keer op een website staan, daarna installeer je hem als app.
 
 3. GOED OM TE WETEN
    - Alles wat je invult blijft op je eigen telefoon.
-   - Maak af en toe een back-up (startscherm, onderaan) en bewaar die buiten
-     je telefoon. Telefoon kapot of nieuw? Daar zet je hem ook weer terug.
+   - Maak na belangrijke wijzigingen een back-up (startscherm, onderaan) en
+     bewaar die buiten je telefoon. Telefoon kapot of nieuw? Daar zet je hem
+     ook weer terug. Terugzetten kun je ongedaan maken.
+   - Het icoon van het beginscherm verwijderen (vooral op iPhone) of de
+     browsergegevens wissen, wist ook al je gegevens. Eerst een back-up!
    - Gegevens uit de Claude-versie komen niet vanzelf mee; dat is een andere plek.
    - Gebruik op iPhone altijd het icoon op het beginscherm, niet los Safari:
      dan bewaart iOS je gegevens het betrouwbaarst.

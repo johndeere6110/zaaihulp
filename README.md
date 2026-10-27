@@ -33,7 +33,11 @@ Getallen met een komma (`2,5`), zoals je gewend bent.
 - Alles blijft **op je eigen telefoon**. Er is geen account, geen server en de app stuurt niks door.
 - **Delen en overzetten** (startscherm): deel je bewaarde proeven, tabelregels en soorten met iemand anders via een code. Wegingen en mengsels blijven privé.
 - **Stuur installatielink** (bij Delen en overzetten): stuurt iemand de link naar de installatiepagina.
-- **Back-up** (startscherm, onderaan): alles in één bestand, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf. Telefoon kapot of nieuw? Daar zet je hem ook terug. De app laat zien wanneer je de laatste back-up maakte.
+- **Back-up** (startscherm, onderaan): alles van de Zaaihulp in één bestand (`zaaihulp-backup-JJJJ-MM-DD.json`), ook wegingen, mengsels, logboek, eigen rollen met foto's en instellingen. Op de telefoon gaat hij via het deelmenu (WhatsApp, mail, Bestanden); lukt dat niet, dan wordt hij gedownload. Bewaar hem buiten je telefoon. De app laat zien wanneer je de laatste back-up maakte en herinnert je eraan na 30 dagen.
+- **Terugzetten:** kies het bestand (ook oude `.txt`-back-ups werken nog). De app laat eerst zien wat erin zit en wat er nu op de telefoon staat, en vervangt pas na "Ja, alles vervangen". Vlak ervoor bewaart hij een veiligheidskopie, zodat je het **ongedaan kunt maken**. Gegevens van de Perceelkaart blijven altijd staan.
+- **Bescherming:** de app vraagt de browser om de gegevens niet op te ruimen als de telefoon weinig ruimte heeft (onderaan bij Opslag zie je of dat gelukt is).
+
+**Let op:** het icoon van je beginscherm verwijderen (vooral op iPhone) of de browsergegevens wissen, wist ook alles van de Zaaihulp. Maak na belangrijke wijzigingen (nieuwe proeven, logboekregels, rollen) even een back-up.
 - **Opslag** (startscherm, helemaal onderaan): hoeveel van de ± 5 MB browseropslag in gebruik is. Die delen alle apps op dit adres, ook de Perceelkaart. Boven 80 % kleurt de meter rood.
 
 ## Offline en updates
@@ -51,10 +55,10 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 ## Voor wie eraan werkt
 
 - **Alles in `index.html`:** HTML, CSS en JavaScript in één bestand. Geen build-stap, geen frameworks.
-- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v46` → `v47`), anders krijgen telefoons de update niet.
+- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v47` → `v48`), anders krijgen telefoons de update niet.
 - **`installeren.html`:** de installatiepagina. Herkent Android, iPhone of computer.
 - **`fonts/`:** het lettertype Barlow, zelf gehost, zodat er geen verzoeken naar Google gaan. **`vendor/`:** externe bibliotheken als eigen kopie (QR-code), niets van een CDN.
-- **Opslag:** `localStorage`. **Verander bestaande sleutels niet**, anders zijn gebruikers hun proeven kwijt. Lukt bewaren niet (opslag vol, die wordt gedeeld met de Perceelkaart), dan toont de app bovenaan een rode melding. De Perceelkaart staat op hetzelfde domein en deelt de opslag; de back-up neemt daarom alleen de sleutels van de Zaaihulp mee.
+- **Opslag:** `localStorage` (geen IndexedDB of cookies; de Cache API alleen voor de app-bestanden in `sw.js`). Back-up: JSON met `app`, `schema` (nu 2), `exportDatum` en `data`; het oude tekstformaat `ZAAIHULP-BACKUP1:` wordt nog gelezen. Veiligheidskopie bij terugzetten: sleutel `zaaihulpVoorTerugzetten`. **Verander bestaande sleutels niet**, anders zijn gebruikers hun proeven kwijt. Lukt bewaren niet (opslag vol, die wordt gedeeld met de Perceelkaart), dan toont de app bovenaan een rode melding. De Perceelkaart staat op hetzelfde domein en deelt de opslag; de back-up neemt daarom alleen de sleutels van de Zaaihulp mee.
 - **Geen `alert()` of `confirm()`:** die worden in sommige weergaven geblokkeerd. Gebruik `armed()` (eerste tik vraagt "zeker?", tweede tik voert uit) en `flash()`.
 - **Taal:** Nederlands, komma als decimaalteken.
 - **Publiceren:** push naar `main`; GitHub Pages zet hem binnen een paar minuten online.
