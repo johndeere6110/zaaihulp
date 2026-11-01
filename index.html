@@ -204,6 +204,9 @@ h2 .sum.warn { color: var(--warn); }
 .rolfoto img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; display: block; }
 .rolfoto.big { width: 100%; height: auto; }
 .rolfoto.big img { height: auto; }
+.rolvarianten { display: flex; gap: 10px; flex-wrap: wrap; }
+.rolvarianten figure { margin: 0; }
+.rolvarianten figcaption { font-size: 13px; color: var(--muted); text-align: center; }
 .rolknop { display: flex; gap: 8px; margin-top: 8px; }
 .rolknop .btn { flex: none; min-height: 40px; padding: 0 12px; font-size: 15px; }
 .seg.asseg button svg { display: block; width: 40px; height: 40px; margin: 0 auto 4px; }
@@ -1724,11 +1727,11 @@ h2 .sum.warn { color: var(--warn); }
     { n: "Chia", tag: ["chia"], d: { ffb: [0.04,0.09,0.18,0.26,0.35,0.46,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_] } },
     { n: "Slakkenkorrel", tag: ["slak"], d: { ffb: [_,0.06,0.12,0.18,0.24,0.3,0.36,0.42,0.48,0.54,0.6,0.66,0.72,0.78,0.84,0.9,0.96,1.02,1.08,1.14,1.2], flex20: [_,0.22,0.44,0.65,0.87,1.09,1.31,1.53,1.74,1.96,2.18,2.4,2.62,2.84,3.05,3.27,3.49,3.71,3.93,4.14,4.36] } }
   ];
-  // Vaste plaatjes (img/): Flex 20 en onze geprinte rollen zijn foto's; de fijne en fijnvolle opstellingen zijn nagetekend
+  // Vaste plaatjes (img/): Flex 20 is een foto; de fijne en fijnvolle wielen en onze geprinte rollen zijn nagetekend
   const STD_FOTO = { flex20: "img/as-flex20.jpg", ff: "img/as-ffff.jpg", ffb: "img/as-ffb.jpg", fvfv: "img/as-fvfv.jpg", fvfb: "img/as-fvfb.jpg" };
   const ROL_VAST = [
-    { id: "v1", nr: "1", name: "V-nokjes", foto: "img/rol-1-v-nokjes.jpg", fotoE: "img/rol-1-enkel.jpg", fotoD: "img/rol-1-x2.jpg", info: "geprint; V-vormige nokken, voor zaad dat in vierkante cellen blijft hangen" },
-    { id: "v2", nr: "2", name: "grijs", foto: "img/rol-2-grijs.jpg", info: "geprint; 10 vierkante nokken" }
+    { id: "v1", nr: "1", name: "V-nokjes", foto: "img/rol-1-wiel.jpg", fotoE: "img/rol-1-blind.jpg", fotoD: "img/rol-1-dubbel.jpg", info: "geprint; V-vormige nokken, voor zaad dat in vierkante cellen blijft hangen" },
+    { id: "v2", nr: "2", name: "grijs", foto: "img/rol-2-wiel.jpg", fotoE: "img/rol-2-blind.jpg", fotoD: "img/rol-2-dubbel.jpg", fotoE: "img/rol-2-blind.jpg", fotoD: "img/rol-2-dubbel.jpg", info: "geprint; 10 vierkante nokken" }
   ];
   const AS_STD = [{ id: "flex20", name: "Flex 20 (geel, grof)" }, { id: "ff", name: "ff-ff (alles fijn)" }, { id: "ffb", name: "ff-fb (fijn + blind)" }, { id: "fvfv", name: "fv-fv (alles fijnvol)" }, { id: "fvfb", name: "fv-fb (fijnvol + blind)" }];
   const ap = Object.assign({ zaad: "", norm: "", speed: "", width: "1,6", uitg: 6, tabFor: {}, as: "ff", kgha: "", lspeed: "", pct: "", note: "", comp: true }, store.get("apvZaai", {}));
@@ -1845,7 +1848,7 @@ h2 .sum.warn { color: var(--warn); }
     ROL_VAST.forEach(r => { const u = ap.vastUit[r.id]; if (Array.isArray(u) && u.length && u.every(x => x === "d")) apLog.forEach(e => { if (e.as === r.id) e.as = r.id + "d"; }); });
     store.set("apvLog", apLog); delete ap.vastUit; saveAp();
   }
-  // Knoppen en advies: tekening voor blind/dubbel als die er is; echt = de foto van de rol zelf (lijst "Rollen in de app")
+  // Knoppen en advies: tekening voor blind/dubbel; echt = het losse wiel (lijst "Rollen in de app")
   const vastFoto = (id, echt) => {
     const r = ROL_VAST.find(v => v.id === rolBasis(id));
     return r ? (echt ? r.foto : (id === r.id + "d" ? r.fotoD : r.fotoE) || r.foto) : (STD_FOTO[id] || null);
@@ -1990,6 +1993,17 @@ h2 .sum.warn { color: var(--warn); }
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = label;
       const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = r.info + "; als blind en dubbel" + (n ? ", " + n + "× in logboek" : "");
       left.append(nm, mt); fotoBlok(r.id, label, left);
+      // de tekeningen die op de knoppen staan, met wat ze betekenen
+      if (r.fotoE || r.fotoD) {
+        const rij = document.createElement("div"); rij.className = "rolvarianten";
+        [[r.fotoE, "blind"], [r.fotoD, "dubbel"]].filter(x => x[0]).forEach(([src, wat]) => {
+          const fig = document.createElement("figure"), fb = document.createElement("button"), im = document.createElement("img"), cap = document.createElement("figcaption");
+          fb.type = "button"; fb.className = "rolfoto"; fb.setAttribute("aria-label", label + " " + wat + ", groter of kleiner");
+          im.src = src; im.alt = label + " " + wat; fb.appendChild(im); fb.addEventListener("click", () => fb.classList.toggle("big"));
+          cap.textContent = wat; fig.append(fb, cap); rij.appendChild(fig);
+        });
+        left.appendChild(rij);
+      }
       li.appendChild(left); uv.appendChild(li);
     });
     // Eigen zaaiassen

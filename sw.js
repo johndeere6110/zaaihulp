@@ -1,9 +1,9 @@
 // Zaaihulp service worker: werkt offline, haalt updates op zodra er internet is.
-const CACHE = "zaaihulp-v59";
+const CACHE = "zaaihulp-v60";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "./fonts/barlow-latin-400-normal.woff2", "./fonts/barlow-latin-500-normal.woff2", "./fonts/barlow-latin-600-normal.woff2",
   "./fonts/barlow-semi-condensed-latin-500-normal.woff2", "./fonts/barlow-semi-condensed-latin-700-normal.woff2",
-  "./img/as-flex20.jpg", "./img/as-ffff.jpg", "./img/rol-1-v-nokjes.jpg", "./img/rol-2-grijs.jpg", "./img/rol-1-enkel.jpg", "./img/rol-1-x2.jpg", "./img/as-fvfb.jpg", "./img/as-ffb.jpg", "./img/as-fvfv.jpg"];
+  "./img/as-flex20.jpg", "./img/as-ffff.jpg", "./img/rol-1-wiel.jpg", "./img/rol-1-blind.jpg", "./img/rol-1-dubbel.jpg", "./img/rol-2-wiel.jpg", "./img/rol-2-blind.jpg", "./img/rol-2-dubbel.jpg", "./img/as-fvfb.jpg", "./img/as-ffb.jpg", "./img/as-fvfv.jpg"];
 // Zo lang wachten op het netwerk voordat de offline-versie komt (slecht bereik op het land)
 const WACHT_MS = 3000;
 
