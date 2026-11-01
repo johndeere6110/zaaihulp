@@ -211,7 +211,7 @@ h2 .sum.warn { color: var(--warn); }
 .advpic { flex: none; width: 34px; height: 34px; }
 .advpic svg, .advpic img { width: 34px; height: 34px; object-fit: cover; border-radius: 6px; display: block; }
 .rolfoto svg { width: 100%; height: 100%; display: block; }
-#aStd li { grid-template-columns: 1fr; }
+#aStd li, #aVast li { grid-template-columns: 1fr; }
 .seg.asseg button img { display: block; width: 40px; height: 40px; object-fit: cover; border-radius: 6px; margin: 0 auto 4px; }
 .log .meta.pre { white-space: pre-line; }
 .advice .ok { color: var(--accent); font-weight: 600; }
@@ -625,11 +625,15 @@ h2 .sum.warn { color: var(--warn); }
     <ul class="log" id="aLog"></ul>
 
     <h2>Standaard zaaiassen</h2>
-    <p class="small" style="margin-top:0">Getekend voorbeeld; met je eigen foto herken je hem beter.</p>
+    <p class="small" style="margin-top:0">Foto's van onze eigen wielen; f-fb is getekend (fijn wiel + blinde plaat). Een eigen foto op deze telefoon gaat voor.</p>
     <ul class="log" id="aStd"></ul>
 
+    <h2>Rollen in de app</h2>
+    <p class="small" style="margin-top:0">Onze geprinte rollen, voor iedereen hetzelfde. Per uitgang passen 2 wielen: tik per uitgang op <strong>E</strong> (1 nokkenwiel + blinde plaat), <strong>D</strong> (2 nokkenwielen) of <strong>–</strong> (dicht), zoals je ze nu op de as hebt.</p>
+    <ul class="log" id="aVast"></ul>
+
     <h2>Eigen rollen</h2>
-    <p class="small" style="margin-top:0">Je zelf geprinte rollen, op nummer. Met een foto zie je meteen welke rol het is; tik op de foto voor groot. Tik per uitgang om te wisselen: <strong>E</strong> = enkel, <strong>D</strong> = dubbel, <strong>–</strong> = dicht. Er is geen tabel voor; het advies komt uit je logboek. Heb je één rol al gebruikt, dan schat de app de andere rollen naar verhouding (dubbel telt als 2× enkel).</p>
+    <p class="small" style="margin-top:0">Nieuwe rollen die nog niet in de app staan, op nummer. Met een foto zie je meteen welke rol het is; tik op de foto voor groot. Tik per uitgang om te wisselen: <strong>E</strong> = enkel, <strong>D</strong> = dubbel, <strong>–</strong> = dicht. Er is geen tabel voor; het advies komt uit je logboek. Heb je één rol al gebruikt, dan schat de app de andere rollen naar verhouding (dubbel telt als 2× enkel).</p>
     <ul class="log" id="aAssen"></ul>
     <input type="file" id="aFotoIn" accept="image/*" capture="environment" hidden>
     <div class="field wide" style="margin-top:10px">
@@ -1720,6 +1724,12 @@ h2 .sum.warn { color: var(--warn); }
     { n: "Chia", tag: ["chia"], d: { ffb: [0.04,0.09,0.18,0.26,0.35,0.46,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_] } },
     { n: "Slakkenkorrel", tag: ["slak"], d: { ffb: [_,0.06,0.12,0.18,0.24,0.3,0.36,0.42,0.48,0.54,0.6,0.66,0.72,0.78,0.84,0.9,0.96,1.02,1.08,1.14,1.2], flex20: [_,0.22,0.44,0.65,0.87,1.09,1.31,1.53,1.74,1.96,2.18,2.4,2.62,2.84,3.05,3.27,3.49,3.71,3.93,4.14,4.36] } }
   ];
+  // Vaste foto's (img/) van de standaard zaaiassen en van onze geprinte rollen; f-fb houdt het getekende icoon
+  const STD_FOTO = { flex20: "img/as-flex20.jpg", ff: "img/as-ff.jpg" };
+  const ROL_VAST = [
+    { id: "v1", nr: "1", name: "V-nokjes", foto: "img/rol-1-v-nokjes.jpg", info: "geprint; V-vormige nokken, voor zaad dat in vierkante cellen blijft hangen" },
+    { id: "v2", nr: "2", name: "grijs", foto: "img/rol-2-grijs.jpg", info: "geprint; 10 vierkante nokken" }
+  ];
   const AS_STD = [{ id: "flex20", name: "Flex 20 (geel, grof)" }, { id: "ff", name: "ff (alles fijn)" }, { id: "ffb", name: "f-fb (fijn + blind)" }];
   const ap = Object.assign({ zaad: "", norm: "", speed: "", width: "1,6", uitg: 6, tabFor: {}, as: "ff", kgha: "", lspeed: "", pct: "", note: "", comp: true }, store.get("apvZaai", {}));
   const saveAp = () => store.set("apvZaai", ap);
@@ -1728,6 +1738,9 @@ h2 .sum.warn { color: var(--warn); }
   let apAssen = store.get("apvAssen", []);
   if (!Array.isArray(apAssen)) apAssen = [];
   if (!ap.tabFor || typeof ap.tabFor !== "object") ap.tabFor = {};
+  // E/D per uitgang van de vaste rollen staat per telefoon in apvZaai (de wielen zet je zelf op de as)
+  if (!ap.vastUit || typeof ap.vastUit !== "object" || Array.isArray(ap.vastUit)) ap.vastUit = {};
+  const vastUit = id => { const u = ap.vastUit[id]; return Array.isArray(u) && u.length === 6 ? u : (ap.vastUit[id] = ["e", "e", "e", "e", "e", "e"]); };
   let apEdit = null;
   // Gekozen zaaitabel per soort (rogge staat er niet in; dan kies je bijv. tarwe, alleen voor rogge)
   const tabChoice = () => ap.tabFor[normK(ap.zaad)] || "auto";
@@ -1736,7 +1749,9 @@ h2 .sum.warn { color: var(--warn); }
   const asLabel = a => a.nr ? "Rol " + a.nr + (a.name ? " " + a.name : "") : a.name;
   const uitTxt = a => Array.isArray(a.uit) ? a.uit.map(x => UIT_TXT[x] || "?").join(" ") : "";
   const capOf = a => Array.isArray(a.uit) ? a.uit.reduce((t, x) => t + (x === "d" ? 2 : x === "e" ? 1 : 0), 0) : 0;
-  const asAll = () => [...AS_STD, ...apAssen.map(a => ({ id: a.id, name: asLabel(a), uitTxt: uitTxt(a), cap: capOf(a) }))];
+  const asAll = () => [...AS_STD,
+    ...ROL_VAST.map(r => { const a = { nr: r.nr, name: r.name, uit: vastUit(r.id) }; return { id: r.id, name: asLabel(a), uitTxt: uitTxt(a), cap: capOf(a), vast: true }; }),
+    ...apAssen.map(a => ({ id: a.id, name: asLabel(a), uitTxt: uitTxt(a), cap: capOf(a) }))];
   const asName = (id, fallback) => (asAll().find(a => a.id === id) || { name: fallback || id }).name;
   const tabAuto = () => { const zz = normK(ap.zaad); return zz ? ATAB.find(t => t.tag.some(g => zz.includes(g))) || null : null; };
   const tabSel = () => { const c = tabChoice(); return c === "geen" ? null : c === "auto" ? tabAuto() : (ATAB.find(t => t.n === c) || null); };
@@ -1814,6 +1829,20 @@ h2 .sum.warn { color: var(--warn); }
   // Foto per eigen rol: verkleind (max 320 px) zodat hij in de opslag past
   let apFoto = store.get("apvRolFoto", {});
   if (!apFoto || typeof apFoto !== "object" || Array.isArray(apFoto)) apFoto = {};
+  // Eenmalig: een eigen rol met hetzelfde nummer als een vaste rol gaat op in de vaste rol (logboek, foto, indeling), niets kwijt
+  apAssen.filter(a => ROL_VAST.some(r => r.nr === String(a.nr))).forEach(a => {
+    const r = ROL_VAST.find(v => v.nr === String(a.nr));
+    apLog.forEach(e => { if (e.as === a.id) e.as = r.id; });
+    if (apFoto[a.id]) { if (!apFoto[r.id]) apFoto[r.id] = apFoto[a.id]; delete apFoto[a.id]; }
+    if (Array.isArray(a.uit) && a.uit.length === 6 && !Array.isArray(ap.vastUit[r.id])) ap.vastUit[r.id] = a.uit.slice();
+    if (ap.as === a.id) ap.as = r.id;
+    apAssen = apAssen.filter(x => x !== a);
+    // eerst logboek en foto bewaren, de eigen rol pas daarna weg
+    store.set("apvLog", apLog); store.set("apvRolFoto", apFoto); saveAp(); store.set("apvAssen", apAssen);
+  });
+  const vastFoto = id => (ROL_VAST.find(r => r.id === id) || {}).foto || STD_FOTO[id] || null;
+  // Plaatje voor knoppen en advies: eigen foto, anders de foto in de app, anders het getekende icoon
+  const plaatje = id => apFoto[id] ? '<img src="' + apFoto[id] + '" alt="">' : vastFoto(id) ? '<img src="' + vastFoto(id) + '" alt="">' : (ICON[id] || "");
   let fotoVoor = null;
   $("aFotoIn").addEventListener("change", async e => {
     const f = e.target.files && e.target.files[0], id = fotoVoor; e.target.value = ""; fotoVoor = null;
@@ -1857,10 +1886,10 @@ h2 .sum.warn { color: var(--warn); }
   };
   // Foto of icoon bovenaan een element; tik maakt hem groot
   function fotoBlok(id, label, left) {
-    const foto = apFoto[id];
-    if (foto || ICON[id]) {
+    const foto = apFoto[id], vast = vastFoto(id);
+    if (foto || vast || ICON[id]) {
       const fb = document.createElement("button"); fb.type = "button"; fb.className = "rolfoto"; fb.setAttribute("aria-label", "Foto groter of kleiner");
-      if (foto) { const im = document.createElement("img"); im.src = foto; im.alt = "Foto " + label; fb.appendChild(im); } else fb.innerHTML = ICON[id];
+      if (foto || vast) { const im = document.createElement("img"); im.src = foto || vast; im.alt = "Foto " + label; fb.appendChild(im); } else fb.innerHTML = ICON[id];
       fb.addEventListener("click", () => fb.classList.toggle("big"));
       left.appendChild(fb);
     }
@@ -1876,7 +1905,7 @@ h2 .sum.warn { color: var(--warn); }
     left.appendChild(knop);
   }
   let newUit = ["e", "e", "e", "e", "e", "e"];
-  const nextNr = () => String(apAssen.reduce((mx, a) => Math.max(mx, parseInt(a.nr, 10) || 0), 0) + 1);
+  const nextNr = () => String([...ROL_VAST, ...apAssen].reduce((mx, a) => Math.max(mx, parseInt(a.nr, 10) || 0), 0) + 1);
   // Zes knoppen per rol; tik wisselt E → D → – → E
   function uitButtons(box, uit, onChange) {
     box.innerHTML = "";
@@ -1890,6 +1919,7 @@ h2 .sum.warn { color: var(--warn); }
   }
   function addAs() {
     const nr = String(parseInt($("aAsNr").value, 10) || "").trim() || nextNr(), n = $("aAsNew").value.trim();
+    if (ROL_VAST.some(r => r.nr === nr)) { flash($("aAsAdd"), "Rol " + nr + " staat al in de app"); return; }
     if (apAssen.some(a => String(a.nr) === nr)) { flash($("aAsAdd"), "Rol " + nr + " bestaat al"); return; }
     apAssen.push({ id: "e" + Date.now(), nr, name: n, uit: newUit.slice() }); store.set("apvAssen", apAssen);
     $("aAsNr").value = ""; $("aAsNew").value = ""; newUit = ["e", "e", "e", "e", "e", "e"]; updateAp();
@@ -1902,8 +1932,7 @@ h2 .sum.warn { color: var(--warn); }
     const seg = $("aAsSeg"); seg.innerHTML = "";
     asAll().forEach(a => {
       const b = document.createElement("button"); b.type = "button"; b.textContent = a.name + (a.uitTxt ? "\n" + a.uitTxt : "");
-      if (apFoto[a.id]) { const im = document.createElement("img"); im.src = apFoto[a.id]; im.alt = ""; b.prepend(im); }
-      else if (ICON[a.id]) b.insertAdjacentHTML("afterbegin", ICON[a.id]);
+      const pic = plaatje(a.id); if (pic) b.insertAdjacentHTML("afterbegin", pic);
       b.setAttribute("aria-pressed", ap.as === a.id);
       b.addEventListener("click", () => { ap.as = a.id; saveAp(); updateAp(); });
       seg.appendChild(b);
@@ -1941,6 +1970,18 @@ h2 .sum.warn { color: var(--warn); }
       const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = { flex20: "6× gele Flex 20, grofgetand (wiel 3 in de handleiding)", ff: "12× f, fijngetand (wiel 1)", ffb: "6× f + 6× blinde plaat fb (wiel 1 + 2); de blinde plaat geeft niks af" }[a.id];
       left.append(nm, mt); fotoBlok(a.id, a.name, left);
       li.appendChild(left); us.appendChild(li);
+    });
+    // Rollen in de app: vaste naam en foto, E/D per uitgang aan te passen
+    const uv = $("aVast"); uv.innerHTML = "";
+    ROL_VAST.forEach(r => {
+      const li = document.createElement("li"), left = document.createElement("div");
+      const label = asLabel({ nr: r.nr, name: r.name }), n = apLog.filter(e => e.as === r.id).length;
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = label;
+      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = r.info + "; telt nu als " + capOf({ uit: vastUit(r.id) }) + "× enkel" + (n ? ", " + n + "× in logboek" : "");
+      left.append(nm, mt); fotoBlok(r.id, label, left);
+      const box = document.createElement("div"); box.className = "seg uitmini"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "Uitgangen " + label);
+      uitButtons(box, vastUit(r.id), () => { saveAp(); updateAp(); });
+      left.appendChild(box); li.appendChild(left); uv.appendChild(li);
     });
     // Eigen zaaiassen
     const ua = $("aAssen"); ua.innerHTML = "";
@@ -2054,7 +2095,7 @@ h2 .sum.warn { color: var(--warn); }
       const st = tabOnly && r.tr.high ? '<span class="bad">buiten de tabel</span> (die stopt bij ' + r.tr.p + ' %, daar komt nog te weinig uit)'
         : tabOnly && r.tr.low ? '<span class="bad">te veel afgifte, zelfs op 2 %</span>'
         : r.out ? '<span class="bad">zaai-as ' + (r.p < 20 ? 'onder 20 %' : 'boven 80 %') + '</span>' : '<span class="ok">goed</span>';
-      const pic = apFoto[r.a.id] ? '<img src="' + apFoto[r.a.id] + '" alt="">' : (ICON[r.a.id] || "");
+      const pic = plaatje(r.a.id);
       h += '<div class="advrow">' + (pic ? '<span class="advpic">' + pic + '</span>' : '') + '<span><strong>' + esc(r.a.name) + '</strong>: ' + pTxt(r) + ' ' + st + ' <span style="color:var(--muted)">(' + esc(why) + range + ')</span></span></div>';
     });
     h += '</div>';
