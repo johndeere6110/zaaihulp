@@ -629,7 +629,7 @@ h2 .sum.warn { color: var(--warn); }
     <ul class="log" id="aStd"></ul>
 
     <h2>Rollen in de app</h2>
-    <p class="small" style="margin-top:0">Onze geprinte rollen, voor iedereen hetzelfde. Per uitgang passen 2 wielen: tik per uitgang op <strong>E</strong> (1 nokkenwiel + blinde plaat), <strong>D</strong> (2 nokkenwielen) of <strong>–</strong> (dicht), zoals je ze nu op de as hebt.</p>
+    <p class="small" style="margin-top:0">Onze geprinte rollen, voor iedereen hetzelfde. Per uitgang passen 2 wielen; kies bij het logboek <strong>enkel</strong> (1 wiel + blinde plaat per uitgang) of <strong>×2</strong> (2 wielen per uitgang).</p>
     <ul class="log" id="aVast"></ul>
 
     <h2>Eigen rollen</h2>
@@ -1738,9 +1738,9 @@ h2 .sum.warn { color: var(--warn); }
   let apAssen = store.get("apvAssen", []);
   if (!Array.isArray(apAssen)) apAssen = [];
   if (!ap.tabFor || typeof ap.tabFor !== "object") ap.tabFor = {};
-  // E/D per uitgang van de vaste rollen staat per telefoon in apvZaai (de wielen zet je zelf op de as)
-  if (!ap.vastUit || typeof ap.vastUit !== "object" || Array.isArray(ap.vastUit)) ap.vastUit = {};
-  const vastUit = id => { const u = ap.vastUit[id]; return Array.isArray(u) && u.length === 6 ? u : (ap.vastUit[id] = ["e", "e", "e", "e", "e", "e"]); };
+  // Vaste rol: enkel (id, 1 wiel + blinde plaat per uitgang) of ×2 (id + "d", 2 wielen per uitgang)
+  if (!ap.vastUit || typeof ap.vastUit !== "object" || Array.isArray(ap.vastUit)) ap.vastUit = {}; // alleen nog voor de overzetting hieronder
+  const rolBasis = id => ROL_VAST.some(r => r.id + "d" === id) ? id.slice(0, -1) : id;
   let apEdit = null;
   // Gekozen zaaitabel per soort (rogge staat er niet in; dan kies je bijv. tarwe, alleen voor rogge)
   const tabChoice = () => ap.tabFor[normK(ap.zaad)] || "auto";
@@ -1750,7 +1750,7 @@ h2 .sum.warn { color: var(--warn); }
   const uitTxt = a => Array.isArray(a.uit) ? a.uit.map(x => UIT_TXT[x] || "?").join(" ") : "";
   const capOf = a => Array.isArray(a.uit) ? a.uit.reduce((t, x) => t + (x === "d" ? 2 : x === "e" ? 1 : 0), 0) : 0;
   const asAll = () => [...AS_STD,
-    ...ROL_VAST.map(r => { const a = { nr: r.nr, name: r.name, uit: vastUit(r.id) }; return { id: r.id, name: asLabel(a), uitTxt: uitTxt(a), cap: capOf(a), vast: true }; }),
+    ...ROL_VAST.flatMap(r => [{ id: r.id, name: asLabel(r) + " enkel", cap: 6, vast: true }, { id: r.id + "d", name: asLabel(r) + " ×2", cap: 12, vast: true }]),
     ...apAssen.map(a => ({ id: a.id, name: asLabel(a), uitTxt: uitTxt(a), cap: capOf(a) }))];
   const asName = (id, fallback) => (asAll().find(a => a.id === id) || { name: fallback || id }).name;
   const tabAuto = () => { const zz = normK(ap.zaad); return zz ? ATAB.find(t => t.tag.some(g => zz.includes(g))) || null : null; };
@@ -1840,9 +1840,14 @@ h2 .sum.warn { color: var(--warn); }
     // eerst logboek en foto bewaren, de eigen rol pas daarna weg
     store.set("apvLog", apLog); store.set("apvRolFoto", apFoto); saveAp(); store.set("apvAssen", apAssen);
   });
-  const vastFoto = id => (ROL_VAST.find(r => r.id === id) || {}).foto || STD_FOTO[id] || null;
+  // Eenmalig: stond een vaste rol op alles dubbel (D), dan horen zijn logboekregels bij ×2
+  if (Object.keys(ap.vastUit).length) {
+    ROL_VAST.forEach(r => { const u = ap.vastUit[r.id]; if (Array.isArray(u) && u.length && u.every(x => x === "d")) apLog.forEach(e => { if (e.as === r.id) e.as = r.id + "d"; }); });
+    store.set("apvLog", apLog); delete ap.vastUit; saveAp();
+  }
+  const vastFoto = id => (ROL_VAST.find(r => r.id === rolBasis(id)) || {}).foto || STD_FOTO[id] || null;
   // Plaatje voor knoppen en advies: eigen foto, anders de foto in de app, anders het getekende icoon
-  const plaatje = id => apFoto[id] ? '<img src="' + apFoto[id] + '" alt="">' : vastFoto(id) ? '<img src="' + vastFoto(id) + '" alt="">' : (ICON[id] || "");
+  const plaatje = id => apFoto[rolBasis(id)] ? '<img src="' + apFoto[rolBasis(id)] + '" alt="">' : vastFoto(id) ? '<img src="' + vastFoto(id) + '" alt="">' : (ICON[id] || "");
   let fotoVoor = null;
   $("aFotoIn").addEventListener("change", async e => {
     const f = e.target.files && e.target.files[0], id = fotoVoor; e.target.value = ""; fotoVoor = null;
@@ -1973,17 +1978,15 @@ h2 .sum.warn { color: var(--warn); }
       left.append(nm, mt); fotoBlok(a.id, a.name, left);
       li.appendChild(left); us.appendChild(li);
     });
-    // Rollen in de app: vaste naam en foto, E/D per uitgang aan te passen
+    // Rollen in de app: vaste naam en foto; enkel en ×2 zijn twee aparte keuzes bij het logboek
     const uv = $("aVast"); uv.innerHTML = "";
     ROL_VAST.forEach(r => {
       const li = document.createElement("li"), left = document.createElement("div");
-      const label = asLabel({ nr: r.nr, name: r.name }), n = apLog.filter(e => e.as === r.id).length;
+      const label = asLabel(r), n = apLog.filter(e => e.as === r.id || e.as === r.id + "d").length;
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = label;
-      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = r.info + "; telt nu als " + capOf({ uit: vastUit(r.id) }) + "× enkel" + (n ? ", " + n + "× in logboek" : "");
+      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = r.info + "; als enkel en ×2" + (n ? ", " + n + "× in logboek" : "");
       left.append(nm, mt); fotoBlok(r.id, label, left);
-      const box = document.createElement("div"); box.className = "seg uitmini"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "Uitgangen " + label);
-      uitButtons(box, vastUit(r.id), () => { saveAp(); updateAp(); });
-      left.appendChild(box); li.appendChild(left); uv.appendChild(li);
+      li.appendChild(left); uv.appendChild(li);
     });
     // Eigen zaaiassen
     const ua = $("aAssen"); ua.innerHTML = "";
