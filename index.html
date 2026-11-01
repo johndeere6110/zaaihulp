@@ -1725,12 +1725,12 @@ h2 .sum.warn { color: var(--warn); }
     { n: "Slakkenkorrel", tag: ["slak"], d: { ffb: [_,0.06,0.12,0.18,0.24,0.3,0.36,0.42,0.48,0.54,0.6,0.66,0.72,0.78,0.84,0.9,0.96,1.02,1.08,1.14,1.2], flex20: [_,0.22,0.44,0.65,0.87,1.09,1.31,1.53,1.74,1.96,2.18,2.4,2.62,2.84,3.05,3.27,3.49,3.71,3.93,4.14,4.36] } }
   ];
   // Vaste foto's (img/) van de standaard zaaiassen en van onze geprinte rollen; f-fb houdt het getekende icoon
-  const STD_FOTO = { flex20: "img/as-flex20.jpg", ff: "img/as-ff.jpg" };
+  const STD_FOTO = { flex20: "img/as-flex20.jpg", ff: "img/as-ff.jpg", fvfb: "img/as-fvfb.jpg" };
   const ROL_VAST = [
     { id: "v1", nr: "1", name: "V-nokjes", foto: "img/rol-1-v-nokjes.jpg", info: "geprint; V-vormige nokken, voor zaad dat in vierkante cellen blijft hangen" },
     { id: "v2", nr: "2", name: "grijs", foto: "img/rol-2-grijs.jpg", info: "geprint; 10 vierkante nokken" }
   ];
-  const AS_STD = [{ id: "flex20", name: "Flex 20 (geel, grof)" }, { id: "ff", name: "ff (alles fijn)" }, { id: "ffb", name: "f-fb (fijn + blind)" }];
+  const AS_STD = [{ id: "flex20", name: "Flex 20 (geel, grof)" }, { id: "ff", name: "ff (alles fijn)" }, { id: "ffb", name: "f-fb (fijn + blind)" }, { id: "fvfb", name: "fv-fb (fijnvol + blind)" }];
   const ap = Object.assign({ zaad: "", norm: "", speed: "", width: "1,6", uitg: 6, tabFor: {}, as: "ff", kgha: "", lspeed: "", pct: "", note: "", comp: true }, store.get("apvZaai", {}));
   const saveAp = () => store.set("apvZaai", ap);
   let apLog = store.get("apvLog", []);
@@ -1967,7 +1967,8 @@ h2 .sum.warn { color: var(--warn); }
     AS_STD.forEach(a => {
       const li = document.createElement("li"), left = document.createElement("div");
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = a.name;
-      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = { flex20: "6× gele Flex 20, grofgetand (wiel 3 in de handleiding)", ff: "12× f, fijngetand (wiel 1)", ffb: "6× f + 6× blinde plaat fb (wiel 1 + 2); de blinde plaat geeft niks af" }[a.id];
+      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = { flex20: "6× gele Flex 20, grofgetand (wiel 3 in de handleiding)", ff: "12× f, fijngetand (wiel 1)", ffb: "6× f + 6× blinde plaat fb (wiel 1 + 2); de blinde plaat geeft niks af",
+        fvfb: "6× fijnvol (fv) + 6× blinde plaat; voor koolzaad, mosterd, phacelia. Staat niet in de zaaitabellen: het advies komt uit je logboek" }[a.id];
       left.append(nm, mt); fotoBlok(a.id, a.name, left);
       li.appendChild(left); us.appendChild(li);
     });
