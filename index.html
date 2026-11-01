@@ -1727,7 +1727,7 @@ h2 .sum.warn { color: var(--warn); }
   // Vaste plaatjes (img/): Flex 20 en onze geprinte rollen zijn foto's; de fijne en fijnvolle opstellingen zijn nagetekend
   const STD_FOTO = { flex20: "img/as-flex20.jpg", ff: "img/as-ffff.jpg", ffb: "img/as-ffb.jpg", fvfv: "img/as-fvfv.jpg", fvfb: "img/as-fvfb.jpg" };
   const ROL_VAST = [
-    { id: "v1", nr: "1", name: "V-nokjes", foto: "img/rol-1-v-nokjes.jpg", info: "geprint; V-vormige nokken, voor zaad dat in vierkante cellen blijft hangen" },
+    { id: "v1", nr: "1", name: "V-nokjes", foto: "img/rol-1-v-nokjes.jpg", fotoE: "img/rol-1-enkel.jpg", fotoD: "img/rol-1-x2.jpg", info: "geprint; V-vormige nokken, voor zaad dat in vierkante cellen blijft hangen" },
     { id: "v2", nr: "2", name: "grijs", foto: "img/rol-2-grijs.jpg", info: "geprint; 10 vierkante nokken" }
   ];
   const AS_STD = [{ id: "flex20", name: "Flex 20 (geel, grof)" }, { id: "ff", name: "ff-ff (alles fijn)" }, { id: "ffb", name: "ff-fb (fijn + blind)" }, { id: "fvfv", name: "fv-fv (alles fijnvol)" }, { id: "fvfb", name: "fv-fb (fijnvol + blind)" }];
@@ -1845,7 +1845,11 @@ h2 .sum.warn { color: var(--warn); }
     ROL_VAST.forEach(r => { const u = ap.vastUit[r.id]; if (Array.isArray(u) && u.length && u.every(x => x === "d")) apLog.forEach(e => { if (e.as === r.id) e.as = r.id + "d"; }); });
     store.set("apvLog", apLog); delete ap.vastUit; saveAp();
   }
-  const vastFoto = id => (ROL_VAST.find(r => r.id === rolBasis(id)) || {}).foto || STD_FOTO[id] || null;
+  // Knoppen en advies: tekening voor enkel/×2 als die er is; echt = de foto van de rol zelf (lijst "Rollen in de app")
+  const vastFoto = (id, echt) => {
+    const r = ROL_VAST.find(v => v.id === rolBasis(id));
+    return r ? (echt ? r.foto : (id === r.id + "d" ? r.fotoD : r.fotoE) || r.foto) : (STD_FOTO[id] || null);
+  };
   // Plaatje voor knoppen en advies: eigen foto, anders de foto in de app, anders het getekende icoon
   const plaatje = id => apFoto[rolBasis(id)] ? '<img src="' + apFoto[rolBasis(id)] + '" alt="">' : vastFoto(id) ? '<img src="' + vastFoto(id) + '" alt="">' : (ICON[id] || "");
   let fotoVoor = null;
@@ -1891,7 +1895,7 @@ h2 .sum.warn { color: var(--warn); }
   };
   // Foto of icoon bovenaan een element; tik maakt hem groot
   function fotoBlok(id, label, left) {
-    const foto = apFoto[id], vast = vastFoto(id);
+    const foto = apFoto[id], vast = vastFoto(id, true);
     if (foto || vast || ICON[id]) {
       const fb = document.createElement("button"); fb.type = "button"; fb.className = "rolfoto"; fb.setAttribute("aria-label", "Foto groter of kleiner");
       if (foto || vast) { const im = document.createElement("img"); im.src = foto || vast; im.alt = "Foto " + label; fb.appendChild(im); } else fb.innerHTML = ICON[id];
