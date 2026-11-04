@@ -1,6 +1,6 @@
 /**
  * Zaaihulp – groepsopslag in een Google Sheet.
- * Plak dit in de sheet via Extensies > Apps Script (vervang wat er staat) en volg groep/HANDLEIDING.md.
+ * Plak dit in de sheet via Uitbreidingen (of Extensies) > Apps Script (vervang wat er staat) en volg groep/HANDLEIDING.md.
  * Het script kan alleen bij deze ene sheet (zie @OnlyCurrentDoc), niet bij de rest van het account.
  *
  * Blad "data", één regel per gedeelde proef of logboekregel:

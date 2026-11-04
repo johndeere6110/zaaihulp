@@ -8,7 +8,7 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
 2. Ga naar [sheets.new](https://sheets.new). Geef de sheet een naam, bv. **Zaaihulp groep**.
 
 ## 2. Script erin zetten
-1. In de sheet: **Extensies → Apps Script**.
+1. In de sheet: **Uitbreidingen → Apps Script** (in sommige versies heet het menu **Extensies**).
 2. Haal de voorbeeldtekst weg en plak de inhoud van [`apps-script.gs`](apps-script.gs). Klik op opslaan (schijfje).
 3. Links: **Projectinstellingen** (tandwiel) → onderaan **Scripteigenschappen** → **Scripteigenschap toevoegen**:
    - Eigenschap: `GROEPSCODE`
