@@ -236,7 +236,8 @@ h2 .sum.warn { color: var(--warn); }
 .vak .info { grid-column: 1 / -1; font-size: 14px; color: var(--muted); min-height: 1.2em; white-space: pre-line; }
 .small { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
 .fields > .wide { grid-column: 1 / -1; }
-#fBulk .toggle { margin-top: 0; }
+#fBulk .toggle, #fTab .toggle { margin-top: 0; }
+#aTabBody { margin-top: 10px; }
 #bulkBody { margin-top: 10px; }
 .extrarow { display: flex; gap: 10px; align-items: center; }
 .extrarow input { flex: 1; min-width: 0; }
@@ -595,20 +596,23 @@ h2 .sum.warn { color: var(--warn); }
         <label for="aSpeed">Rijsnelheid (km/h)</label>
         <input id="aSpeed" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="8">
       </div>
-      <div class="field">
+      <div class="field wide">
         <label for="aWidth">Werkbreedte (m)</label>
         <input id="aWidth" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="1,6">
         <div class="hint">wordt onthouden</div>
-      </div>
-      <div class="field">
-        <label for="aTab">Zaaitabel</label>
-        <select id="aTab"></select>
-        <div class="hint" id="aTabHint">&nbsp;</div>
       </div>
       <div class="field wide">
         <label>Uitgangen in gebruik</label>
         <div class="seg full uitg" role="group" aria-label="Uitgangen" id="aUitgSeg">
           <button type="button" data-v="1">1</button><button type="button" data-v="2">2</button><button type="button" data-v="3">3</button><button type="button" data-v="4">4</button><button type="button" data-v="5">5</button><button type="button" data-v="6">6</button>
+        </div>
+      </div>
+      <div class="wide" id="fTab">
+        <button type="button" class="btn toggle" id="aTabToggle" aria-pressed="false" aria-expanded="false" aria-controls="aTabBody">Zaaitabel: automatisch</button>
+        <div class="field" id="aTabBody" hidden>
+          <label for="aTab">Zaaitabel uit de handleiding van APV</label>
+          <select id="aTab"></select>
+          <div class="hint" id="aTabHint">&nbsp;</div>
         </div>
       </div>
     </div>
@@ -1860,8 +1864,11 @@ h2 .sum.warn { color: var(--warn); }
   $("aTab").addEventListener("change", e => {
     const zz = normK(ap.zaad); if (!zz) { e.target.value = "auto"; return; }
     if (e.target.value === "auto") delete ap.tabFor[zz]; else ap.tabFor[zz] = e.target.value;
+    ap.tabOpen = false; // na een keuze weer dichtklappen
     saveAp(); updateAp();
   });
+  // Zaaitabel inklapbaar: dicht staat de huidige keuze op de knop
+  $("aTabToggle").addEventListener("click", () => { ap.tabOpen = !ap.tabOpen; saveAp(); updateAp(); if (ap.tabOpen) $("aTab").focus(); });
   $("aUitgSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { ap.uitg = +b.dataset.v; saveAp(); updateAp(); }));
   $("lComp").checked = !!ap.comp;
   $("lComp").addEventListener("change", e => { ap.comp = e.target.checked; if (!apEdit) ap.compPref = ap.comp; saveAp(); });
@@ -2111,6 +2118,9 @@ h2 .sum.warn { color: var(--warn); }
     const ch = tabChoice();
     sel.value = ch === "geen" || ATAB.some(t => t.n === ch) ? ch : "auto";
     const t = tabSel();
+    $("aTabBody").hidden = !ap.tabOpen;
+    $("aTabToggle").setAttribute("aria-pressed", !!ap.tabOpen); $("aTabToggle").setAttribute("aria-expanded", !!ap.tabOpen);
+    $("aTabToggle").textContent = "Zaaitabel: " + (ch === "geen" ? "geen tabel" : ch !== "auto" ? ch + " (zelf gekozen)" : auto ? "automatisch (" + auto.n + ")" : ap.zaad ? "automatisch (niet gevonden)" : "automatisch");
     $("aTabHint").textContent = ch !== "auto" ? "alleen voor deze soort" : !auto ? (ap.zaad ? "niet in de tabellen; je logboek telt" : " ") : " ";
     $("aUitgSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.v === +ap.uitg));
     $("lKgha").placeholder = ap.norm || "0"; $("lSpeed").placeholder = ap.speed || "0";
