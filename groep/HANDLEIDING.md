@@ -1,6 +1,6 @@
 # Groep instellen (Google Sheet)
 
-De Zaaihulp kan proeven en logboekregels delen met een groep. Alles komt in één Google Sheet; de app stuurt en haalt
+De Zaaihulp kan proeven, logboekregels, soorten en mengselrecepten delen met een groep. Alles komt in één Google Sheet; de app stuurt en haalt
 op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzelf.
 
 ## 1. Sheet maken
@@ -30,8 +30,12 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
 ## Beheer
 - Alles staat in het blad **data**. Kolom *omschrijving* is leesbaar, kolom *data* is voor de app.
 - **Klopt een regel niet?** Zet in kolom **weg** bijvoorbeeld `ja`. Bij het volgende bijwerken is hij bij iedereen weg,
-  ook als die telefoon hem later opnieuw stuurt. (Liever niet de hele regel verwijderen: dan kan hij terugkomen.)
+  ook als die telefoon hem later opnieuw stuurt. (Zo'n regel liever niet helemaal verwijderen: staat hij nog op
+  die telefoon, dan kan hij terugkomen zodra hij daar verandert.)
 - Haalt iemand op zijn telefoon iets weg, dan zet de app zelf `verwijderd` in kolom *weg*.
+- **Definitief opruimen:** een regel met `verwijderd` mag je helemaal weghalen (rechtsklik op het rijnummer → *Rij
+  verwijderen*). Hij staat op die telefoon al niet meer, dus hij komt niet terug. Alleen een oude back-up terugzetten
+  kan hem nog terugbrengen.
 - **Terugzetten:** maak kolom *weg* weer leeg (haal `verwijderd` of `ja` weg). Bij het volgende bijwerken staat de regel
   weer in de groep én weer op de telefoon van degene van wie hij is.
 - **Script aangepast?** Implementeren → *Implementaties beheren* → potloodje → Versie: *Nieuwe versie* → Implementeren.

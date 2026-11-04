@@ -16,7 +16,7 @@ Hulp-app voor het afdraaien, wegen en mengen bij de zaaimachine. Werkt op je tel
 Voor alle machines:
 
 - **Wegen:** emmergewicht wordt onthouden, je ziet meteen het netto gewicht. Bij Zocon en kopeg stuur je het netto met één tik naar Afdraaien, bij de APV naar de afdraaiproef op Zaaias.
-- **Mengen:** samenstelling in procenten of kg/ha, totaal op oppervlakte, vakken of gewicht, extra in % of in kg, wat er in de machine achterblijft (per machine onthouden), en wat je moet doen als je beperkt zaad hebt (dan telt de extra niet mee).
+- **Mengen:** samenstelling in procenten of kg/ha, totaal op oppervlakte, vakken of gewicht, extra in % of in kg, wat er in de machine achterblijft (per machine onthouden), en wat je moet doen als je beperkt zaad hebt (dan telt de extra niet mee). **Recepten** (inklapbaar boven de samenstelling): een samenstelling met een naam bewaren en later met één tik weer invullen; voor alle machines dezelfde, en in de groep gedeeld.
 
 ## Gebruik
 
@@ -34,7 +34,7 @@ Getallen met een komma (`2,5`), zoals je gewend bent.
 - **Delen en overzetten** (Instellingen → Groep): deel je bewaarde proeven, tabelregels en soorten met iemand anders via een code. Wegingen en mengsels blijven privé.
 - **Stuur installatielink** (bij Delen en overzetten): stuurt iemand de link naar de installatiepagina.
 - **Instellingen** (knop onderaan het startscherm): tabs **Groep** (groep, delen met een code, installatielink), **Back-up** (back-up en opslag) en **Soorten** (soortenlijst).
-- **Groep** (Instellingen): wie meedoet deelt vanzelf zijn afdraaiproeven, het APV-logboek, kopeg-tabelregels en eigen soorten, en gebruikt die van de anderen (eerst je eigen metingen, dan de groep, dan de tabellen). Meedoen met de groepscode of een groepslink. De gegevens staan dan in de Google Sheet van de groep, niet meer alleen op je telefoon; wegingen, Mengen en instellingen blijven altijd privé. Instellen: zie [`groep/HANDLEIDING.md`](groep/HANDLEIDING.md).
+- **Groep** (Instellingen): wie meedoet deelt vanzelf zijn afdraaiproeven, het APV-logboek, kopeg-tabelregels, eigen soorten en mengselrecepten, en gebruikt die van de anderen (eerst je eigen metingen, dan de groep, dan de tabellen). Meedoen met de groepscode of een groepslink. De gegevens staan dan in de Google Sheet van de groep, niet meer alleen op je telefoon; wegingen, de lopende menging en instellingen blijven altijd privé. Instellen: zie [`groep/HANDLEIDING.md`](groep/HANDLEIDING.md).
 - **Back-up** (Instellingen → Back-up): alles van de Zaaihulp in één bestand (`zaaihulp-backup-JJJJ-MM-DD.json`), ook wegingen, mengsels, logboek, eigen rollen met foto's en instellingen. Op de telefoon gaat hij via het deelmenu (WhatsApp, mail, Bestanden); lukt dat niet, dan wordt hij gedownload. Bewaar hem buiten je telefoon. De app laat zien wanneer je de laatste back-up maakte en herinnert je eraan na 30 dagen.
 - **Terugzetten:** kies het bestand (ook oude `.txt`-back-ups werken nog). De app laat eerst zien wat erin zit en wat er nu op de telefoon staat, en vervangt pas na "Ja, alles vervangen". Vlak ervoor bewaart hij een veiligheidskopie, zodat je het **ongedaan kunt maken**. Gegevens van de Perceelkaart blijven altijd staan.
 - **Bescherming:** de app vraagt de browser om de gegevens niet op te ruimen als de telefoon weinig ruimte heeft (onderaan bij Opslag zie je of dat gelukt is).
@@ -57,7 +57,7 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 ## Voor wie eraan werkt
 
 - **Alles in `index.html`:** HTML, CSS en JavaScript in één bestand. Geen build-stap, geen frameworks.
-- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v67` → `v68`), anders krijgen telefoons de update niet.
+- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v68` → `v69`), anders krijgen telefoons de update niet.
 - **`installeren.html`:** de installatiepagina. Herkent Android, iPhone of computer.
 - **`groep/`:** het Apps Script voor de groeps-sheet en de handleiding. De web-app-URL staat in `GROEP_URL_VAST` in `index.html`.
 - **`img/`:** plaatjes van de zaaiwielen en vaste rollen (Flex 20 foto, de rest nagetekend) (480 px, ook offline in `sw.js`). Nieuwe vaste rol: foto in `img/`, regel in `ROL_VAST` in `index.html`, bestand in `SHELL` van `sw.js`.

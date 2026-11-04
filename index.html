@@ -238,6 +238,9 @@ h2 .sum.warn { color: var(--warn); }
 .fields > .wide { grid-column: 1 / -1; }
 #fBulk .toggle, #fTab .toggle { margin-top: 0; }
 #aTabBody { margin-top: 10px; }
+#recSec { margin-bottom: 12px; }
+#recSec .toggle { margin-top: 0; }
+#recBody .small { margin: 10px 0 8px; }
 #bulkBody { margin-top: 10px; }
 .extrarow { display: flex; gap: 10px; align-items: center; }
 .extrarow input { flex: 1; min-width: 0; }
@@ -490,6 +493,19 @@ h2 .sum.warn { color: var(--warn); }
     </section>
 
     <h2>Samenstelling <span class="sum" id="pctSum">0 %</span></h2>
+    <section id="recSec">
+      <button type="button" class="btn toggle" id="recToggle" aria-pressed="false" aria-expanded="false" aria-controls="recBody">Recepten</button>
+      <div id="recBody" hidden>
+        <p class="small">Tik op een recept om de soorten en percentages in te vullen. Hectares en norm blijven staan, de vinkjes bij Afwegen gaan uit.</p>
+        <ul class="log" id="recList"></ul>
+        <div class="field wide" style="margin-top:12px">
+          <label for="recNaam">Huidige samenstelling bewaren als</label>
+          <input id="recNaam" class="text" type="text" autocomplete="off" placeholder="bijv. Bloemen akkerrand">
+          <div class="hint" id="recHint">Zelfde naam = het recept wordt bijgewerkt.</div>
+        </div>
+        <div class="row"><button type="button" class="btn" id="recSave">Bewaar recept</button></div>
+      </div>
+    </section>
     <div class="seg full two" role="group" aria-label="Invoer samenstelling">
       <button type="button" id="cPct" aria-pressed="true">Percentage</button>
       <button type="button" id="cKgha" aria-pressed="false">kg per ha</button>
@@ -783,7 +799,7 @@ h2 .sum.warn { color: var(--warn); }
   };
   // ---------- Groep: proeven delen via een Google Sheet (zie groep/HANDLEIDING.md); de rest staat bij "Groep" verderop ----------
   const GROEP_URL_VAST = "https://script.google.com/macros/s/AKfycbx0N4BV6UcKsnUqgFrGwS0X7AkFvKrcyQx196mhByMCRrxgnU3SxRy_fhlpk_fRa6G3/exec"; // web-app-URL van het Apps Script (groeps-sheet)
-  const GROEP_KEYS = /^(apvLog|zoconProf|kopegTab|zaadsoorten)$/;
+  const GROEP_KEYS = /^(apvLog|zoconProf|kopegTab|zaadsoorten|mengRecepten)$/;
   let groepPlan = () => {};
   const groepUrl = () => store.get("groepUrl", "") || GROEP_URL_VAST;
   const groep = Object.assign({ aan: false, code: "", naam: "", apparaat: "" }, store.get("groep", {}));
@@ -791,6 +807,9 @@ h2 .sum.warn { color: var(--warn); }
   let groepRijen = (() => { const g = store.get("groepData", null); return g && Array.isArray(g.rijen) ? g.rijen : []; })();
   // Gegevens van anderen in de groep (niet van dit toestel), per soort: apv, zoc, kop, soort
   const groepVan = soort => groep.aan ? groepRijen.filter(r => r && r.soort === soort && r.apparaat !== groep.apparaat && r.data && typeof r.data === "object") : [];
+  // Mengselrecepten: samenstellingen met een naam, voor alle machines dezelfde
+  let recepten = store.get("mengRecepten", []);
+  if (!Array.isArray(recepten)) recepten = [];
   let machine = store.get("machine", null);
   if (!["apv", "zoc", "kop"].includes(machine)) machine = null;
   // Bevestigen zonder pop-up (pop-ups werken niet overal): eerste tik vraagt "zeker?", tweede tik voert uit
@@ -1373,8 +1392,73 @@ h2 .sum.warn { color: var(--warn); }
     saveMix();
     ["ha", "norm", "tot", "width", "bulk"].forEach(id => $(id).value = m[id] || ""); syncExtra();
     $("lim").value = "";
-    renderComps(); renderVakken(); setMode("area");
+    renderComps(); renderVakken(); renderRec(); setMode("area");
   });
+
+  // ---------- Mengselrecepten ----------
+  const recKgha = r => r.mode === "kgha";
+  const recSchoon = r => (Array.isArray(r && r.comps) ? r.comps : []).map(c => ({ name: String(c.name || "").trim(), v: String((recKgha(r) ? c.kgha : c.pct) || "").trim() })).filter(c => c.name);
+  const recTxt = r => recSchoon(r).map(c => c.name + (c.v ? "\u00a0" + c.v + (recKgha(r) ? "\u00a0kg/ha" : "\u00a0%") : "")).join(", ");
+  const recVanMix = () => {
+    const km = m.compMode === "kgha";
+    return { mode: km ? "kgha" : "pct", comps: m.comps.filter(c => String(c.name || "").trim()).map(c => km ? { name: String(c.name).trim(), kgha: c.kgha || "" } : { name: String(c.name).trim(), pct: c.pct || "" }) };
+  };
+  const recGelijk = r => { const a = recVanMix(); return a.mode === (r.mode || "pct") && JSON.stringify(recSchoon(a)) === JSON.stringify(recSchoon(r)); };
+  function laadRecept(r, btn) {
+    const heeft = m.comps.some(c => String(c.name || "").trim() || parse(c.pct) || parse(c.kgha));
+    if (heeft && recGelijk(r)) { flash(btn, "Staat er al in"); return; }
+    if (heeft && !armed(btn, "Tik nog eens: vervangt de samenstelling")) return;
+    const km = recKgha(r);
+    m.compMode = km ? "kgha" : "pct";
+    m.comps = recSchoon(r).map(c => km ? { name: c.name, kgha: c.v, pct: "", done: false } : { name: c.name, pct: c.v, done: false });
+    if (!m.comps.length) m.comps = [{ name: "", pct: "", done: false }];
+    m.recOpen = false; saveMix(); refreshAllPickers(); renderComps(); updateMix(); renderRec();
+    try { $("recSec").scrollIntoView({ block: "start" }); } catch (e) {}
+  }
+  function renderRec() {
+    const eigen = recepten.slice().sort((a, b) => String(a.naam).localeCompare(String(b.naam), "nl"));
+    const vanGroep = groepVan("recept").filter(g => g.data && g.data.naam && recSchoon(g.data).length).map(g => Object.assign({}, g.data, { van: g.van }))
+      .sort((a, b) => String(a.naam).localeCompare(String(b.naam), "nl"));
+    const n = eigen.length + vanGroep.length, open = !!m.recOpen;
+    $("recToggle").textContent = "Recepten" + (n ? " (" + n + ")" : "");
+    $("recToggle").setAttribute("aria-pressed", open); $("recToggle").setAttribute("aria-expanded", open);
+    $("recBody").hidden = !open;
+    const ul = $("recList"); ul.innerHTML = "";
+    if (!n) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "Nog geen recepten. Vul de samenstelling in en bewaar hem hieronder met een naam."; ul.appendChild(li); }
+    [...eigen.map(r => [r, true]), ...vanGroep.map(r => [r, false])].forEach(([r, mijn]) => {
+      const li = document.createElement("li");
+      const left = document.createElement("button"); left.type = "button";
+      left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
+      left.setAttribute("aria-label", "Gebruik recept " + r.naam);
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = r.naam + (mijn ? "" : " · van " + (r.van || "de groep"));
+      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = recTxt(r);
+      left.append(nm, mt);
+      // armed() vervangt de tekst van de knop: daarom het tweede tikje op een eigen tekstknop
+      left.addEventListener("click", () => laadRecept(r, nm));
+      const w = document.createElement("div"); w.className = "w num"; w.style.fontSize = "17px";
+      const ns = recSchoon(r).length; w.textContent = ns + (ns === 1 ? " soort" : " soorten");
+      li.append(left, w);
+      if (mijn) {
+        const del = document.createElement("button");
+        del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder recept " + r.naam);
+        del.addEventListener("click", () => { if (armed(del, "Wis?")) { recepten = recepten.filter(x => x !== r); store.set("mengRecepten", recepten); renderRec(); } });
+        li.append(del);
+      } else li.append(document.createElement("span"));
+      ul.appendChild(li);
+    });
+  }
+  $("recToggle").addEventListener("click", () => { m.recOpen = !m.recOpen; saveMix(); renderRec(); });
+  $("recSave").addEventListener("click", e => {
+    const btn = e.currentTarget, naam = $("recNaam").value.trim(), r = recVanMix();
+    if (!naam) { flash(btn, "Eerst een naam"); $("recNaam").focus(); return; }
+    if (!r.comps.length) { flash(btn, "Nog geen soorten"); return; }
+    const oud = recepten.find(x => String(x.naam).toLowerCase() === naam.toLowerCase());
+    if (oud && !armed(btn, "Bestaat al: tik nog eens om bij te werken")) return;
+    if (oud) Object.assign(oud, r, { naam, bijgewerkt: Date.now() });
+    else recepten.push(Object.assign({ ts: Date.now(), naam }, r));
+    store.set("mengRecepten", recepten); $("recNaam").value = ""; renderRec(); flash(btn, oud ? "Bijgewerkt" : "Bewaard");
+  });
+  $("recNaam").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("recSave").click(); } });
 
   /* ---------- Zocon ---------- */
   const z = Object.assign({ norm: "", width: "", speed: "", time: 60, stand: "", gram: "", rol: "Geel", borstel: "", zaad: "" }, store.get("zocon", {}));
@@ -1464,7 +1548,7 @@ h2 .sum.warn { color: var(--warn); }
   function zaadList() {
     const mp = new Map();
     [...ZAAD_DEF, ...zaadCustom, ...Object.values(zProf).map(q => q.zaad), z.zaad, ...(m && m.comps ? m.comps.map(c => c.name) : []), ...log.map(l => l.mix), mixEl.value, ...(() => { try { return [k.zaad, ...kCustom.map(e => e.zaad), ap.zaad, ...apLog.map(e => e.zaad)]; } catch (er) { return []; } })(),
-      ...groepVan("soort").map(r => r.data.naam), ...groepVan("apv").map(r => r.data.zaad), ...groepVan("zoc").map(r => r.data.zaad), ...groepVan("kop").map(r => r.data.zaad)].forEach(n => {
+      ...groepVan("soort").map(r => r.data.naam), ...recepten.flatMap(r => (r.comps || []).map(c => c.name)), ...groepVan("recept").flatMap(r => (Array.isArray(r.data.comps) ? r.data.comps : []).map(c => c.name)), ...groepVan("apv").map(r => r.data.zaad), ...groepVan("zoc").map(r => r.data.zaad), ...groepVan("kop").map(r => r.data.zaad)].forEach(n => {
       n = String(n || "").trim(); if (n && !mp.has(n.toLowerCase())) mp.set(n.toLowerCase(), n);
     });
     const hid = new Set(zaadHidden);
@@ -2213,7 +2297,7 @@ h2 .sum.warn { color: var(--warn); }
   updateZ();
   updateK();
   renderComps();
-  renderVakken();
+  renderVakken(); renderRec();
   setMode(["area", "length", "weight"].includes(m.mode) ? m.mode : "area");
   function loadMix() {
     const raw = store.get(mixKey(), {});
@@ -2225,7 +2309,7 @@ h2 .sum.warn { color: var(--warn); }
     ["ha", "norm", "tot", "width", "bulk"].forEach(id => $(id).value = m[id] || ""); syncExtra();
     $("lim").value = m.limKg || "";
     restEl.value = store.get(wk("restKg"), "");
-    renderComps(); renderVakken();
+    renderComps(); renderVakken(); renderRec();
     setMode(["area", "length", "weight"].includes(m.mode) ? m.mode : "area");
   }
   function loadWeeg() {
@@ -2477,7 +2561,7 @@ h2 .sum.warn { color: var(--warn); }
   const BK_APP = "zaaihulp", BK_SCHEMA = 2;
   const VEILIG_KEY = "zaaihulpVoorTerugzetten"; // veiligheidskopie van vlak voor het terugzetten
   // Alleen de sleutels van de Zaaihulp: de Perceelkaart staat op hetzelfde domein en deelt de opslag
-  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|apvRolFoto|restKgPerMachine|groep|groepVerstuurd|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
+  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|apvRolFoto|restKgPerMachine|mengRecepten|groep|groepVerstuurd|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
   // Verwachte vorm per sleutel, om een kapotte of vreemde back-up te herkennen
   const bkVorm = k => /^(log(_(zoc|kop))?|zaadsoorten|zaadVerborgen|kopegTab|apvLog|apvAssen)$/.test(k) ? "lijst"
     : /^(menger(_(zoc|kop))?|zocon|zoconProf|kopeg|apvZaai|apvRolFoto)$/.test(k) ? "object" : null;
@@ -2723,6 +2807,8 @@ h2 .sum.warn { color: var(--warn); }
       rij.push({ id: "zoc:" + app + ":" + key + ":" + q.s, soort: "zoc", van, omschrijving: "Zocon · " + profName(pr) + " · stand " + q.s + " · " + Math.round(q.gpm) + " g/min", data: d });
     }));
     kCustom.forEach(e => rij.push({ id: "kop:" + app + ":" + e.ts, soort: "kop", van, omschrijving: "Kopeg · " + e.zaad + " · " + e.kg + " kg/ha op stand " + e.st, data: { zaad: e.zaad, kg: e.kg, st: e.st, ts: e.ts } }));
+    recepten.forEach(r => { const d = { naam: r.naam, mode: r.mode || "pct", comps: r.comps || [], ts: r.ts };
+      rij.push({ id: "recept:" + app + ":" + r.ts, soort: "recept", van, omschrijving: "Recept · " + r.naam + " · " + recTxt(r), data: d }); });
     zaadCustom.forEach(n => rij.push({ id: "soort:" + app + ":" + n.toLowerCase(), soort: "soort", van, omschrijving: "Soort · " + n, data: { naam: n } }));
     return rij;
   }
@@ -2741,11 +2827,13 @@ h2 .sum.warn { color: var(--warn); }
         if (!(pr.pts || []).some(q => q.s === d.s)) { pr.pts = mergePts(pr.pts || [], { s: d.s, gpm: d.gpm, ts: d.ts }); n++; }
       } else if (r.soort === "kop" && d.zaad && d.kg > 0 && d.st > 0 && !kCustom.some(e => e.ts === d.ts)) {
         kCustom.push({ zaad: d.zaad, kg: d.kg, st: d.st, own: true, ts: d.ts || Date.now() }); n++;
+      } else if (r.soort === "recept" && d.naam && d.ts && Array.isArray(d.comps) && !recepten.some(x => x.ts === d.ts)) {
+        recepten.push({ ts: d.ts, naam: String(d.naam), mode: d.mode === "kgha" ? "kgha" : "pct", comps: d.comps }); n++;
       } else if (r.soort === "soort" && d.naam && !zaadCustom.some(x => x.toLowerCase() === String(d.naam).toLowerCase())) {
         addSoort(String(d.naam)); n++;
       }
     });
-    if (n) { store.set("apvLog", apLog); store.set("zoconProf", zProf); store.set("kopegTab", kCustom); store.set("zaadsoorten", zaadCustom); renderProfList(); renderSoortList(); }
+    if (n) { store.set("apvLog", apLog); store.set("zoconProf", zProf); store.set("kopegTab", kCustom); store.set("zaadsoorten", zaadCustom); store.set("mengRecepten", recepten); renderProfList(); renderSoortList(); }
     return n;
   }
   async function groepVraag(opts) {
@@ -2777,7 +2865,7 @@ h2 .sum.warn { color: var(--warn); }
       // Alleen wat al vóór dit bijwerken hier weg was (niet wat je net weghaalde) en nog steeds niet hier staat
       const nuHier = new Set(mijnRijen().map(r => r.id));
       groepTerug = zetTerugUitGroep(groepRijen.filter(r => r.apparaat === groep.apparaat && !hierBijStart.has(r.id) && !nuHier.has(r.id)));
-      updateZ(); updateK(); updateAp(); refreshAllPickers();
+      updateZ(); updateK(); updateAp(); refreshAllPickers(); renderRec();
     } catch (e) {
       groepFout = e && e.message === "code" ? "De groepscode klopt niet." : "Bijwerken lukte niet (geen verbinding of de groep is even niet bereikbaar). Later opnieuw.";
     }
@@ -2799,7 +2887,7 @@ h2 .sum.warn { color: var(--warn); }
       (groepTerug ? groepTerug + (groepTerug === 1 ? " regel" : " regels") + " uit de groep teruggezet. " : "") + (groepLaatst ? "Bijgewerkt " + tijd + ": " + (anderen.length ? anderen.length + (anderen.length === 1 ? " regel" : " regels") + " van " + wie.size + (wie.size === 1 ? " ander" : " anderen") + " in de groep." : "nog niks van anderen in de groep.") : "Nog niet bijgewerkt.");
   }
   const bewaarGroep = () => { store.set("groep", groep); renderGroep(); };
-  $("grAan").addEventListener("change", e => { groep.aan = e.target.checked; bewaarGroep(); if (groep.aan) groepSync(); else { updateZ(); updateK(); updateAp(); refreshAllPickers(); } });
+  $("grAan").addEventListener("change", e => { groep.aan = e.target.checked; bewaarGroep(); if (groep.aan) groepSync(); else { updateZ(); updateK(); updateAp(); refreshAllPickers(); renderRec(); } });
   $("grNaam").addEventListener("input", e => { groep.naam = e.target.value; bewaarGroep(); groepPlan(); });
   $("grCode").addEventListener("input", e => { groep.code = e.target.value.trim(); bewaarGroep(); groepPlan(); });
   $("grSync").addEventListener("click", () => groepSync());
