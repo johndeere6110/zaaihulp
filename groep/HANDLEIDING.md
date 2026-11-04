@@ -36,3 +36,10 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
   Zo blijft de URL hetzelfde.
 - **Code veranderen:** pas `GROEPSCODE` aan bij de scripteigenschappen. Iedereen moet dan de nieuwe code invullen
   (of een nieuwe groepslink krijgen).
+
+## Overstappen naar een ander account
+1. Maak met het nieuwe account een nieuwe sheet met hetzelfde script en dezelfde `GROEPSCODE` (of laat de oude sheet
+   overdragen: Delen → eigenaar maken, en publiceer het script daarna opnieuw als web-app).
+2. Stuur de nieuwe web-app-URL naar de ontwikkelaar; die zet hem in de app.
+3. Na de update stuurt elke telefoon al zijn gedeelde proeven opnieuw, dus ook een lege nieuwe sheet vult zich weer
+   vanzelf. Wel opnieuw: regels die jij in de oude sheet op "weg" had gezet, moet je in de nieuwe ook weer wegzetten.

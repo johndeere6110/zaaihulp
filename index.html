@@ -2698,7 +2698,8 @@ h2 .sum.warn { color: var(--warn); }
     if (navigator.onLine === false) { groepFout = "Geen bereik: wordt bijgewerkt zodra er weer internet is."; return renderGroep(); }
     groepBezig = true; groepFout = ""; renderGroep();
     try {
-      const verstuurd = store.get("groepVerstuurd", {}), nu = mijnRijen(), stuur = [], nieuwV = {};
+      // Andere sheet dan de vorige keer (link veranderd)? Dan alles opnieuw sturen, zodat de nieuwe sheet zich weer vult
+      const url = groepUrl(), verstuurd = groep.url === url ? store.get("groepVerstuurd", {}) : {}, nu = mijnRijen(), stuur = [], nieuwV = {};
       nu.forEach(r => { const h = JSON.stringify([r.soort, r.van, r.omschrijving, r.data]); nieuwV[r.id] = h; if (verstuurd[r.id] !== h) stuur.push(Object.assign({ apparaat: groep.apparaat }, r)); });
       Object.keys(verstuurd).forEach(id => { if (!(id in nieuwV)) stuur.push({ id, apparaat: groep.apparaat, weg: true }); });
       for (let i = 0; i < stuur.length; i += 200) {
@@ -2706,6 +2707,7 @@ h2 .sum.warn { color: var(--warn); }
         if (!a || !a.ok) throw new Error(a && a.fout === "code" ? "code" : "server");
       }
       store.set("groepVerstuurd", nieuwV);
+      if (groep.url !== url) { groep.url = url; store.set("groep", groep); }
       const b = await groepVraag();
       if (!b || !b.ok || !Array.isArray(b.rijen)) throw new Error(b && b.fout === "code" ? "code" : "server");
       groepRijen = b.rijen.map(r => { let d = r.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } } return Object.assign({}, r, { data: d }); }).filter(r => r.data);
