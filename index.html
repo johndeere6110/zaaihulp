@@ -63,6 +63,7 @@ body:not(.m-zoc) #tabZoc { display: none; }
 body:not(.m-kop) #tabKop { display: none; }
 body:not(.m-apv) #tabZaai { display: none; }
 body.m-zoc #tabZoc, body.m-kop #tabKop { order: -1; }
+#pMeer [role="tabpanel"] > h2:first-child { margin-top: 6px; }
 .home h1 { font-size: 26px; font-weight: 600; margin: 12px 0 12px; }
 .home { display: grid; gap: 14px; }
 .mach { text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 16px; padding: 22px 20px; min-height: 130px; font-family: inherit; }
@@ -267,11 +268,37 @@ h2 .sum.warn { color: var(--warn); }
       <button type="button" class="mach" id="mKop"><span class="mn">Kopeg-zaaier</span><span class="md">Mechanisch: afdraaien met de slinger en variatorstand bijstellen</span></button>
       <a class="mach ander" href="../perceelkaart/"><span class="mn">Perceelkaart →</span><span class="md">Aparte app: percelen en ha, bufferstroken, spuitsporen, zaaiplan mais en AB-lijnen</span></a>
     </div>
+    <div class="row" style="margin-top:18px"><button type="button" class="btn" id="meerOpen">⚙ Instellingen, groep en back-up</button></div>
+  </section>
 
-    <h2>Soortenlijst</h2>
-    <p class="small" style="margin-top:0">Haal soorten weg die je niet gebruikt. Een weggehaalde soort kun je altijd opnieuw toevoegen via + Nieuwe soort.</p>
-    <ul class="log" id="soortList"></ul>
-    <div class="row" id="soortRestoreRow" hidden><button type="button" class="btn" id="soortRestore">Standaardsoorten terugzetten</button></div>
+  <!-- INSTELLINGEN: groep en delen, back-up en opslag, soortenlijst -->
+  <section id="pMeer" hidden>
+    <div class="apphead"><span class="mname">Instellingen</span><button type="button" id="meerTerug">Terug</button></div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tMeerGroep" aria-selected="true" aria-controls="mGroep">Groep</button>
+      <button type="button" role="tab" id="tMeerBk" aria-selected="false" aria-controls="mBk">Back-up</button>
+      <button type="button" role="tab" id="tMeerSoort" aria-selected="false" aria-controls="mSoort">Soorten</button>
+    </div>
+    <div id="mGroep" role="tabpanel" aria-labelledby="tMeerGroep">
+    <h2 id="grKop">Groep</h2>
+    <p class="small" style="margin-top:0">Deel je afdraaiproeven, het APV-logboek, kopeg-tabelregels en eigen soorten vanzelf met de groep, en gebruik die van de anderen. Wegingen, Mengen en instellingen blijven op je telefoon.</p>
+    <div class="hint" id="grNiet" hidden>De groep is nog niet ingesteld in deze versie van de app.</div>
+    <div id="grBlok">
+      <label class="chk"><input type="checkbox" id="grAan"> <span>Meedoen met de groep</span></label>
+      <div class="fields" id="grVelden" style="margin-top:4px">
+        <div class="field">
+          <label for="grNaam">Je naam</label>
+          <input id="grNaam" class="text" type="text" autocomplete="off" placeholder="bv. Jan">
+          <div class="hint">staat bij je proeven in de groep</div>
+        </div>
+        <div class="field">
+          <label for="grCode">Groepscode</label>
+          <input id="grCode" class="text" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="code">
+        </div>
+      </div>
+      <div class="hint" id="grStatus" style="margin-top:6px"></div>
+      <div class="row"><button type="button" class="btn" id="grSync">Nu bijwerken</button><button type="button" class="btn" id="grLink">Stuur groepslink</button></div>
+    </div>
 
     <h2>Delen en overzetten</h2>
     <p class="small" style="margin-top:0">Deel je bewaarde proeven, tabellen en soorten, of zet ze over naar een andere telefoon. Wegingen en lopende mengsels blijven altijd privé.</p>
@@ -298,27 +325,8 @@ h2 .sum.warn { color: var(--warn); }
     <p class="small">Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit.</p>
     <div class="row" style="margin-top:8px"><button type="button" class="btn" id="shLink">Stuur installatielink</button></div>
     <div class="hint" id="shLinkHint"></div>
-
-    <h2 id="grKop">Groep</h2>
-    <p class="small" style="margin-top:0">Deel je afdraaiproeven, het APV-logboek, kopeg-tabelregels en eigen soorten vanzelf met de groep, en gebruik die van de anderen. Wegingen, Mengen en instellingen blijven op je telefoon.</p>
-    <div class="hint" id="grNiet" hidden>De groep is nog niet ingesteld in deze versie van de app.</div>
-    <div id="grBlok">
-      <label class="chk"><input type="checkbox" id="grAan"> <span>Meedoen met de groep</span></label>
-      <div class="fields" id="grVelden" style="margin-top:4px">
-        <div class="field">
-          <label for="grNaam">Je naam</label>
-          <input id="grNaam" class="text" type="text" autocomplete="off" placeholder="bv. Jan">
-          <div class="hint">staat bij je proeven in de groep</div>
-        </div>
-        <div class="field">
-          <label for="grCode">Groepscode</label>
-          <input id="grCode" class="text" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="code">
-        </div>
-      </div>
-      <div class="hint" id="grStatus" style="margin-top:6px"></div>
-      <div class="row"><button type="button" class="btn" id="grSync">Nu bijwerken</button><button type="button" class="btn" id="grLink">Stuur groepslink</button></div>
     </div>
-
+    <div id="mBk" role="tabpanel" aria-labelledby="tMeerBk" hidden>
     <h2 id="bkKop">Back-up</h2>
     <p class="small" style="margin-top:0">Alles uit de Zaaihulp, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf of in je mail. Telefoon kapot of een nieuwe? Dan zet je hem hier terug.</p>
     <div class="hint" id="bkLast"></div>
@@ -346,6 +354,13 @@ h2 .sum.warn { color: var(--warn); }
     <p class="small">De browser geeft ± 5 MB voor alle apps op dit adres samen, ook de Perceelkaart. Groen is de Zaaihulp, grijs de andere apps.</p>
     <div class="hint" id="opPersist" style="margin-top:8px"></div>
     <div class="row" id="opPersistRow" hidden><button type="button" class="btn" id="opPersistBtn">Bescherming aanvragen</button></div>
+    </div>
+    <div id="mSoort" role="tabpanel" aria-labelledby="tMeerSoort" hidden>
+    <h2>Soortenlijst</h2>
+    <p class="small" style="margin-top:0">Haal soorten weg die je niet gebruikt. Een weggehaalde soort kun je altijd opnieuw toevoegen via + Nieuwe soort.</p>
+    <ul class="log" id="soortList"></ul>
+    <div class="row" id="soortRestoreRow" hidden><button type="button" class="btn" id="soortRestore">Standaardsoorten terugzetten</button></div>
+    </div>
   </section>
   <div id="appHead" hidden>
   <div class="apphead"><span class="mname" id="mName"></span><button type="button" id="mSwitch">Andere machine</button></div>
@@ -2221,7 +2236,7 @@ h2 .sum.warn { color: var(--warn); }
     document.body.classList.toggle("m-apv", mc === "apv");
     document.body.classList.toggle("m-zoc", mc === "zoc");
     document.body.classList.toggle("m-kop", mc === "kop");
-    $("pHome").hidden = !!mc;
+    $("pHome").hidden = !!mc; $("pMeer").hidden = true;
     $("appHead").hidden = !mc;
     if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop", "pZaai"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); renderBackup(); renderOpslag(); return; }
     $("mName").textContent = { apv: "APV 5.2", zoc: "Zocon Z300", kop: "Kopeg-zaaier" }[mc];
@@ -2237,6 +2252,22 @@ h2 .sum.warn { color: var(--warn); }
   $("mZoc").addEventListener("click", () => setMachine("zoc"));
   $("mKop").addEventListener("click", () => setMachine("kop"));
   $("mSwitch").addEventListener("click", () => setMachine(null));
+  // Instellingen: eigen scherm met tabs (groep en delen, back-up en opslag, soorten)
+  const MEER = [["groep", "tMeerGroep", "mGroep"], ["bk", "tMeerBk", "mBk"], ["soort", "tMeerSoort", "mSoort"]];
+  function toonMeer(t) {
+    if (!MEER.some(x => x[0] === t)) t = "groep";
+    MEER.forEach(([k, tb, pn]) => { $(tb).setAttribute("aria-selected", t === k); $(pn).hidden = t !== k; });
+    store.set("tab_meer", t);
+  }
+  function openMeer(t) {
+    $("pHome").hidden = true; $("pMeer").hidden = false;
+    refreshShareCounts(); renderSoortList(); renderBackup(); renderOpslag(); renderGroep();
+    toonMeer(t || store.get("tab_meer", "groep"));
+    try { window.scrollTo(0, 0); } catch (e) {}
+  }
+  MEER.forEach(([k, tb]) => $(tb).addEventListener("click", () => toonMeer(k)));
+  $("meerOpen").addEventListener("click", () => openMeer());
+  $("meerTerug").addEventListener("click", () => setMachine(null));
   $("opslagVol").addEventListener("click", e => { e.currentTarget.hidden = true; });
   // Licht / donker
   const themes = ["auto", "light", "dark"], tLabel = { auto: "◐ Auto", light: "☀ Licht", dark: "☾ Donker" };
@@ -2527,7 +2558,7 @@ h2 .sum.warn { color: var(--warn); }
     $("bkUndoRow").hidden = !vk;
     if (vk) $("bkUndoTxt").textContent = "Veiligheidskopie van vlak voor het terugzetten (" + dateTxt(Date.parse(vk.exportDatum) || Date.now()) + "): " + samenvatting(ruwVan(vk)).tekst + ".";
   }
-  $("bkHerinner").addEventListener("click", () => { try { $("bkKop").scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} });
+  $("bkHerinner").addEventListener("click", () => openMeer("bk"));
   // Opslagmeter: localStorage telt in tekens (sleutel + waarde), de browser geeft ± 5 × 1024 × 1024 voor dit hele adres
   const OPSLAG_MAX = 5 * 1048576;
   function renderOpslag() {
@@ -2745,10 +2776,11 @@ h2 .sum.warn { color: var(--warn); }
     try { if (navigator.share) { await navigator.share({ title: "Zaaihulp groep", text: "Doe mee met onze Zaaihulp-groep (open de link, daarna de app installeren):", url }); return; } } catch (er) { if (er && er.name === "AbortError") return; }
     try { await navigator.clipboard.writeText(url); flash(btn, "Link gekopieerd"); } catch (er) { $("grStatus").textContent = "Stuur deze link: " + url; }
   });
-  // Geopend via een groepslink: code overnemen en meedoen
+  // Geopend via een groepslink: code overnemen en meedoen (daarna meteen het tabblad Groep tonen)
+  let viaGroepslink = false;
   try {
     const q = new URLSearchParams(location.search), c = q.get("groep");
-    if (c) { groep.code = c.trim(); groep.aan = true; store.set("groep", groep); history.replaceState(null, "", location.pathname + location.hash); }
+    if (c) { groep.code = c.trim(); groep.aan = true; store.set("groep", groep); viaGroepslink = true; history.replaceState(null, "", location.pathname + location.hash); }
   } catch (e) {}
   $("grNaam").value = groep.naam || ""; $("grCode").value = groep.code || "";
   window.addEventListener("online", () => groepSync());
@@ -2757,6 +2789,7 @@ h2 .sum.warn { color: var(--warn); }
   vraagPersist(true);
 
   setMachine(machine);
+  if (viaGroepslink) openMeer("groep");
 })();
 </script>
 <script>
