@@ -763,7 +763,7 @@ h2 .sum.warn { color: var(--warn); }
     }
   };
   // ---------- Groep: proeven delen via een Google Sheet (zie groep/HANDLEIDING.md); de rest staat bij "Groep" verderop ----------
-  const GROEP_URL_VAST = ""; // web-app-URL van het Apps Script; leeg = groep nog niet ingesteld
+  const GROEP_URL_VAST = "https://script.google.com/macros/s/AKfycbx0N4BV6UcKsnUqgFrGwS0X7AkFvKrcyQx196mhByMCRrxgnU3SxRy_fhlpk_fRa6G3/exec"; // web-app-URL van het Apps Script (groeps-sheet)
   const GROEP_KEYS = /^(apvLog|zoconProf|kopegTab|zaadsoorten)$/;
   let groepPlan = () => {};
   const groepUrl = () => store.get("groepUrl", "") || GROEP_URL_VAST;
