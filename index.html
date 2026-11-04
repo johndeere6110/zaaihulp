@@ -2717,7 +2717,27 @@ h2 .sum.warn { color: var(--warn); }
     return rij;
   }
   const groepOk = () => !!(groepUrl() && groep.aan && String(groep.code || "").trim());
-  let groepBezig = false, groepFout = "", groepLaatst = store.get("groepData", {}).ts || 0, groepTimer = null;
+  let groepBezig = false, groepFout = "", groepLaatst = store.get("groepData", {}).ts || 0, groepTimer = null, groepTerug = 0;
+  // Regels van dit toestel die in de sheet weer aan staan (beheerder haalde "weg" weg), maar hier niet meer: terugzetten
+  function zetTerugUitGroep(rijen) {
+    let n = 0;
+    rijen.forEach(r => {
+      const d = r.data || {};
+      if (r.soort === "apv" && d.ts && d.zaad && !apLog.some(e => e.ts === d.ts)) {
+        apLog.push({ ts: d.ts, zaad: d.zaad, as: d.as, asName: asName(d.as), asUit: "", type: d.type === "proef" ? "proef" : undefined, pct: d.pct || "", sec: d.sec || "", gram: d.gram || "",
+          kgha: d.kgha || "", speed: d.speed || "", width: d.width || "", uitg: d.uitg || 6, note: d.note || "", comp: d.comp || "" }); n++;
+      } else if (r.soort === "zoc" && d.key && d.s > 0 && d.gpm > 0) {
+        const pr = zProf[d.key] || (zProf[d.key] = { rol: d.rol, borstel: d.borstel, zaad: d.zaad, pts: [], ts: d.ts || Date.now() });
+        if (!(pr.pts || []).some(q => q.s === d.s)) { pr.pts = mergePts(pr.pts || [], { s: d.s, gpm: d.gpm, ts: d.ts }); n++; }
+      } else if (r.soort === "kop" && d.zaad && d.kg > 0 && d.st > 0 && !kCustom.some(e => e.ts === d.ts)) {
+        kCustom.push({ zaad: d.zaad, kg: d.kg, st: d.st, own: true, ts: d.ts || Date.now() }); n++;
+      } else if (r.soort === "soort" && d.naam && !zaadCustom.some(x => x.toLowerCase() === String(d.naam).toLowerCase())) {
+        addSoort(String(d.naam)); n++;
+      }
+    });
+    if (n) { store.set("apvLog", apLog); store.set("zoconProf", zProf); store.set("kopegTab", kCustom); store.set("zaadsoorten", zaadCustom); renderProfList(); renderSoortList(); }
+    return n;
+  }
   async function groepVraag(opts) {
     const ac = typeof AbortController === "function" ? new AbortController() : null, t = ac ? setTimeout(() => ac.abort(), 20000) : null;
     try { const res = await fetch(groepUrl() + (opts ? "" : "?code=" + encodeURIComponent(groep.code.trim())), Object.assign({ signal: ac ? ac.signal : undefined, cache: "no-store" }, opts || {})); return await res.json(); }
@@ -2730,7 +2750,7 @@ h2 .sum.warn { color: var(--warn); }
     groepBezig = true; groepFout = ""; renderGroep();
     try {
       // Andere sheet dan de vorige keer (link veranderd)? Dan alles opnieuw sturen, zodat de nieuwe sheet zich weer vult
-      const url = groepUrl(), verstuurd = groep.url === url ? store.get("groepVerstuurd", {}) : {}, nu = mijnRijen(), stuur = [], nieuwV = {};
+      const url = groepUrl(), verstuurd = groep.url === url ? store.get("groepVerstuurd", {}) : {}, nu = mijnRijen(), hierBijStart = new Set(nu.map(r => r.id)), stuur = [], nieuwV = {};
       nu.forEach(r => { const h = JSON.stringify([r.soort, r.van, r.omschrijving, r.data]); nieuwV[r.id] = h; if (verstuurd[r.id] !== h) stuur.push(Object.assign({ apparaat: groep.apparaat }, r)); });
       Object.keys(verstuurd).forEach(id => { if (!(id in nieuwV)) stuur.push({ id, apparaat: groep.apparaat, weg: true }); });
       for (let i = 0; i < stuur.length; i += 200) {
@@ -2744,6 +2764,9 @@ h2 .sum.warn { color: var(--warn); }
       groepRijen = b.rijen.map(r => { let d = r.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } } return Object.assign({}, r, { data: d }); }).filter(r => r.data);
       groepLaatst = Date.now();
       try { localStorage.setItem("groepData", JSON.stringify({ rijen: groepRijen, ts: groepLaatst })); } catch (e) {}
+      // Alleen wat al vóór dit bijwerken hier weg was (niet wat je net weghaalde) en nog steeds niet hier staat
+      const nuHier = new Set(mijnRijen().map(r => r.id));
+      groepTerug = zetTerugUitGroep(groepRijen.filter(r => r.apparaat === groep.apparaat && !hierBijStart.has(r.id) && !nuHier.has(r.id)));
       updateZ(); updateK(); updateAp(); refreshAllPickers();
     } catch (e) {
       groepFout = e && e.message === "code" ? "De groepscode klopt niet." : "Bijwerken lukte niet (geen verbinding of de groep is even niet bereikbaar). Later opnieuw.";
@@ -2763,7 +2786,7 @@ h2 .sum.warn { color: var(--warn); }
     const tijd = groepLaatst ? new Date(groepLaatst).toLocaleString("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
     st.className = "hint" + (groepFout ? " bkwarn" : "");
     st.textContent = groepBezig ? "Bezig met bijwerken…" : (groepFout ? groepFout + " " : "") +
-      (groepLaatst ? "Bijgewerkt " + tijd + ": " + (anderen.length ? anderen.length + (anderen.length === 1 ? " regel" : " regels") + " van " + wie.size + (wie.size === 1 ? " ander" : " anderen") + " in de groep." : "nog niks van anderen in de groep.") : "Nog niet bijgewerkt.");
+      (groepTerug ? groepTerug + (groepTerug === 1 ? " regel" : " regels") + " uit de groep teruggezet. " : "") + (groepLaatst ? "Bijgewerkt " + tijd + ": " + (anderen.length ? anderen.length + (anderen.length === 1 ? " regel" : " regels") + " van " + wie.size + (wie.size === 1 ? " ander" : " anderen") + " in de groep." : "nog niks van anderen in de groep.") : "Nog niet bijgewerkt.");
   }
   const bewaarGroep = () => { store.set("groep", groep); renderGroep(); };
   $("grAan").addEventListener("change", e => { groep.aan = e.target.checked; bewaarGroep(); if (groep.aan) groepSync(); else { updateZ(); updateK(); updateAp(); refreshAllPickers(); } });

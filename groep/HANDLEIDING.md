@@ -32,6 +32,8 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
 - **Klopt een regel niet?** Zet in kolom **weg** bijvoorbeeld `ja`. Bij het volgende bijwerken is hij bij iedereen weg,
   ook als die telefoon hem later opnieuw stuurt. (Liever niet de hele regel verwijderen: dan kan hij terugkomen.)
 - Haalt iemand op zijn telefoon iets weg, dan zet de app zelf `verwijderd` in kolom *weg*.
+- **Terugzetten:** maak kolom *weg* weer leeg (haal `verwijderd` of `ja` weg). Bij het volgende bijwerken staat de regel
+  weer in de groep én weer op de telefoon van degene van wie hij is.
 - **Script aangepast?** Implementeren → *Implementaties beheren* → potloodje → Versie: *Nieuwe versie* → Implementeren.
   Zo blijft de URL hetzelfde.
 - **Code veranderen:** pas `GROEPSCODE` aan bij de scripteigenschappen. Iedereen moet dan de nieuwe code invullen
