@@ -299,6 +299,26 @@ h2 .sum.warn { color: var(--warn); }
     <div class="row" style="margin-top:8px"><button type="button" class="btn" id="shLink">Stuur installatielink</button></div>
     <div class="hint" id="shLinkHint"></div>
 
+    <h2 id="grKop">Groep</h2>
+    <p class="small" style="margin-top:0">Deel je afdraaiproeven, het APV-logboek, kopeg-tabelregels en eigen soorten vanzelf met de groep, en gebruik die van de anderen. Wegingen, Mengen en instellingen blijven op je telefoon.</p>
+    <div class="hint" id="grNiet" hidden>De groep is nog niet ingesteld in deze versie van de app.</div>
+    <div id="grBlok">
+      <label class="chk"><input type="checkbox" id="grAan"> <span>Meedoen met de groep</span></label>
+      <div class="fields" id="grVelden" style="margin-top:4px">
+        <div class="field">
+          <label for="grNaam">Je naam</label>
+          <input id="grNaam" class="text" type="text" autocomplete="off" placeholder="bv. Jan">
+          <div class="hint">staat bij je proeven in de groep</div>
+        </div>
+        <div class="field">
+          <label for="grCode">Groepscode</label>
+          <input id="grCode" class="text" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="code">
+        </div>
+      </div>
+      <div class="hint" id="grStatus" style="margin-top:6px"></div>
+      <div class="row"><button type="button" class="btn" id="grSync">Nu bijwerken</button><button type="button" class="btn" id="grLink">Stuur groepslink</button></div>
+    </div>
+
     <h2 id="bkKop">Back-up</h2>
     <p class="small" style="margin-top:0">Alles uit de Zaaihulp, ook wegingen, mengsels en instellingen. Bewaar hem buiten je telefoon, bijvoorbeeld in een WhatsApp-bericht aan jezelf of in je mail. Telefoon kapot of een nieuwe? Dan zet je hem hier terug.</p>
     <div class="hint" id="bkLast"></div>
@@ -737,8 +757,21 @@ h2 .sum.warn { color: var(--warn); }
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     // Lukt bewaren niet (opslag vol), dan een duidelijke melding: anders lijkt het bewaard en is het na herladen weg
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { const el = document.getElementById("opslagVol"); if (el) el.hidden = false; } }
+    set(k, v) {
+      try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { const el = document.getElementById("opslagVol"); if (el) el.hidden = false; return; }
+      if (GROEP_KEYS.test(k)) groepPlan(); // gedeelde gegevens veranderd: straks naar de groep
+    }
   };
+  // ---------- Groep: proeven delen via een Google Sheet (zie groep/HANDLEIDING.md); de rest staat bij "Groep" verderop ----------
+  const GROEP_URL_VAST = ""; // web-app-URL van het Apps Script; leeg = groep nog niet ingesteld
+  const GROEP_KEYS = /^(apvLog|zoconProf|kopegTab|zaadsoorten)$/;
+  let groepPlan = () => {};
+  const groepUrl = () => store.get("groepUrl", "") || GROEP_URL_VAST;
+  const groep = Object.assign({ aan: false, code: "", naam: "", apparaat: "" }, store.get("groep", {}));
+  if (!groep.apparaat) { groep.apparaat = Date.now().toString(36) + Math.random().toString(36).slice(2, 7); store.set("groep", groep); }
+  let groepRijen = (() => { const g = store.get("groepData", null); return g && Array.isArray(g.rijen) ? g.rijen : []; })();
+  // Gegevens van anderen in de groep (niet van dit toestel), per soort: apv, zoc, kop, soort
+  const groepVan = soort => groep.aan ? groepRijen.filter(r => r && r.soort === soort && r.apparaat !== groep.apparaat && r.data && typeof r.data === "object") : [];
   let machine = store.get("machine", null);
   if (!["apv", "zoc", "kop"].includes(machine)) machine = null;
   // Bevestigen zonder pop-up (pop-ups werken niet overal): eerste tik vraagt "zeker?", tweede tik voert uit
@@ -1411,7 +1444,8 @@ h2 .sum.warn { color: var(--warn); }
   let zAdding = false;
   function zaadList() {
     const mp = new Map();
-    [...ZAAD_DEF, ...zaadCustom, ...Object.values(zProf).map(q => q.zaad), z.zaad, ...(m && m.comps ? m.comps.map(c => c.name) : []), ...log.map(l => l.mix), mixEl.value, ...(() => { try { return [k.zaad, ...kCustom.map(e => e.zaad), ap.zaad, ...apLog.map(e => e.zaad)]; } catch (er) { return []; } })()].forEach(n => {
+    [...ZAAD_DEF, ...zaadCustom, ...Object.values(zProf).map(q => q.zaad), z.zaad, ...(m && m.comps ? m.comps.map(c => c.name) : []), ...log.map(l => l.mix), mixEl.value, ...(() => { try { return [k.zaad, ...kCustom.map(e => e.zaad), ap.zaad, ...apLog.map(e => e.zaad)]; } catch (er) { return []; } })(),
+      ...groepVan("soort").map(r => r.data.naam), ...groepVan("apv").map(r => r.data.zaad), ...groepVan("zoc").map(r => r.data.zaad), ...groepVan("kop").map(r => r.data.zaad)].forEach(n => {
       n = String(n || "").trim(); if (n && !mp.has(n.toLowerCase())) mp.set(n.toLowerCase(), n);
     });
     const hid = new Set(zaadHidden);
@@ -1515,7 +1549,12 @@ h2 .sum.warn { color: var(--warn); }
     if (!needKgMin) { setText($("zStand"), "–"); note.textContent = "Vul norm, werkbreedte en snelheid in."; return; }
     const fromProef = !!(stand && gram);
     const cur = fromProef ? { s: stand, gpm: gram * 60 / t, ts: Date.now() } : null;
-    let pts = mergePts(saved, cur), fromTab = false;
+    let pts = mergePts(saved, cur), fromTab = false, fromGroep = null;
+    if (!pts.length && key) { // proeven uit de groep voor dezelfde rol + borstel + zaad, per stand gemiddeld
+      const per = new Map(), wie = new Set();
+      groepVan("zoc").filter(r => r.data.key === key && r.data.s > 0 && r.data.gpm > 0).forEach(r => { const a = per.get(r.data.s) || []; a.push(r.data.gpm); per.set(r.data.s, a); if (r.van) wie.add(r.van); });
+      if (per.size) { pts = [...per.entries()].map(([st, a]) => ({ s: st, gpm: a.reduce((x, y) => x + y, 0) / a.length })).sort((a, b) => a.s - b.s); fromGroep = wie; }
+    }
     if (!pts.length) { const tp = tabPts(width); if (tp.length) { pts = tp; fromTab = true; } }
     if (!pts.length) { setText($("zStand"), "–"); note.textContent = "Doe een afdraaiproef en vul stand en gewicht in."; return; }
 
@@ -1529,7 +1568,8 @@ h2 .sum.warn { color: var(--warn); }
       h += '<div>Bij stand ' + nl(stand, 1) + ' zaai je nu <strong>' + nl(dNow, 1) + ' kg/ha</strong> (' + (dev >= 0 ? "+" : "−") + nl(Math.abs(dev), 0) + ' % t.o.v. ' + nl(norm, 2) + ').</div>';
       if (saved.length) h += '<div>Gerekend met deze proef plus ' + saved.filter(q => q.s !== stand).length + ' bewaarde.</div>';
     } else {
-      h += fromTab ? '<div>Startstand op basis van de <strong>ervaringstabel</strong> (' + pts.length + (pts.length === 1 ? ' waarde' : ' waarden') + ', niet zelf gemeten). Doe zeker een controleproef.</div>'
+      h += fromGroep ? '<div>Startstand op basis van <strong>' + pts.length + (pts.length === 1 ? ' proef' : ' proeven') + ' uit de groep</strong>' + (fromGroep.size ? ' (' + esc([...fromGroep].join(", ")) + ')' : '') + '. Doe een controleproef en bewaar die ook.</div>'
+        : fromTab ? '<div>Startstand op basis van de <strong>ervaringstabel</strong> (' + pts.length + (pts.length === 1 ? ' waarde' : ' waarden') + ', niet zelf gemeten). Doe zeker een controleproef.</div>'
         : '<div>Startstand op basis van ' + (pts.length === 1 ? 'je bewaarde proef' : 'je ' + pts.length + ' bewaarde proeven') + ' voor <strong>' + esc(profName(prof)) + '</strong>.</div>';
     }
 
@@ -1601,7 +1641,10 @@ h2 .sum.warn { color: var(--warn); }
   ];
   let kCustom = store.get("kopegTab", []);
   if (!Array.isArray(kCustom)) kCustom = [];
-  const kAll = () => [...KTAB, ...kCustom];
+  // Regels uit de groep erbij, behalve als je zelf dezelfde (soort, kg/ha, stand) al hebt
+  const kGroep = () => groepVan("kop").map(r => ({ zaad: String(r.data.zaad || ""), kg: +r.data.kg, st: +r.data.st, ts: r.data.ts, groep: true, van: r.van }))
+    .filter(e => e.zaad && e.kg > 0 && e.st > 0 && !kCustom.some(x => x.zaad.toLowerCase() === e.zaad.toLowerCase() && x.kg === e.kg && x.st === e.st));
+  const kAll = () => [...KTAB, ...kCustom, ...kGroep()];
   const kMatch = () => { const zz = String(k.zaad || "").trim().toLowerCase(); return zz ? kAll().filter(e => e.zaad.toLowerCase() === zz) : []; };
   function kStartStand(norm) {
     const es = kMatch().slice().sort((a, b) => a.kg - b.kg);
@@ -1621,7 +1664,8 @@ h2 .sum.warn { color: var(--warn); }
       left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + ", " + String(e.kg).replace(".", ",") + " kg/ha";
       const mt = document.createElement("div"); mt.className = "meta";
-      mt.textContent = e.own ? "eigen proef, " + new Date(e.ts).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : (e.note || "praktijkwaarde");
+      const dt = ts => new Date(ts).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
+      mt.textContent = e.own ? "eigen proef, " + dt(e.ts) : e.groep ? "groep" + (e.van ? " (" + e.van + ")" : "") + (e.ts ? ", " + dt(e.ts) : "") : (e.note || "praktijkwaarde");
       left.append(nm, mt);
       left.addEventListener("click", () => {
         k.zaad = e.zaad; k.norm = String(e.kg).replace(".", ","); $("kNorm").value = k.norm;
@@ -1778,7 +1822,15 @@ h2 .sum.warn { color: var(--warn); }
       const kgha = parse(e.kgha), v = parse(e.speed), w = parse(e.width);
       return kgha && v && p && w ? kgha * v * w / 600 / p * 6 / u : null;
     }).filter(x => x);
-    return ks.length ? { k: ks.reduce((a, b) => a + b, 0) / ks.length, n: ks.length } : null;
+    if (ks.length) return { k: ks.reduce((a, b) => a + b, 0) / ks.length, n: ks.length };
+    // Niks in je eigen logboek: dan de proeven en zaairegels uit de groep (zelfde soort en zaaias)
+    const gs = groepVan("apv").filter(r => normK(r.data.zaad) === zz && r.data.as === asId).map(r => {
+      const e = r.data, p = parse(e.pct), u = +e.uitg || 6;
+      if (e.type === "proef") { const g = parse(e.gram), sec = parse(e.sec) || 60; return g && p ? g / 1000 / (sec / 60) / p * 6 / u : null; }
+      const kgha = parse(e.kgha), v = parse(e.speed), w = parse(e.width);
+      return kgha && v && p && w ? kgha * v * w / 600 / p * 6 / u : null;
+    }).filter(x => x);
+    return gs.length ? { k: gs.reduce((a, b) => a + b, 0) / gs.length, n: gs.length, groep: true } : null;
   }
   function compTxt() {
     const mx = machine === "apv" ? m : store.get("menger", {});
@@ -2112,7 +2164,7 @@ h2 .sum.warn { color: var(--warn); }
       const kgAt = p => r.lk ? r.lk.k * u / 6 * p : (r.arr[AP_PCT.indexOf(p)]);
       const k20 = kgAt(20), k80 = kgAt(80);
       if (k20 && k80) range = '; 20–80 % bij ' + nl(speedAt(k20), 1) + '–' + nl(speedAt(k80), 1) + ' km/h';
-      const why = r.est ? 'schatting via ' + r.est : r.lk ? 'logboek ' + r.lk.n + '×' + (r.tr ? ', tabel ' + (r.tr.low ? '<' + r.tr.p : r.tr.high ? '>' + r.tr.p : nl(r.tr.p, 0)) + ' %' : '') : 'tabel ' + t.n;
+      const why = r.est ? 'schatting via ' + r.est : r.lk ? (r.lk.groep ? 'groep ' : 'logboek ') + r.lk.n + '×' + (r.tr ? ', tabel ' + (r.tr.low ? '<' + r.tr.p : r.tr.high ? '>' + r.tr.p : nl(r.tr.p, 0)) + ' %' : '') : 'tabel ' + t.n;
       // Duidelijk zeggen wat er mis is: buiten de tabel, of de % onder 20 / boven 80
       const tabOnly = r.tr && !r.lk;
       const st = tabOnly && r.tr.high ? '<span class="bad">buiten de tabel</span> (die stopt bij ' + r.tr.p + ' %, daar komt nog te weinig uit)'
@@ -2384,7 +2436,7 @@ h2 .sum.warn { color: var(--warn); }
   const BK_APP = "zaaihulp", BK_SCHEMA = 2;
   const VEILIG_KEY = "zaaihulpVoorTerugzetten"; // veiligheidskopie van vlak voor het terugzetten
   // Alleen de sleutels van de Zaaihulp: de Perceelkaart staat op hetzelfde domein en deelt de opslag
-  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|apvRolFoto|restKgPerMachine|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
+  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|apvRolFoto|restKgPerMachine|groep|groepVerstuurd|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
   // Verwachte vorm per sleutel, om een kapotte of vreemde back-up te herkennen
   const bkVorm = k => /^(log(_(zoc|kop))?|zaadsoorten|zaadVerborgen|kopegTab|apvLog|apvAssen)$/.test(k) ? "lijst"
     : /^(menger(_(zoc|kop))?|zocon|zoconProf|kopeg|apvZaai|apvRolFoto)$/.test(k) ? "object" : null;
@@ -2483,7 +2535,7 @@ h2 .sum.warn { color: var(--warn); }
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i), n = key.length + (localStorage.getItem(key) || "").length;
-        if (key === "apvRolFoto") foto += n; else if (key === VEILIG_KEY) veilig += n; else if (isZaaiKey(key) || key === "laatsteBackup") zh += n; else ander += n;
+        if (key === "apvRolFoto") foto += n; else if (key === VEILIG_KEY) veilig += n; else if (isZaaiKey(key) || /^(laatsteBackup|groepData|groepUrl)$/.test(key)) zh += n; else ander += n;
       }
     } catch (e) { $("opTxt").textContent = "Opslag uitlezen lukt hier niet."; return; }
     // Onder 0,1 MB in kB, anders lees je alleen "0,00"
@@ -2613,6 +2665,92 @@ h2 .sum.warn { color: var(--warn); }
     try { localStorage.removeItem(VEILIG_KEY); } catch (er) {}
     renderBackup(); renderOpslag();
   });
+
+  // ---------- Groep: synchroniseren met de Google Sheet ----------
+  // Wat dit toestel deelt, als rijen met een vaste id. Alleen regels waar de groep iets aan heeft.
+  const vasteAs = id => AS_STD.some(a => a.id === id) || ROL_VAST.some(r => r.id === id || r.id + "d" === id);
+  function mijnRijen() {
+    const rij = [], app = groep.apparaat, van = String(groep.naam || "").trim();
+    apLog.filter(e => e.pct && vasteAs(e.as)).forEach(e => {
+      const d = { zaad: e.zaad, as: e.as, type: e.type || "zaai", pct: e.pct, sec: e.sec || "", gram: e.gram || "", kgha: e.kgha || "", speed: e.speed || "", width: e.width || "", uitg: e.uitg || 6, comp: e.comp || "", note: e.note || "", ts: e.ts };
+      const wat = d.type === "proef" ? "proef " + d.pct + " %, " + d.gram + " g in " + (d.sec || 60) + " s" : "zaaien " + d.kgha + " kg/ha, " + d.speed + " km/h, " + d.pct + " %";
+      rij.push({ id: "apv:" + app + ":" + e.ts, soort: "apv", van, omschrijving: "APV · " + d.zaad + " · " + asName(d.as) + " · " + wat, data: d });
+    });
+    Object.entries(zProf).forEach(([key, pr]) => (pr.pts || []).forEach(q => {
+      if (!(q.s > 0 && q.gpm > 0)) return;
+      const d = { key, rol: pr.rol, borstel: pr.borstel, zaad: pr.zaad, s: q.s, gpm: Math.round(q.gpm * 10) / 10, ts: q.ts || pr.ts || 0 };
+      rij.push({ id: "zoc:" + app + ":" + key + ":" + q.s, soort: "zoc", van, omschrijving: "Zocon · " + profName(pr) + " · stand " + q.s + " · " + Math.round(q.gpm) + " g/min", data: d });
+    }));
+    kCustom.forEach(e => rij.push({ id: "kop:" + app + ":" + e.ts, soort: "kop", van, omschrijving: "Kopeg · " + e.zaad + " · " + e.kg + " kg/ha op stand " + e.st, data: { zaad: e.zaad, kg: e.kg, st: e.st, ts: e.ts } }));
+    zaadCustom.forEach(n => rij.push({ id: "soort:" + app + ":" + n.toLowerCase(), soort: "soort", van, omschrijving: "Soort · " + n, data: { naam: n } }));
+    return rij;
+  }
+  const groepOk = () => !!(groepUrl() && groep.aan && String(groep.code || "").trim());
+  let groepBezig = false, groepFout = "", groepLaatst = store.get("groepData", {}).ts || 0, groepTimer = null;
+  async function groepVraag(opts) {
+    const ac = typeof AbortController === "function" ? new AbortController() : null, t = ac ? setTimeout(() => ac.abort(), 20000) : null;
+    try { const res = await fetch(groepUrl() + (opts ? "" : "?code=" + encodeURIComponent(groep.code.trim())), Object.assign({ signal: ac ? ac.signal : undefined, cache: "no-store" }, opts || {})); return await res.json(); }
+    finally { if (t) clearTimeout(t); }
+  }
+  // Versturen wat nieuw of veranderd is (en weggehaald als het hier weg is), daarna alles van de groep ophalen
+  async function groepSync() {
+    if (!groepOk() || groepBezig) return renderGroep();
+    if (navigator.onLine === false) { groepFout = "Geen bereik: wordt bijgewerkt zodra er weer internet is."; return renderGroep(); }
+    groepBezig = true; groepFout = ""; renderGroep();
+    try {
+      const verstuurd = store.get("groepVerstuurd", {}), nu = mijnRijen(), stuur = [], nieuwV = {};
+      nu.forEach(r => { const h = JSON.stringify([r.soort, r.van, r.omschrijving, r.data]); nieuwV[r.id] = h; if (verstuurd[r.id] !== h) stuur.push(Object.assign({ apparaat: groep.apparaat }, r)); });
+      Object.keys(verstuurd).forEach(id => { if (!(id in nieuwV)) stuur.push({ id, apparaat: groep.apparaat, weg: true }); });
+      for (let i = 0; i < stuur.length; i += 200) {
+        const a = await groepVraag({ method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ code: groep.code.trim(), rijen: stuur.slice(i, i + 200) }) });
+        if (!a || !a.ok) throw new Error(a && a.fout === "code" ? "code" : "server");
+      }
+      store.set("groepVerstuurd", nieuwV);
+      const b = await groepVraag();
+      if (!b || !b.ok || !Array.isArray(b.rijen)) throw new Error(b && b.fout === "code" ? "code" : "server");
+      groepRijen = b.rijen.map(r => { let d = r.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } } return Object.assign({}, r, { data: d }); }).filter(r => r.data);
+      groepLaatst = Date.now();
+      try { localStorage.setItem("groepData", JSON.stringify({ rijen: groepRijen, ts: groepLaatst })); } catch (e) {}
+      updateZ(); updateK(); updateAp(); refreshAllPickers();
+    } catch (e) {
+      groepFout = e && e.message === "code" ? "De groepscode klopt niet." : "Bijwerken lukte niet (geen verbinding of de groep is even niet bereikbaar). Later opnieuw.";
+    }
+    groepBezig = false; renderGroep();
+  }
+  groepPlan = () => { clearTimeout(groepTimer); groepTimer = setTimeout(groepSync, 3000); };
+  function renderGroep() {
+    const ingesteld = !!groepUrl();
+    $("grNiet").hidden = ingesteld; $("grBlok").hidden = !ingesteld;
+    $("grAan").checked = !!groep.aan; $("grVelden").hidden = !groep.aan;
+    $("grSync").disabled = !groepOk() || groepBezig; $("grLink").disabled = !groepOk();
+    const st = $("grStatus");
+    if (!groep.aan) { st.textContent = "Je doet niet mee: je proeven blijven alleen op deze telefoon."; st.className = "hint"; return; }
+    if (!String(groep.code || "").trim()) { st.textContent = "Vul de groepscode in (of open de groepslink die je kreeg)."; st.className = "hint bkwarn"; return; }
+    const anderen = groepRijen.filter(r => r.apparaat !== groep.apparaat), wie = new Set(anderen.map(r => r.van || r.apparaat));
+    const tijd = groepLaatst ? new Date(groepLaatst).toLocaleString("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+    st.className = "hint" + (groepFout ? " bkwarn" : "");
+    st.textContent = groepBezig ? "Bezig met bijwerken…" : (groepFout ? groepFout + " " : "") +
+      (groepLaatst ? "Bijgewerkt " + tijd + ": " + (anderen.length ? anderen.length + (anderen.length === 1 ? " regel" : " regels") + " van " + wie.size + (wie.size === 1 ? " ander" : " anderen") + " in de groep." : "nog niks van anderen in de groep.") : "Nog niet bijgewerkt.");
+  }
+  const bewaarGroep = () => { store.set("groep", groep); renderGroep(); };
+  $("grAan").addEventListener("change", e => { groep.aan = e.target.checked; bewaarGroep(); if (groep.aan) groepSync(); else { updateZ(); updateK(); updateAp(); refreshAllPickers(); } });
+  $("grNaam").addEventListener("input", e => { groep.naam = e.target.value; bewaarGroep(); groepPlan(); });
+  $("grCode").addEventListener("input", e => { groep.code = e.target.value.trim(); bewaarGroep(); groepPlan(); });
+  $("grSync").addEventListener("click", () => groepSync());
+  // Groepslink: de app met de code erin, dan hoeft niemand iets over te typen
+  $("grLink").addEventListener("click", async e => {
+    const url = location.origin + location.pathname + "?groep=" + encodeURIComponent(groep.code.trim()), btn = e.currentTarget;
+    try { if (navigator.share) { await navigator.share({ title: "Zaaihulp groep", text: "Doe mee met onze Zaaihulp-groep (open de link, daarna de app installeren):", url }); return; } } catch (er) { if (er && er.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(url); flash(btn, "Link gekopieerd"); } catch (er) { $("grStatus").textContent = "Stuur deze link: " + url; }
+  });
+  // Geopend via een groepslink: code overnemen en meedoen
+  try {
+    const q = new URLSearchParams(location.search), c = q.get("groep");
+    if (c) { groep.code = c.trim(); groep.aan = true; store.set("groep", groep); history.replaceState(null, "", location.pathname + location.hash); }
+  } catch (e) {}
+  $("grNaam").value = groep.naam || ""; $("grCode").value = groep.code || "";
+  window.addEventListener("online", () => groepSync());
+  renderGroep(); setTimeout(groepSync, 1500);
 
   vraagPersist(true);
 

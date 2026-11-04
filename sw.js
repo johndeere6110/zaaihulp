@@ -1,5 +1,5 @@
 // Zaaihulp service worker: werkt offline, haalt updates op zodra er internet is.
-const CACHE = "zaaihulp-v60";
+const CACHE = "zaaihulp-v61";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "./fonts/barlow-latin-400-normal.woff2", "./fonts/barlow-latin-500-normal.woff2", "./fonts/barlow-latin-600-normal.woff2",
   "./fonts/barlow-semi-condensed-latin-500-normal.woff2", "./fonts/barlow-semi-condensed-latin-700-normal.woff2",
@@ -24,7 +24,9 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   // Eigen bestanden altijd vers van de server (niet uit de browsercache), dan zie je een update meteen
   const eigen = new URL(e.request.url).origin === location.origin;
-  const net = (eigen ? fetch(e.request.url, { cache: "no-cache", redirect: e.request.mode === "navigate" ? "manual" : "follow" }) : fetch(e.request))
+  // Andere adressen (zoals de groep bij Google) laat de browser zelf doen: niet cachen
+  if (!eigen) return;
+  const net = fetch(e.request.url, { cache: "no-cache", redirect: e.request.mode === "navigate" ? "manual" : "follow" })
     // Alleen goede antwoorden bewaren: een storing (404/500) mag de offline-versie niet overschrijven
     .then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); } return res; });
   const uitCache = () => caches.match(e.request).then(m => m || (e.request.mode === "navigate" ? caches.match("./index.html") : undefined));
