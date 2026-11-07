@@ -776,6 +776,7 @@ h2 .sum.warn { color: var(--warn); }
       <div class="field">
         <label for="zPStand">Stand bij proef</label>
         <input id="zPStand" class="num" type="text" inputmode="numeric" autocomplete="off" placeholder="1–24">
+        <div class="hint" id="zPStandHint">&nbsp;</div>
       </div>
       <div class="field">
         <label for="zGram">Afgedraaid (g)</label>
@@ -879,6 +880,9 @@ h2 .sum.warn { color: var(--warn); }
     const old = btn.textContent; btn._fl = true; btn.textContent = label; btn.classList.add("armed");
     setTimeout(() => { btn.textContent = old; btn.classList.remove("armed"); btn._fl = false; }, 2500);
   }
+  // Zaai-as kan 1 t/m 100 %; Zocon-stand 1 t/m 24. Daarbuiten is het een tikfout: niet bewaren, niet mee rekenen
+  const pctOk = v => { const n = parse(v); return n !== null && n > 0 && n <= 100; };
+  const standOk = v => { const n = parse(v); return n !== null && n >= 1 && n <= 24; };
   const parse = s => {
     if (s === undefined || s === null || s === "") return null;
     const n = parseFloat(String(s).replace(/\s/g, "").replace(",", "."));
@@ -1641,7 +1645,9 @@ h2 .sum.warn { color: var(--warn); }
     renderZTab();
     const nl = (v, d) => v.toLocaleString("nl-NL", { maximumFractionDigits: d, useGrouping: false });
     const norm = parse(z.norm), width = parse(z.width), speed = parse(z.speed);
-    const stand = parse(z.stand), gram = parse(z.gram), t = z.time === 30 ? 30 : 60;
+    const standFout = String(z.stand || "").trim() && !standOk(z.stand);
+    $("zPStandHint").textContent = standFout ? "Kan niet: stand 1 tot 24" : "\u00a0"; $("zPStandHint").classList.toggle("bkwarn", !!standFout);
+    const stand = standFout ? null : parse(z.stand), gram = parse(z.gram), t = z.time === 30 ? 30 : 60;
     $("zT30").setAttribute("aria-pressed", t === 30);
     $("zT60").setAttribute("aria-pressed", t === 60);
     $("zBorstelSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(z.borstel).trim() === b.dataset.v));
@@ -1667,7 +1673,7 @@ h2 .sum.warn { color: var(--warn); }
     let pts = mergePts(saved, cur), fromTab = false, fromGroep = null;
     if (!pts.length && key) { // proeven uit de groep voor dezelfde rol + borstel + zaad, per stand gemiddeld
       const per = new Map(), wie = new Set();
-      groepVan("zoc").filter(r => r.data.key === key && r.data.s > 0 && r.data.gpm > 0).forEach(r => { const a = per.get(r.data.s) || []; a.push(r.data.gpm); per.set(r.data.s, a); if (r.van) wie.add(r.van); });
+      groepVan("zoc").filter(r => r.data.key === key && standOk(r.data.s) && r.data.gpm > 0).forEach(r => { const a = per.get(r.data.s) || []; a.push(r.data.gpm); per.set(r.data.s, a); if (r.van) wie.add(r.van); });
       if (per.size) { pts = [...per.entries()].map(([st, a]) => ({ s: st, gpm: a.reduce((x, y) => x + y, 0) / a.length })).sort((a, b) => a.s - b.s); fromGroep = wie; }
     }
     if (!pts.length) { const tp = tabPts(width); if (tp.length) { pts = tp; fromTab = true; } }
@@ -1931,7 +1937,7 @@ h2 .sum.warn { color: var(--warn); }
   // Eigen ervaring: kg/min per zaai-as % (omgerekend naar 6 uitgangen), gemiddeld over je logboek
   function logK(asId) {
     const zz = normK(ap.zaad); if (!zz) return null;
-    const ks = apLog.filter(e => normK(e.zaad) === zz && e.as === asId).map(e => {
+    const ks = apLog.filter(e => normK(e.zaad) === zz && e.as === asId && pctOk(e.pct)).map(e => {
       const p = parse(e.pct), u = +e.uitg || 6;
       if (e.type === "proef") { const g = parse(e.gram), sec = parse(e.sec) || 60; return g && p ? g / 1000 / (sec / 60) / p * 6 / u : null; }
       const kgha = parse(e.kgha), v = parse(e.speed), w = parse(e.width);
@@ -1939,7 +1945,7 @@ h2 .sum.warn { color: var(--warn); }
     }).filter(x => x);
     if (ks.length) return { k: ks.reduce((a, b) => a + b, 0) / ks.length, n: ks.length };
     // Niks in je eigen logboek: dan de proeven en zaairegels uit de groep (zelfde soort en zaaias)
-    const gs = groepVan("apv").filter(r => normK(r.data.zaad) === zz && r.data.as === asId).map(r => {
+    const gs = groepVan("apv").filter(r => normK(r.data.zaad) === zz && r.data.as === asId && pctOk(r.data.pct)).map(r => {
       const e = r.data, p = parse(e.pct), u = +e.uitg || 6;
       if (e.type === "proef") { const g = parse(e.gram), sec = parse(e.sec) || 60; return g && p ? g / 1000 / (sec / 60) / p * 6 / u : null; }
       const kgha = parse(e.kgha), v = parse(e.speed), w = parse(e.width);
@@ -1990,6 +1996,7 @@ h2 .sum.warn { color: var(--warn); }
     if (!String(ap.zaad || "").trim()) { flash(e.currentTarget, "Kies eerst een soort"); return; }
     const proef = ap.lmode === "proef";
     if (proef && (!parse(ap.pct) || !parse(ap.gram))) { flash(e.currentTarget, "Vul zaai-as % en gewicht in"); return; }
+    if (String(ap.pct || "").trim() && !pctOk(ap.pct)) { flash(e.currentTarget, "Zaai-as kan 1 t/m 100 %"); $("lPct").focus(); return; }
     const old = apEdit ? apLog.find(x => x.ts === apEdit) : null;
     const base = { ts: old ? old.ts : Date.now(), zaad: ap.zaad.trim(), as: ap.as, asName: asName(ap.as), asUit: (asAll().find(a => a.id === ap.as) || {}).uitTxt || "",
       pct: ap.pct || "", uitg: ap.uitg || 6, note: String(ap.note || "").trim(), comp: ap.comp ? ((old && old.comp) || compTxt()) : "" };
@@ -2136,7 +2143,7 @@ h2 .sum.warn { color: var(--warn); }
       const kpm = pf ? parse(e.gram) / 1000 / ((parse(e.sec) || 60) / 60) : null;
       mt.textContent = asName(e.as, e.asName) + (e.asUit ? " (" + e.asUit + ")" : "") +
         (pf ? ", zaai-as " + e.pct + " %, " + e.gram + " g in " + (e.sec || 60) + " s (" + kpm.toLocaleString("nl-NL", { maximumFractionDigits: 2 }) + " kg/min)"
-          : (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : ", zaai-as % nog invullen")) + ", " + dateTxt(e.ts) +
+          : (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : ", zaai-as % nog invullen")) + (e.pct && !pctOk(e.pct) ? " (kan niet, telt niet mee)" : "") + ", " + dateTxt(e.ts) +
         (+e.uitg && +e.uitg !== 6 ? ", " + e.uitg + " uitgangen" : "") + (e.comp ? "\n" + e.comp : "") + (e.note ? "\n" + e.note : "");
       left.append(nm, mt);
       left.addEventListener("click", () => { setLogForm(e); $("lHint").textContent = "Je bewerkt de regel van " + dateTxt(e.ts) + "."; try { $("aAsSeg").scrollIntoView({ block: "center" }); } catch (er) {} });
@@ -2161,7 +2168,7 @@ h2 .sum.warn { color: var(--warn); }
       const pf = e.type === "proef";
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + (pf ? ", afdraaiproef" : e.kgha ? ", " + e.kgha + " kg/ha" : "");
       const mt = document.createElement("div"); mt.className = "meta pre";
-      mt.textContent = asName(e.as) + (pf ? ", zaai-as " + e.pct + " %, " + e.gram + " g in " + (e.sec || 60) + " s" : (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : "")) +
+      mt.textContent = asName(e.as) + (pf ? ", zaai-as " + e.pct + " %, " + e.gram + " g in " + (e.sec || 60) + " s" : (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : "")) + (e.pct && !pctOk(e.pct) ? " (kan niet, telt niet mee)" : "") +
         (+e.uitg && +e.uitg !== 6 ? ", " + e.uitg + " uitgangen" : "") + (e.comp ? "\n" + e.comp : "") + (e.note ? "\n" + e.note : "");
       const wie = document.createElement("div"); wie.className = "meta"; wie.textContent = (e.van || "?") + (e.ts ? ", " + dateTxt(e.ts) : "");
       left.append(nm, mt, wie);
@@ -2255,7 +2262,9 @@ h2 .sum.warn { color: var(--warn); }
     $("lmZaai").setAttribute("aria-pressed", !proef); $("lmProef").setAttribute("aria-pressed", proef);
     $("fLKgha").hidden = proef; $("fLSpeed").hidden = proef;
     $("fLSec").hidden = !proef; $("fLGram").hidden = !proef; $("fLFromWeeg").hidden = !proef;
-    $("lPctHint").textContent = proef ? "stand tijdens de proef" : "mag later";
+    const pctFout = String(ap.pct || "").trim() && !pctOk(ap.pct);
+    $("lPctHint").textContent = pctFout ? "Kan niet: de zaai-as gaat van 1 tot 100 %" : proef ? "stand tijdens de proef" : "mag later";
+    $("lPctHint").classList.toggle("bkwarn", !!pctFout);
     { const g = parse(ap.gram), sec = parse(ap.sec) || 60, p = parse(ap.pct);
       // Wat de proef betekent bij de rijsnelheid en werkbreedte van boven (evenredig gerekend, dus een schatting)
       const kpm = g ? g / 1000 / (sec / 60) : 0, sp = parse(ap.speed), wb = parse(ap.width), nm = parse(ap.norm), f = (x, d) => x.toLocaleString("nl-NL", { maximumFractionDigits: d });
