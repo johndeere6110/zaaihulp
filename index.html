@@ -287,7 +287,7 @@ h2 .sum.warn { color: var(--warn); }
     </div>
     <div id="mGroep" role="tabpanel" aria-labelledby="tMeerGroep">
     <h2 id="grKop">Groep</h2>
-    <p class="small" style="margin-top:0">Deel je afdraaiproeven, het APV-logboek, kopeg-tabelregels en eigen soorten vanzelf met de groep, en gebruik die van de anderen. Wegingen, Mengen en instellingen blijven op je telefoon.</p>
+    <p class="small" style="margin-top:0">Deel je afdraaiproeven, het APV-logboek, kopeg-tabelregels, eigen soorten en mengselrecepten vanzelf met de groep, en gebruik die van de anderen. Wegingen, de lopende menging en instellingen blijven op je telefoon. Zonder naam doet de groep niks.</p>
     <div class="hint" id="grNiet" hidden>De groep is nog niet ingesteld in deze versie van de app.</div>
     <div id="grBlok">
       <label class="chk"><input type="checkbox" id="grAan"> <span>Meedoen met de groep</span></label>
@@ -2935,6 +2935,9 @@ h2 .sum.warn { color: var(--warn); }
     const anderApp = [...new Set(zelfde.map(r => r.apparaat))];
     $("grApp").textContent = groep.aan ? "Dit apparaat: " + groep.apparaat + " (kolom apparaat in de sheet)." +
       (anderApp.length ? " Let op: " + zelfde.length + (zelfde.length === 1 ? " regel" : " regels") + " op jouw naam " + (zelfde.length === 1 ? "komt" : "komen") + " van " + (anderApp.length === 1 ? "een ander apparaat (" + anderApp[0] + ")" : anderApp.length + " andere apparaten (" + anderApp.join(", ") + ")") + ". Die tellen hier als groep, niet als je eigen lijst." : "") : "";
+    // Per soort: hoeveel, en waar in de app
+    const WAAR = { apv: ["APV-logboek", "APV → Zaaias → Van de groep (onder je logboek)"], zoc: ["Zocon-proef", "Zocon → startstand"], kop: ["kopeg-regel", "Kopeg → tabel"], soort: ["soort", "de soortenlijst"], recept: ["recept", "Mengen → Recepten"] };
+    const waar = rijen => Object.keys(WAAR).map(k => { const n = rijen.filter(r => r.soort === k).length; return n ? n + "× " + WAAR[k][0] + " (" + WAAR[k][1] + ")" : ""; }).filter(x => x).join(", ");
     const st = $("grStatus");
     if (!groep.aan) { st.textContent = "Je doet niet mee: je proeven blijven alleen op deze telefoon."; st.className = "hint"; return; }
     if (!String(groep.naam || "").trim()) { st.textContent = "Vul je naam in. Zonder naam deelt de app niks en haalt ook niks op, zodat iedereen kan zien wie wat deed."; st.className = "hint bkwarn"; return; }
@@ -2943,7 +2946,7 @@ h2 .sum.warn { color: var(--warn); }
     const tijd = groepLaatst ? new Date(groepLaatst).toLocaleString("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
     st.className = "hint" + (groepFout ? " bkwarn" : "");
     st.textContent = groepBezig ? "Bezig met bijwerken…" : (groepFout ? groepFout + " " : "") +
-      (groepTerug ? groepTerug + (groepTerug === 1 ? " regel" : " regels") + " uit de groep teruggezet. " : "") + (groepLaatst ? "Bijgewerkt " + tijd + ": " + (anderen.length ? anderen.length + (anderen.length === 1 ? " regel" : " regels") + " van " + wie.size + (wie.size === 1 ? " ander" : " anderen") + " in de groep." : "nog niks van anderen in de groep.") : "Nog niet bijgewerkt.");
+      (groepTerug ? groepTerug + (groepTerug === 1 ? " regel" : " regels") + " uit de groep teruggezet. " : "") + (groepLaatst ? "Bijgewerkt " + tijd + ": " + (anderen.length ? anderen.length + (anderen.length === 1 ? " regel" : " regels") + " van " + wie.size + (wie.size === 1 ? " ander" : " anderen") + " in de groep. Waar je ze vindt: " + waar(anderen) + "." : "nog niks van anderen in de groep.") : "Nog niet bijgewerkt.");
   }
   const bewaarGroep = () => { store.set("groep", groep); renderGroep(); };
   $("grAan").addEventListener("change", e => { groep.aan = e.target.checked; bewaarGroep(); if (groep.aan) groepSync(); else { updateZ(); updateK(); updateAp(); refreshAllPickers(); renderRec(); } });
