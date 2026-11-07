@@ -301,6 +301,7 @@ h2 .sum.warn { color: var(--warn); }
         </div>
       </div>
       <div class="hint" id="grStatus" style="margin-top:6px"></div>
+      <div class="hint" id="grApp" style="margin-top:4px"></div>
       <div class="row"><button type="button" class="btn" id="grSync">Nu bijwerken</button><button type="button" class="btn" id="grLink">Stuur groepslink</button></div>
     </div>
 
@@ -2889,6 +2890,11 @@ h2 .sum.warn { color: var(--warn); }
     $("grNiet").hidden = ingesteld; $("grBlok").hidden = !ingesteld;
     $("grAan").checked = !!groep.aan; $("grVelden").hidden = !groep.aan;
     $("grSync").disabled = !groepOk() || groepBezig; $("grLink").disabled = !groepOk();
+    // Welk apparaat dit is (kolom "apparaat" in de sheet): alleen regels met deze code komen hier terug in de eigen lijsten
+    const zelfde = groep.aan ? groepRijen.filter(r => r.apparaat !== groep.apparaat && String(r.van || "").trim().toLowerCase() === String(groep.naam || "").trim().toLowerCase() && String(groep.naam || "").trim()) : [];
+    const anderApp = [...new Set(zelfde.map(r => r.apparaat))];
+    $("grApp").textContent = groep.aan ? "Dit apparaat: " + groep.apparaat + " (kolom apparaat in de sheet)." +
+      (anderApp.length ? " Let op: " + zelfde.length + (zelfde.length === 1 ? " regel" : " regels") + " op jouw naam " + (zelfde.length === 1 ? "komt" : "komen") + " van " + (anderApp.length === 1 ? "een ander apparaat (" + anderApp[0] + ")" : anderApp.length + " andere apparaten (" + anderApp.join(", ") + ")") + ". Die tellen hier als groep, niet als je eigen lijst." : "") : "";
     const st = $("grStatus");
     if (!groep.aan) { st.textContent = "Je doet niet mee: je proeven blijven alleen op deze telefoon."; st.className = "hint"; return; }
     if (!String(groep.code || "").trim()) { st.textContent = "Vul de groepscode in (of open de groepslink die je kreeg)."; st.className = "hint bkwarn"; return; }
