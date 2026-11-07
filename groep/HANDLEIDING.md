@@ -37,7 +37,9 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
   verwijderen*). Hij staat op die telefoon al niet meer, dus hij komt niet terug. Alleen een oude back-up terugzetten
   kan hem nog terugbrengen.
 - **Terugzetten:** maak kolom *weg* weer leeg (haal `verwijderd` of `ja` weg). Bij het volgende bijwerken staat de regel
-  weer in de groep én weer op de telefoon van degene van wie hij is.
+  weer in de groep én weer op de telefoon van degene van wie hij is (alleen daar komt hij terug in de eigen lijst; bij de
+  anderen staat hij als groepsgegeven). De app werkt vanzelf bij als je hem opent of terughaalt van de achtergrond, en elke
+  5 minuten zolang hij openstaat; meteen zien kan met *Nu bijwerken*.
 - **Script aangepast?** Implementeren → *Implementaties beheren* → potloodje → Versie: *Nieuwe versie* → Implementeren.
   Zo blijft de URL hetzelfde.
 - **Code veranderen:** pas `GROEPSCODE` aan bij de scripteigenschappen. Iedereen moet dan de nieuwe code invullen

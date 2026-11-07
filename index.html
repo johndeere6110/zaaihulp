@@ -2830,7 +2830,10 @@ h2 .sum.warn { color: var(--warn); }
       } else if (r.soort === "recept" && d.naam && d.ts && Array.isArray(d.comps) && !recepten.some(x => x.ts === d.ts)) {
         recepten.push({ ts: d.ts, naam: String(d.naam), mode: d.mode === "kgha" ? "kgha" : "pct", comps: d.comps }); n++;
       } else if (r.soort === "soort" && d.naam && !zaadCustom.some(x => x.toLowerCase() === String(d.naam).toLowerCase())) {
-        addSoort(String(d.naam)); n++;
+        // Zelf in de eigen lijst zetten: addSoort doet dat niet als de naam nog ergens anders gebruikt wordt (bv. in het logboek)
+        const nm = String(d.naam), lw = nm.toLowerCase();
+        zaadHidden = zaadHidden.filter(h => h !== lw); store.set("zaadVerborgen", zaadHidden);
+        zaadCustom.push(nm); n++;
       }
     });
     if (n) { store.set("apvLog", apLog); store.set("zoconProf", zProf); store.set("kopegTab", kCustom); store.set("zaadsoorten", zaadCustom); store.set("mengRecepten", recepten); renderProfList(); renderSoortList(); }
@@ -2842,6 +2845,7 @@ h2 .sum.warn { color: var(--warn); }
     finally { if (t) clearTimeout(t); }
   }
   // Versturen wat nieuw of veranderd is (en weggehaald als het hier weg is), daarna alles van de groep ophalen
+  const rijHash = r => JSON.stringify([r.soort, r.van, r.omschrijving, r.data]);
   async function groepSync() {
     if (!groepOk() || groepBezig) return renderGroep();
     if (navigator.onLine === false) { groepFout = "Geen bereik: wordt bijgewerkt zodra er weer internet is."; return renderGroep(); }
@@ -2849,7 +2853,7 @@ h2 .sum.warn { color: var(--warn); }
     try {
       // Andere sheet dan de vorige keer (link veranderd)? Dan alles opnieuw sturen, zodat de nieuwe sheet zich weer vult
       const url = groepUrl(), verstuurd = groep.url === url ? store.get("groepVerstuurd", {}) : {}, nu = mijnRijen(), hierBijStart = new Set(nu.map(r => r.id)), stuur = [], nieuwV = {};
-      nu.forEach(r => { const h = JSON.stringify([r.soort, r.van, r.omschrijving, r.data]); nieuwV[r.id] = h; if (verstuurd[r.id] !== h) stuur.push(Object.assign({ apparaat: groep.apparaat }, r)); });
+      nu.forEach(r => { const h = rijHash(r); nieuwV[r.id] = h; if (verstuurd[r.id] !== h) stuur.push(Object.assign({ apparaat: groep.apparaat }, r)); });
       Object.keys(verstuurd).forEach(id => { if (!(id in nieuwV)) stuur.push({ id, apparaat: groep.apparaat, weg: true }); });
       for (let i = 0; i < stuur.length; i += 200) {
         const a = await groepVraag({ method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ code: groep.code.trim(), rijen: stuur.slice(i, i + 200) }) });
@@ -2864,7 +2868,15 @@ h2 .sum.warn { color: var(--warn); }
       try { localStorage.setItem("groepData", JSON.stringify({ rijen: groepRijen, ts: groepLaatst })); } catch (e) {}
       // Alleen wat al vóór dit bijwerken hier weg was (niet wat je net weghaalde) en nog steeds niet hier staat
       const nuHier = new Set(mijnRijen().map(r => r.id));
-      groepTerug = zetTerugUitGroep(groepRijen.filter(r => r.apparaat === groep.apparaat && !hierBijStart.has(r.id) && !nuHier.has(r.id)));
+      const terug = groepRijen.filter(r => r.apparaat === groep.apparaat && !hierBijStart.has(r.id) && !nuHier.has(r.id));
+      groepTerug = zetTerugUitGroep(terug);
+      // Teruggezette regels staan al in de sheet: meteen als verstuurd onthouden. Haal je er een direct weer weg
+      // (vóór het volgende bijwerken), dan gaat dat ook naar de sheet en komt hij niet opnieuw terug.
+      if (groepTerug) {
+        const ids = new Set(terug.map(r => r.id)), v = store.get("groepVerstuurd", {});
+        mijnRijen().forEach(r => { if (ids.has(r.id)) v[r.id] = rijHash(r); });
+        store.set("groepVerstuurd", v);
+      }
       updateZ(); updateK(); updateAp(); refreshAllPickers(); renderRec();
     } catch (e) {
       groepFout = e && e.message === "code" ? "De groepscode klopt niet." : "Bijwerken lukte niet (geen verbinding of de groep is even niet bereikbaar). Later opnieuw.";
@@ -2905,6 +2917,11 @@ h2 .sum.warn { color: var(--warn); }
   } catch (e) {}
   $("grNaam").value = groep.naam || ""; $("grCode").value = groep.code || "";
   window.addEventListener("online", () => groepSync());
+  // Ook bijwerken als je de app weer opent (stond hij nog open op de achtergrond) en elke 5 minuten zolang hij openstaat:
+  // dan komt wat in de sheet veranderde (bv. "verwijderd" weggehaald) vanzelf binnen, zonder op Nu bijwerken te tikken
+  const groepAlsOud = ms => { if (document.visibilityState !== "hidden" && Date.now() - groepLaatst > ms) groepSync(); };
+  document.addEventListener("visibilitychange", () => groepAlsOud(30000));
+  setInterval(() => groepAlsOud(4 * 60000), 60000);
   renderGroep(); setTimeout(groepSync, 1500);
 
   vraagPersist(true);
