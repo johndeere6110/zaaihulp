@@ -239,6 +239,8 @@ h2 .sum.warn { color: var(--warn); }
 #fBulk .toggle, #fTab .toggle { margin-top: 0; }
 #aTabBody { margin-top: 10px; }
 #recSec { margin-bottom: 12px; }
+#aGrSec { margin-top: 14px; }
+#aGrSec .small { margin: 10px 0 8px; }
 #recSec .toggle { margin-top: 0; }
 #recBody .small { margin: 10px 0 8px; }
 #bulkBody { margin-top: 10px; }
@@ -682,6 +684,13 @@ h2 .sum.warn { color: var(--warn); }
     <div class="row"><button type="button" class="btn" id="lNew" hidden>Nieuwe regel</button><button type="button" class="btn primary" id="lSave">Bewaar in logboek</button></div>
     <div class="hint" id="lHint"></div>
     <ul class="log" id="aLog"></ul>
+    <section id="aGrSec" hidden>
+      <button type="button" class="btn toggle" id="aGrToggle" aria-pressed="false" aria-expanded="false" aria-controls="aGrBody">Van de groep</button>
+      <div id="aGrBody" hidden>
+        <p class="small">Gedeeld door anderen in de groep (en door je eigen andere apparaten). Alleen bekijken: tik op een regel om soort, zaaias, kg/ha en snelheid boven in te vullen. Weghalen kan alleen degene van wie hij is, of via de sheet.</p>
+        <ul class="log" id="aGrList"></ul>
+      </div>
+    </section>
 
     <h2>Standaard zaaiassen</h2>
     <p class="small" style="margin-top:0">Flex 20 is een foto. De fijne en fijnvolle wielen zijn nagetekend: twee dezelfde wielen = 2 per uitgang, wiel met blinde plaat erachter = 1 wiel + blinde plaat. Een eigen foto op deze telefoon gaat voor.</p>
@@ -807,7 +816,9 @@ h2 .sum.warn { color: var(--warn); }
   if (!groep.apparaat) { groep.apparaat = Date.now().toString(36) + Math.random().toString(36).slice(2, 7); store.set("groep", groep); }
   let groepRijen = (() => { const g = store.get("groepData", null); return g && Array.isArray(g.rijen) ? g.rijen : []; })();
   // Gegevens van anderen in de groep (niet van dit toestel), per soort: apv, zoc, kop, soort
-  const groepVan = soort => groep.aan ? groepRijen.filter(r => r && r.soort === soort && r.apparaat !== groep.apparaat && r.data && typeof r.data === "object") : [];
+  // Zonder naam doet de groep niks: niks delen en niks van anderen gebruiken (dan zie je altijd wie wat deed)
+  const groepActief = () => !!(groep.aan && String(groep.naam || "").trim());
+  const groepVan = soort => groepActief() ? groepRijen.filter(r => r && r.soort === soort && r.apparaat !== groep.apparaat && r.data && typeof r.data === "object") : [];
   // Mengselrecepten: samenstellingen met een naam, voor alle machines dezelfde
   let recepten = store.get("mengRecepten", []);
   if (!Array.isArray(recepten)) recepten = [];
@@ -1952,6 +1963,7 @@ h2 .sum.warn { color: var(--warn); }
     ap.tabOpen = false; // na een keuze weer dichtklappen
     saveAp(); updateAp();
   });
+  $("aGrToggle").addEventListener("click", () => { ap.grOpen = !ap.grOpen; saveAp(); updateAp(); });
   // Zaaitabel inklapbaar: dicht staat de huidige keuze op de knop
   $("aTabToggle").addEventListener("click", () => { ap.tabOpen = !ap.tabOpen; saveAp(); updateAp(); if (ap.tabOpen) $("aTab").focus(); });
   $("aUitgSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { ap.uitg = +b.dataset.v; saveAp(); updateAp(); }));
@@ -2132,6 +2144,34 @@ h2 .sum.warn { color: var(--warn); }
       const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder regel");
       del.addEventListener("click", () => { if (armed(del, "Wis?")) { apLog = apLog.filter(x => x !== e); store.set("apvLog", apLog); if (apEdit === e.ts) setLogForm(null); else updateAp(); } });
       li.append(left, w, del); ul.appendChild(li);
+    });
+    // Van de groep: regels van anderen, alleen bekijken
+    const gr = groepVan("apv").map(r => Object.assign({}, r.data, { van: r.van })).filter(e => e.zaad).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    $("aGrSec").hidden = !gr.length;
+    $("aGrToggle").textContent = "Van de groep (" + gr.length + ")";
+    $("aGrToggle").setAttribute("aria-pressed", !!ap.grOpen); $("aGrToggle").setAttribute("aria-expanded", !!ap.grOpen);
+    $("aGrBody").hidden = !ap.grOpen;
+    const ug = $("aGrList"); ug.innerHTML = "";
+    gr.forEach(e => {
+      const li = document.createElement("li");
+      if (zz && normK(e.zaad) === zz) li.className = "match";
+      const left = document.createElement("button"); left.type = "button";
+      left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
+      left.setAttribute("aria-label", "Neem over: " + e.zaad);
+      const pf = e.type === "proef";
+      const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + (pf ? ", afdraaiproef" : e.kgha ? ", " + e.kgha + " kg/ha" : "");
+      const mt = document.createElement("div"); mt.className = "meta pre";
+      mt.textContent = asName(e.as) + (pf ? ", zaai-as " + e.pct + " %, " + e.gram + " g in " + (e.sec || 60) + " s" : (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : "")) +
+        (+e.uitg && +e.uitg !== 6 ? ", " + e.uitg + " uitgangen" : "") + (e.comp ? "\n" + e.comp : "") + (e.note ? "\n" + e.note : "");
+      const wie = document.createElement("div"); wie.className = "meta"; wie.textContent = (e.van || "?") + (e.ts ? ", " + dateTxt(e.ts) : "");
+      left.append(nm, mt, wie);
+      left.addEventListener("click", () => {
+        ap.zaad = e.zaad; if (asAll().some(a => a.id === e.as)) ap.as = e.as;
+        if (!pf && e.kgha) { ap.norm = String(e.kgha); $("aNorm").value = ap.norm; }
+        if (!pf && e.speed) { ap.speed = String(e.speed); $("aSpeed").value = ap.speed; }
+        saveAp(); refreshAllPickers(); updateAp(); try { window.scrollTo(0, 0); } catch (er) {}
+      });
+      li.append(left, document.createElement("span"), document.createElement("span")); ug.appendChild(li);
     });
     // Standaard zaaiassen: icoon of eigen foto
     const us = $("aStd"); us.innerHTML = "";
@@ -2813,7 +2853,7 @@ h2 .sum.warn { color: var(--warn); }
     zaadCustom.forEach(n => rij.push({ id: "soort:" + app + ":" + n.toLowerCase(), soort: "soort", van, omschrijving: "Soort · " + n, data: { naam: n } }));
     return rij;
   }
-  const groepOk = () => !!(groepUrl() && groep.aan && String(groep.code || "").trim());
+  const groepOk = () => !!(groepUrl() && groepActief() && String(groep.code || "").trim());
   let groepBezig = false, groepFout = "", groepLaatst = store.get("groepData", {}).ts || 0, groepTimer = null, groepTerug = 0;
   // Regels van dit toestel die in de sheet weer aan staan (beheerder haalde "weg" weg), maar hier niet meer: terugzetten
   function zetTerugUitGroep(rijen) {
@@ -2897,6 +2937,7 @@ h2 .sum.warn { color: var(--warn); }
       (anderApp.length ? " Let op: " + zelfde.length + (zelfde.length === 1 ? " regel" : " regels") + " op jouw naam " + (zelfde.length === 1 ? "komt" : "komen") + " van " + (anderApp.length === 1 ? "een ander apparaat (" + anderApp[0] + ")" : anderApp.length + " andere apparaten (" + anderApp.join(", ") + ")") + ". Die tellen hier als groep, niet als je eigen lijst." : "") : "";
     const st = $("grStatus");
     if (!groep.aan) { st.textContent = "Je doet niet mee: je proeven blijven alleen op deze telefoon."; st.className = "hint"; return; }
+    if (!String(groep.naam || "").trim()) { st.textContent = "Vul je naam in. Zonder naam deelt de app niks en haalt ook niks op, zodat iedereen kan zien wie wat deed."; st.className = "hint bkwarn"; return; }
     if (!String(groep.code || "").trim()) { st.textContent = "Vul de groepscode in (of open de groepslink die je kreeg)."; st.className = "hint bkwarn"; return; }
     const anderen = groepRijen.filter(r => r.apparaat !== groep.apparaat), wie = new Set(anderen.map(r => r.van || r.apparaat));
     const tijd = groepLaatst ? new Date(groepLaatst).toLocaleString("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
@@ -2906,7 +2947,10 @@ h2 .sum.warn { color: var(--warn); }
   }
   const bewaarGroep = () => { store.set("groep", groep); renderGroep(); };
   $("grAan").addEventListener("change", e => { groep.aan = e.target.checked; bewaarGroep(); if (groep.aan) groepSync(); else { updateZ(); updateK(); updateAp(); refreshAllPickers(); renderRec(); } });
-  $("grNaam").addEventListener("input", e => { groep.naam = e.target.value; bewaarGroep(); groepPlan(); });
+  $("grNaam").addEventListener("input", e => {
+    const was = groepActief(); groep.naam = e.target.value; bewaarGroep(); groepPlan();
+    if (was !== groepActief()) { updateZ(); updateK(); updateAp(); refreshAllPickers(); renderRec(); }
+  });
   $("grCode").addEventListener("input", e => { groep.code = e.target.value.trim(); bewaarGroep(); groepPlan(); });
   $("grSync").addEventListener("click", () => groepSync());
   // Groepslink: de app met de code erin, dan hoeft niemand iets over te typen
@@ -2933,7 +2977,7 @@ h2 .sum.warn { color: var(--warn); }
   vraagPersist(true);
 
   setMachine(machine);
-  if (viaGroepslink) openMeer("groep");
+  if (viaGroepslink) { openMeer("groep"); if (!String(groep.naam || "").trim()) setTimeout(() => { try { $("grNaam").focus(); } catch (e) {} }, 300); }
 })();
 </script>
 <script>
