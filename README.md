@@ -9,7 +9,7 @@ Hulp-app voor het afdraaien, wegen en mengen bij de zaaimachine. Werkt op je tel
 
 | Machine | Wat de app doet |
 |---|---|
-| **APV 5.2** (MDP 100 M1) | Afdraaien met de emmer, mengsel samenstellen, vakken uitrekenen en de kast bijstellen in stappen van 5 %. Tab **Zaaias**: welke zaaias (Flex 20 geel/grof, ff-ff alles fijn, ff-fb fijn + blind, fv-fv alles fijnvol, fv-fb fijnvol + blind, of een eigen genummerde rol met per uitgang enkel of dubbel) en welke zaai-as % bij jouw norm, snelheid en werkbreedte, uit de zaaitabellen van APV en je eigen logboek (zaaien of afdraaiproef). Flex 20, ff-ff, ff-fb, fv-fv, fv-fb en onze geprinte rollen (Rol 1 V-nokjes, Rol 2 grijs) staan met foto in de app; de vaste rollen elk als **blind** (1 wiel + blinde plaat per uitgang) en **dubbel** (2 wielen per uitgang). Een eigen foto op de telefoon gaat voor. |
+| **APV 5.2** (MDP 100 M1) | Afdraaien met de emmer, mengsel samenstellen, vakken uitrekenen en de kast bijstellen in stappen van 5 %. Tab **Zaaias**: welke zaaias (Flex 20 geel/grof, ff-ff alles fijn, ff-fb fijn + blind, fv-fv alles fijnvol, fv-fb fijnvol + blind, of een eigen genummerde rol met per uitgang enkel of dubbel) en welke zaai-as % bij jouw norm, snelheid en werkbreedte, uit de zaaitabellen van APV en je eigen logboek (zaaien of afdraaiproef). Flex 20, ff-ff, ff-fb, fv-fv, fv-fb en onze geprinte rollen (Rol 1 V-nokjes, Rol 2 grijs) staan met foto in de app; de vaste rollen elk als **blind** (1 wiel + blinde plaat per uitgang) en **dubbel** (2 wielen per uitgang). Een eigen foto op de telefoon gaat voor. Tab **Controle** (proef): op het land meten met de liter-maat op de bak (liters, gereden ha, stortgewicht) en zien wat je echt zaait, met advies voor de correctie op de kast in stappen van 5 %. |
 | **Zocon Z300** (BASIC-kastje, gele rol) | Afdraaiproef met timer, zaaistand 1–24 bij jouw rijsnelheid, borstelstand −1 t/m 3. Bewaarde proeven op meerdere standen maken de berekening steeds nauwkeuriger. Rekent ook het aantal vullingen van de bak (300 L) uit. |
 | **Kopeg-zaaier** | Afdraaien met de slinger (1/40, 1/10 of eigen deel van een hectare) en de nieuwe variatorstand. Eigen proeven bewaar je in de ervaringstabel. |
 
@@ -57,7 +57,7 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 ## Voor wie eraan werkt
 
 - **Alles in `index.html`:** HTML, CSS en JavaScript in één bestand. Geen build-stap, geen frameworks.
-- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v81` → `v82`), anders krijgen telefoons de update niet.
+- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v82` → `v83`), anders krijgen telefoons de update niet.
 - **`installeren.html`:** de installatiepagina. Herkent Android, iPhone of computer.
 - **`groep/`:** het Apps Script voor de groeps-sheet en de handleiding. De web-app-URL staat in `GROEP_URL_VAST` in `index.html`.
 - **`img/`:** plaatjes van de zaaiwielen en vaste rollen (Flex 20 foto, de rest nagetekend) (480 px, ook offline in `sw.js`). Nieuwe vaste rol: foto in `img/`, regel in `ROL_VAST` in `index.html`, bestand in `SHELL` van `sw.js`.

@@ -61,7 +61,7 @@ main { max-width: 480px; margin: 0 auto; padding: 12px 16px 32px; }
 
 body:not(.m-zoc) #tabZoc { display: none; }
 body:not(.m-kop) #tabKop { display: none; }
-body:not(.m-apv) #tabZaai { display: none; }
+body:not(.m-apv) #tabZaai, body:not(.m-apv) #tabCtl { display: none; }
 body.m-zoc #tabZoc, body.m-kop #tabKop { order: -1; }
 #pMeer [role="tabpanel"] > h2:first-child { margin-top: 6px; }
 .home h1 { font-size: 26px; font-weight: 600; margin: 12px 0 12px; }
@@ -396,6 +396,7 @@ h2 .sum.warn { color: var(--warn); }
     <button type="button" role="tab" id="tabZoc" aria-selected="false" aria-controls="pZoc">Afdraaien</button>
     <button type="button" role="tab" id="tabKop" aria-selected="false" aria-controls="pKop">Afdraaien</button>
     <button type="button" role="tab" id="tabZaai" aria-selected="false" aria-controls="pZaai">Zaaias</button>
+    <button type="button" role="tab" id="tabCtl" aria-selected="false" aria-controls="pCtl">Controle</button>
   </div>
   </div>
 
@@ -735,6 +736,50 @@ h2 .sum.warn { color: var(--warn); }
     <p class="small">De zaaitabellen komen uit de handleiding van APV (MDD/MDP/MDG, voor 6 uitgangen) en zijn richtwaarden: vocht en korrelgewicht maken veel uit. Ideaal staat de zaai-as tussen 20 en 80 %. Doe altijd een afdraaiproef.</p>
   </section>
 
+  <!-- APV: controle op het land met de liter-maat op de bak (proef) -->
+  <section id="pCtl" role="tabpanel" aria-labelledby="tabCtl" hidden>
+    <div class="lcd" aria-live="polite">
+      <div class="lcd-top"><span>Werkelijk gezaaid</span><span id="cTop"></span></div>
+      <div class="lcd-value num"><span class="live" id="cVal">–</span><span class="lcd-unit">kg/ha</span></div>
+      <div class="lcd-note" id="cNote">Vul de liters, ha en het stortgewicht in.</div>
+    </div>
+    <p class="small">Proef: meten op het land met de liter-maat op de bak. Strijk het zaad vlak voor je afleest, bij de start en nu.</p>
+    <div class="fields">
+      <div class="field">
+        <label for="cStart">Liter bij de start</label>
+        <input id="cStart" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </div>
+      <div class="field">
+        <label for="cNu">Liter nu</label>
+        <input id="cNu" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+        <div class="hint" id="cVerbruikt">&nbsp;</div>
+      </div>
+      <div class="field">
+        <label for="cHa">Gereden (ha)</label>
+        <input id="cHa" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+        <div class="hint">van de APV-kast of de Perceelkaart</div>
+      </div>
+      <div class="field">
+        <label for="cStort">Stortgewicht (kg/L)</label>
+        <input id="cStort" class="num" type="text" inputmode="decimal" autocomplete="off" placeholder="0,3">
+        <div class="hint">weeg een emmer met bekende inhoud: kg ÷ liter</div>
+      </div>
+      <div class="field">
+        <label for="cNorm">Norm op de kast (kg/ha)</label>
+        <input id="cNorm" class="num" type="text" inputmode="decimal" autocomplete="off">
+        <div class="hint" id="cNormHint">&nbsp;</div>
+      </div>
+      <div class="field">
+        <label for="cCorr">Correctie tijdens het rijden (%)</label>
+        <input id="cCorr" class="num" type="text" inputmode="text" autocomplete="off" placeholder="0">
+        <div class="hint">wat er op de kast stond, bv. −5</div>
+      </div>
+    </div>
+    <div class="advice" id="cAdvice" aria-live="polite" hidden></div>
+    <div class="row"><button type="button" class="btn" id="cReset">Nieuwe meting</button></div>
+    <p class="small">Liters aflezen is grover dan wegen, en zaad zakt in door het trillen. Kleine verschillen (tot ±5 %) vallen binnen de meetfout. Meet pas als er flink wat uit is: hoe meer liter, hoe betrouwbaarder.</p>
+  </section>
+
   <!-- ZOCON -->
   <section id="pZoc" role="tabpanel" aria-labelledby="tabZoc" hidden>
     <div class="lcd" aria-live="polite">
@@ -1003,12 +1048,14 @@ h2 .sum.warn { color: var(--warn); }
 
   /* ---------- Tabs ---------- */
   function showTab(t) {
-    [["weeg", "tabWeeg", "pWeeg"], ["meng", "tabMeng", "pMeng"], ["zoc", "tabZoc", "pZoc"], ["kop", "tabKop", "pKop"], ["zaai", "tabZaai", "pZaai"]].forEach(([k, tb, pn]) => {
+    [["weeg", "tabWeeg", "pWeeg"], ["meng", "tabMeng", "pMeng"], ["zoc", "tabZoc", "pZoc"], ["kop", "tabKop", "pKop"], ["zaai", "tabZaai", "pZaai"], ["ctl", "tabCtl", "pCtl"]].forEach(([k, tb, pn]) => {
       $(tb).setAttribute("aria-selected", t === k);
       $(pn).hidden = t !== k;
     });
     if (machine) store.set("tab_" + machine, t);
+    if (t === "ctl") updateCtl();
   }
+  $("tabCtl").addEventListener("click", () => showTab("ctl"));
   $("tabZoc").addEventListener("click", () => showTab("zoc"));
   $("tabKop").addEventListener("click", () => showTab("kop"));
   $("tabZaai").addEventListener("click", () => showTab("zaai"));
@@ -2498,12 +2545,12 @@ h2 .sum.warn { color: var(--warn); }
     document.body.classList.toggle("m-kop", mc === "kop");
     $("pHome").hidden = !!mc; $("pMeer").hidden = true;
     $("appHead").hidden = !mc;
-    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop", "pZaai"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); renderBackup(); renderOpslag(); return; }
+    if (!mc) { ["pWeeg", "pMeng", "pZoc", "pKop", "pZaai", "pCtl"].forEach(id => $(id).hidden = true); refreshShareCounts(); renderSoortList(); renderBackup(); renderOpslag(); return; }
     $("mName").textContent = { apv: "APV 5.2", zoc: "Zocon Z300", kop: "Kopeg-zaaier" }[mc];
     $("weegLabel").textContent = mc === "apv" ? "Invullen op kast" : "Netto afgedraaid";
     loadWeeg();
     loadMix();
-    const allowed = { apv: ["weeg", "meng", "zaai"], zoc: ["zoc", "weeg", "meng"], kop: ["kop", "weeg", "meng"] }[mc];
+    const allowed = { apv: ["weeg", "meng", "zaai", "ctl"], zoc: ["zoc", "weeg", "meng"], kop: ["kop", "weeg", "meng"] }[mc];
     const t = store.get("tab_" + mc, allowed[0]);
     showTab(allowed.includes(t) ? t : allowed[0]);
     try { window.scrollTo(0, 0); } catch (e) {}
@@ -2727,7 +2774,7 @@ h2 .sum.warn { color: var(--warn); }
   const BK_APP = "zaaihulp", BK_SCHEMA = 2;
   const VEILIG_KEY = "zaaihulpVoorTerugzetten"; // veiligheidskopie van vlak voor het terugzetten
   // Alleen de sleutels van de Zaaihulp: de Perceelkaart staat op hetzelfde domein en deelt de opslag
-  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvLog|apvAssen|apvRolFoto|restKgPerMachine|mengRecepten|groep|groepVerstuurd|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
+  const isZaaiKey = k => /^(machine|theme|kopeg|kopegTab|zocon|zoconProf|zaadsoorten|zaadVerborgen|apvZaai|apvControle|apvLog|apvAssen|apvRolFoto|restKgPerMachine|mengRecepten|groep|groepVerstuurd|tab_(apv|zoc|kop)|(tareG|unit|log|mix|menger|restKg)(_(zoc|kop))?)$/.test(k);
   // Verwachte vorm per sleutel, om een kapotte of vreemde back-up te herkennen
   const bkVorm = k => /^(log(_(zoc|kop))?|zaadsoorten|zaadVerborgen|kopegTab|apvLog|apvAssen)$/.test(k) ? "lijst"
     : /^(menger(_(zoc|kop))?|zocon|zoconProf|kopeg|apvZaai|apvRolFoto)$/.test(k) ? "object" : null;
@@ -3161,9 +3208,58 @@ h2 .sum.warn { color: var(--warn); }
 
   vraagPersist(true);
 
+  // ---------- APV: controle op het land (liter-maat op de bak) ----------
+  const ctl = Object.assign({ start: "", nu: "", ha: "", stort: "", norm: "", corr: "" }, store.get("apvControle", {}));
+  const CTL_VELD = [["cStart", "start"], ["cNu", "nu"], ["cHa", "ha"], ["cStort", "stort"], ["cNorm", "norm"], ["cCorr", "corr"]];
+  CTL_VELD.forEach(([id, k]) => { $(id).value = ctl[k] || ""; $(id).addEventListener("input", e => { ctl[k] = e.target.value; store.set("apvControle", ctl); updateCtl(); }); });
+  const pctParse = v => parse(String(v || "").replace(/[−–]/g, "-").replace("%", ""));
+  function updateCtl() {
+    const n2 = v => v.toLocaleString("nl-NL", { maximumFractionDigits: v >= 100 ? 0 : 1 });
+    const sg = p => (p > 0 ? "+" : p < 0 ? "−" : "±") + Math.abs(p) + " %";
+    // Norm: eigen invulling, anders die van Zaaias
+    $("cNorm").placeholder = String(ap.norm || "25");
+    $("cNormHint").textContent = !String(ctl.norm || "").trim() && parse(ap.norm) ? "zelfde als bij Zaaias" : "\u00a0";
+    const start = parse(ctl.start), nu = parse(ctl.nu), ha = parse(ctl.ha), stort = parse(ctl.stort);
+    const norm = parse(ctl.norm) || parse(ap.norm), corr = pctParse(ctl.corr) || 0;
+    const L = start !== null && nu !== null ? start - nu : null;
+    $("cVerbruikt").textContent = L > 0 ? "verbruikt: " + n2(L) + " L" : L !== null && L <= 0 ? "Liter nu moet minder zijn dan bij de start" : "\u00a0";
+    $("cVerbruikt").classList.toggle("bkwarn", L !== null && L <= 0);
+    $("cTop").textContent = norm ? "norm " + n2(norm) + " kg/ha" + (corr ? " " + sg(corr) : "") : "";
+    const note = $("cNote"), adv = $("cAdvice"); note.className = "lcd-note"; adv.hidden = true;
+    if (!(L > 0) || !(ha > 0) || !(stort > 0)) { setText($("cVal"), "–"); note.textContent = "Vul de liters, ha en het stortgewicht in."; return; }
+    const kgha = L * stort / ha;
+    setText($("cVal"), n2(kgha));
+    if (!norm) { note.textContent = "Vul de norm in om te vergelijken."; return; }
+    // Wat de kast had moeten geven, met de correctie die erop stond
+    const doel = norm * (1 + corr / 100), dev = (kgha / doel - 1) * 100;
+    note.textContent = (Math.abs(dev) < 0.05 ? "±0" : (dev > 0 ? "+" : "−") + n2(Math.abs(dev))) + " % t.o.v. " + n2(doel) + " kg/ha";
+    const weinig = L < 10;
+    let h;
+    if (Math.abs(dev) <= 5) {
+      h = '<div class="ok">Binnen de meetfout: laat staan.</div><div>Je zit ' + (Math.abs(dev) < 0.05 ? "precies op" : (dev > 0 ? n2(dev) + " % boven" : n2(-dev) + " % onder")) + ' wat de kast zou moeten geven.</div>';
+    } else {
+      note.className = "lcd-note warn";
+      // Nieuwe correctie zodat je op de norm uitkomt (kast in stappen van 5 %)
+      const nodig = ((1 + corr / 100) * norm / kgha - 1) * 100, stap = Math.round(nodig / 5) * 5;
+      const verwacht = kgha * (1 + stap / 100) / (1 + corr / 100);
+      h = Math.abs(stap) > 50
+        ? '<div class="bad">Te groot verschil om met de correctie op te vangen (' + sg(Math.round(nodig)) + ' nodig).</div><div>Controleer de liters, de ha en het stortgewicht. Klopt het, doe dan opnieuw een afdraaiproef.</div>'
+        : '<div>Zet de correctie op de kast op</div><div class="adv-main num">' + sg(stap) + '</div>' +
+          '<div>Dan zaai je ongeveer ' + n2(verwacht) + ' kg/ha (norm ' + n2(norm) + ').' + (stap !== Math.round(nodig) ? ' Precies zou ' + sg(Math.round(nodig)) + ' zijn, maar de kast gaat in stappen van 5\u00a0%.' : '') + '</div>' +
+          (Math.abs(dev) > 25 ? '<div class="bad">Zo’n groot verschil: controleer ook het stortgewicht en de ha, of doe opnieuw een afdraaiproef.</div>' : '');
+    }
+    if (weinig) h += '<div class="bad">Pas ' + n2(L) + ' L verbruikt: dat is weinig, meet liever later nog eens.</div>';
+    adv.innerHTML = h; adv.hidden = false;
+  }
+  $("cReset").addEventListener("click", e => {
+    if (!armed(e.currentTarget, "Liters en ha wissen?")) return;
+    ["start", "nu", "ha", "corr"].forEach(k => ctl[k] = ""); store.set("apvControle", ctl);
+    CTL_VELD.forEach(([id, k]) => $(id).value = ctl[k] || ""); updateCtl();
+  });
+
   // Zachte waarschuwing bij een getal dat waarschijnlijk een tikfout is. Bewaren mag gewoon, het is alleen een "klopt dit?"
   const ZGRENS = { kgha: [0.5, 400, "kg/ha"], km: [0.5, 20, "km/h"], m: [0.5, 30, "m"] };
-  const ZACHT = [["norm", "kgha"], ["kNorm", "kgha"], ["aNorm", "kgha"], ["lKgha", "kgha"], ["zNorm", "kgha"],
+  const ZACHT = [["norm", "kgha"], ["kNorm", "kgha"], ["aNorm", "kgha"], ["lKgha", "kgha"], ["zNorm", "kgha"], ["cNorm", "kgha"],
     ["aSpeed", "km"], ["lSpeed", "km"], ["zSpeed", "km"], ["width", "m"], ["aWidth", "m"], ["zWidth", "m"]]
     .map(([id, g]) => {
       const inp = $(id); if (!inp) return null;
