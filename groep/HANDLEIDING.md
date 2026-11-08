@@ -33,8 +33,12 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
   actieve regels (zonder `verwijderd`/`ja` en zonder open melding), op soort en naam. In **twijfel** staan de regels die
   iemand als *Klopt niet* meldde, met wie dat deed. Keurt de eigenaar hem goed (*Klopt wel*), past hij hem aan of tikt de
   melder *Toch goed*, dan staat hij bij het volgende bijwerken weer in **goed**. Deze twee bladen zijn alleen om te lezen:
-  wat je erin verandert wordt overschreven. Beheren (kolom *weg*) doe je in **data**. Ze verschijnen zodra iemand iets
-  verstuurt; meteen zien kan in de Apps Script-editor: kies bovenaan de functie `overzichtNu` en klik op *Uitvoeren*.
+  wat je erin verandert wordt overschreven. Beheren (kolom *weg*) doe je in **data**; pas je daar iets aan, dan zijn
+  **goed** en **twijfel** meteen bijgewerkt. Ze verschijnen zodra iemand iets verstuurt; meteen zien (of na het
+  verwijderen van hele rijen) kan in de Apps Script-editor: kies bovenaan de functie `overzichtNu` en klik op *Uitvoeren*.
+- **Als beheerder een regel uit twijfel halen:** zoek in **data** de rij met soort `melding` (*omschrijving* begint met
+  "Klopt niet: …") en zet in kolom **weg** bijvoorbeeld `ja`. De regel staat dan meteen weer in **goed**, en bij het
+  volgende bijwerken is hij bij iedereen weer gewoon, ook bij degene die hem meldde.
 - **Klopt een regel niet?** Zet in kolom **weg** bijvoorbeeld `ja`. Bij het volgende bijwerken is hij bij iedereen weg,
   ook als die telefoon hem later opnieuw stuurt. (Zo'n regel liever niet helemaal verwijderen: staat hij nog op
   die telefoon, dan kan hij terugkomen zodra hij daar verandert.)

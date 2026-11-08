@@ -11,6 +11,7 @@
  *   goed    = alle actieve regels zonder open melding "klopt niet"
  *   twijfel = regels met een open melding (tot de eigenaar hem goedkeurt of aanpast, of de melder "Toch goed" tikt)
  * Eerste keer meteen zien: kies hierboven de functie overzichtNu en klik op Uitvoeren.
+ * Pas je zelf iets aan in blad "data", dan worden ze meteen bijgewerkt (onEdit).
  *
  * @OnlyCurrentDoc
  */
@@ -119,3 +120,6 @@ function schrijf_(naam, kop, rijen) {
 }
 // Met de hand starten vanuit de editor (eerste keer, of als je de bladen kwijt bent)
 function overzichtNu() { overzicht_(); }
+// Jij past iets aan in blad "data" (bv. kolom weg): overzicht meteen bijwerken. Werkt na opslaan, zonder nieuwe implementatie.
+// (Een hele rij verwijderen telt hier niet als wijziging: dan bij het volgende bijwerken, of overzichtNu uitvoeren.)
+function onEdit(e) { if (e && e.range && e.range.getSheet().getName() === BLAD) overzicht_(); }

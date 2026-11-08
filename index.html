@@ -3012,11 +3012,15 @@ h2 .sum.warn { color: var(--warn); }
       const terug = groepRijen.filter(r => r.apparaat === groep.apparaat && !hierBijStart.has(r.id) && !nuHier.has(r.id));
       groepTerug = zetTerugUitGroep(terug);
       // Meldingen over regels die er niet meer zijn of intussen zijn aangepast: opruimen (gaan bij het volgende bijwerken als verwijderd naar de sheet)
+      // Eigen melding of "klopt wel" die al in de sheet stond maar daar nu niet meer actief is (beheerder zette iets in "weg"
+      // of haalde de rij weg): hier ook vergeten, anders zie je op dit toestel iets anders dan de rest van de groep
+      const actiefHier = new Set(groepRijen.filter(r => r.apparaat === groep.apparaat).map(r => r.id));
+      const uitgezet = id => hierBijStart.has(id) && !actiefHier.has(id);
       const goed = goedMap();
-      const nogGeldig = meldingen.filter(x => groepRijen.some(r => r.id === x.over && dHash(r.data) === x.hash) && !opgeheven(goed, x.over, x.hash, x.ts));
+      const nogGeldig = meldingen.filter(x => groepRijen.some(r => r.id === x.over && dHash(r.data) === x.hash) && !opgeheven(goed, x.over, x.hash, x.ts) && !uitgezet("melding:" + groep.apparaat + ":" + x.over));
       // Eigen "klopt wel" alleen bewaren zolang die regel hier nog zo bestaat
       const eigenH = new Map(mijnRijen().filter(r => KLOPT_SOORT.includes(r.soort)).map(r => [r.id, dHash(r.data)]));
-      const nogWel = kloptWel.filter(x => eigenH.get(x.over) === x.hash);
+      const nogWel = kloptWel.filter(x => eigenH.get(x.over) === x.hash && !uitgezet("klopt:" + groep.apparaat + ":" + x.over));
       if (nogWel.length !== kloptWel.length) { kloptWel = nogWel; store.set("groepKloptWel", kloptWel); }
       if (nogGeldig.length !== meldingen.length) { meldingen = nogGeldig; store.set("groepMeldingen", meldingen); }
       // Teruggezette regels staan al in de sheet: meteen als verstuurd onthouden. Haal je er een direct weer weg
