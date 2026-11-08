@@ -129,6 +129,9 @@ h2 .sum.warn { color: var(--warn); }
 .log .meta { font-size: 14px; color: var(--muted); }
 .log .w { font-size: 22px; }
 .armed { color: var(--warn) !important; font-weight: 700 !important; }
+.klopt { border: 1px solid var(--line); background: none; color: var(--muted); font: 600 14px "Barlow", system-ui, sans-serif; min-height: 44px; padding: 0 10px; border-radius: 8px; white-space: nowrap; }
+.log li.gemeld .name, .log li.gemeld .w, .log li.gemeld .meta:not(.gemeldtxt) { text-decoration: line-through; opacity: .55; }
+.log .meta.gemeldtxt { color: var(--warn); font-weight: 600; }
 .del.armed { width: auto; min-width: 44px; padding: 0 6px; font: 700 15px "Barlow", system-ui, sans-serif; border: 1px solid var(--warn); }
 .del { border: 0; background: none; color: var(--muted); font-size: 24px; width: 44px; height: 44px; border-radius: 8px; }
 .log li.match { box-shadow: inset 4px 0 0 var(--accent); padding-left: 12px; }
@@ -305,6 +308,14 @@ h2 .sum.warn { color: var(--warn); }
       <div class="hint" id="grStatus" style="margin-top:6px"></div>
       <div class="hint" id="grApp" style="margin-top:4px"></div>
       <div class="row"><button type="button" class="btn" id="grSync">Nu bijwerken</button><button type="button" class="btn" id="grLink">Stuur groepslink</button></div>
+      <div class="hint bkwarn pre" id="grGemeld" hidden style="margin-top:8px;white-space:pre-line"></div>
+      <section id="grLijstSec" hidden style="margin-top:10px">
+        <button type="button" class="btn toggle" id="grLijstToggle" aria-pressed="false" aria-expanded="false" aria-controls="grLijstBody">Regels van anderen</button>
+        <div id="grLijstBody" hidden>
+          <div class="hint" style="margin-top:8px">Klopt een regel niet? Tik op <strong>Klopt niet</strong>: dan wordt hij bij iedereen grijs en telt hij niet meer mee. Vergist? Tik op <strong>Toch goed</strong>. Past de eigenaar de regel aan, dan vervalt de melding vanzelf.</div>
+          <ul class="log" id="grLijst"></ul>
+        </div>
+      </section>
     </div>
 
     <h2>Delen en overzetten</h2>
@@ -810,7 +821,7 @@ h2 .sum.warn { color: var(--warn); }
   };
   // ---------- Groep: proeven delen via een Google Sheet (zie groep/HANDLEIDING.md); de rest staat bij "Groep" verderop ----------
   const GROEP_URL_VAST = "https://script.google.com/macros/s/AKfycbx0N4BV6UcKsnUqgFrGwS0X7AkFvKrcyQx196mhByMCRrxgnU3SxRy_fhlpk_fRa6G3/exec"; // web-app-URL van het Apps Script (groeps-sheet)
-  const GROEP_KEYS = /^(apvLog|zoconProf|kopegTab|zaadsoorten|mengRecepten)$/;
+  const GROEP_KEYS = /^(apvLog|zoconProf|kopegTab|zaadsoorten|mengRecepten|groepMeldingen)$/;
   let groepPlan = () => {};
   const groepUrl = () => store.get("groepUrl", "") || GROEP_URL_VAST;
   const groep = Object.assign({ aan: false, code: "", naam: "", apparaat: "" }, store.get("groep", {}));
@@ -819,7 +830,54 @@ h2 .sum.warn { color: var(--warn); }
   // Gegevens van anderen in de groep (niet van dit toestel), per soort: apv, zoc, kop, soort
   // Zonder naam doet de groep niks: niks delen en niks van anderen gebruiken (dan zie je altijd wie wat deed)
   const groepActief = () => !!(groep.aan && String(groep.naam || "").trim());
-  const groepVan = soort => groepActief() ? groepRijen.filter(r => r && r.soort === soort && r.apparaat !== groep.apparaat && r.data && typeof r.data === "object") : [];
+  const groepAlle = soort => groepActief() ? groepRijen.filter(r => r && r.soort === soort && r.apparaat !== groep.apparaat && r.data && typeof r.data === "object") : [];
+  // "Klopt niet": een melding hoort bij precies die regel met precies die waarden. Past de eigenaar hem aan, dan vervalt de melding.
+  // Eigen meldingen staan hier (en gaan als soort "melding" naar de sheet); die van anderen komen uit de sheet.
+  let meldingen = store.get("groepMeldingen", []);
+  if (!Array.isArray(meldingen)) meldingen = [];
+  const KLOPT_SOORT = ["apv", "zoc", "kop", "recept"];
+  const dHash = d => { const t = JSON.stringify(d || {}); let h = 5381; for (let i = 0; i < t.length; i++) h = (h * 33 + t.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+  function gemeldMap() {
+    const m = new Map();
+    if (!groepActief()) return m;
+    const add = (over, hash, wie, eigen) => { if (!over) return; const k = over + "|" + hash, e = m.get(k) || { wie: [], eigen: false }; if (!e.wie.includes(wie)) e.wie.push(wie); if (eigen) e.eigen = true; m.set(k, e); };
+    groepRijen.forEach(r => { if (r && r.soort === "melding" && r.apparaat !== groep.apparaat && r.data && r.data.over) add(String(r.data.over), String(r.data.hash), String(r.van || "iemand"), false); });
+    meldingen.forEach(x => add(x.over, x.hash, String(groep.naam || "").trim(), true));
+    return m;
+  }
+  const gemeldOp = (m, r) => m.get(r.id + "|" + dHash(r.data));
+  // Van anderen en niet als "klopt niet" gemeld: alleen die tellen mee
+  const groepVan = soort => { const m = gemeldMap(); return groepAlle(soort).filter(r => !gemeldOp(m, r)); };
+  const groepAfgekeurd = soort => { const m = gemeldMap(); return groepAlle(soort).map(r => Object.assign({}, r, { gemeld: gemeldOp(m, r) })).filter(r => r.gemeld); };
+  // ---------- Klopt niet ----------
+  const rijTxt = r => { const d = r.data || {}, k = v => String(v).replace(".", ",");
+    if (r.soort === "apv") return "APV · " + d.zaad + " · " + asName(d.as) + " · " + (d.type === "proef" ? "proef " + d.pct + " %, " + d.gram + " g in " + (d.sec || 60) + " s" : "zaaien " + d.kgha + " kg/ha, " + d.speed + " km/h, " + d.pct + " %");
+    if (r.soort === "zoc") return "Zocon · " + profName(d) + " · stand " + k(d.s) + " · " + Math.round(d.gpm) + " g/min";
+    if (r.soort === "kop") return "Kopeg · " + d.zaad + " · " + k(d.kg) + " kg/ha op stand " + k(d.st);
+    if (r.soort === "recept") return "Recept · " + d.naam + " · " + recTxt(d);
+    return String(r.soort || ""); };
+  const gemeldTxt = g => "Klopt niet volgens " + g.wie.join(", ");
+  const naMelding = () => { updateZ(); updateK(); updateAp(); refreshAllPickers(); renderRec(); renderGroep(); };
+  function meldKloptNiet(r) {
+    meldingen = meldingen.filter(x => x.over !== r.id);
+    meldingen.push({ over: r.id, hash: dHash(r.data), wat: rijTxt(r).slice(0, 200), van: String(r.van || ""), ts: Date.now() });
+    store.set("groepMeldingen", meldingen); naMelding();
+  }
+  function meldTochGoed(id) { meldingen = meldingen.filter(x => x.over !== id); store.set("groepMeldingen", meldingen); naMelding(); }
+  // Knop bij een regel van een ander: Klopt niet (2× tikken), Toch goed (als jij hem meldde), of niks (een ander meldde hem al)
+  function klopKnop(r, g) {
+    if (!r || (g && !g.eigen)) return document.createElement("span");
+    const b = document.createElement("button"); b.type = "button"; b.className = "klopt"; b.textContent = g ? "Toch goed" : "Klopt niet";
+    b.addEventListener("click", ev => { ev.stopPropagation(); if (g) meldTochGoed(r.id); else if (armed(b, "Zeker?")) meldKloptNiet(r); });
+    return b;
+  }
+  // Eigen regels waar een ander "klopt niet" bij zette: id → wie
+  function eigenGemeld() {
+    const m = gemeldMap(), uit = new Map();
+    if (m.size) mijnRijen().forEach(r => { if (KLOPT_SOORT.includes(r.soort)) { const g = gemeldOp(m, r); if (g) uit.set(r.id, g); } });
+    return uit;
+  }
+  const gemeldMeta = g => { const d = document.createElement("div"); d.className = "meta gemeldtxt"; d.textContent = gemeldTxt(g); return d; };
   // Mengselrecepten: samenstellingen met een naam, voor alle machines dezelfde
   let recepten = store.get("mengRecepten", []);
   if (!Array.isArray(recepten)) recepten = [];
@@ -1433,22 +1491,24 @@ h2 .sum.warn { color: var(--warn); }
   }
   function renderRec() {
     const eigen = recepten.slice().sort((a, b) => String(a.naam).localeCompare(String(b.naam), "nl"));
-    const vanGroep = groepVan("recept").filter(g => g.data && g.data.naam && recSchoon(g.data).length).map(g => Object.assign({}, g.data, { van: g.van }))
+    const recGr = list => list.filter(g => g.data && g.data.naam && recSchoon(g.data).length).map(g => Object.assign({}, g.data, { van: g.van, _r: g, _g: g.gemeld }))
       .sort((a, b) => String(a.naam).localeCompare(String(b.naam), "nl"));
-    const n = eigen.length + vanGroep.length, open = !!m.recOpen;
-    $("recToggle").textContent = "Recepten" + (n ? " (" + n + ")" : "");
+    const vanGroep = [...recGr(groepVan("recept")), ...recGr(groepAfgekeurd("recept"))], eg = eigenGemeld();
+    const nWeg = vanGroep.filter(r => r._g).length, n = eigen.length + vanGroep.length - nWeg, open = !!m.recOpen;
+    $("recToggle").textContent = "Recepten" + (n || nWeg ? " (" + n + (nWeg ? ", " + nWeg + " klopt niet" : "") + ")" : "");
     $("recToggle").setAttribute("aria-pressed", open); $("recToggle").setAttribute("aria-expanded", open);
     $("recBody").hidden = !open;
     const ul = $("recList"); ul.innerHTML = "";
-    if (!n) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "Nog geen recepten. Vul de samenstelling in en bewaar hem hieronder met een naam."; ul.appendChild(li); }
+    if (!n && !nWeg) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "Nog geen recepten. Vul de samenstelling in en bewaar hem hieronder met een naam."; ul.appendChild(li); }
     [...eigen.map(r => [r, true]), ...vanGroep.map(r => [r, false])].forEach(([r, mijn]) => {
-      const li = document.createElement("li");
+      const li = document.createElement("li"); if (r._g) li.className = "gemeld";
       const left = document.createElement("button"); left.type = "button";
       left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
       left.setAttribute("aria-label", "Gebruik recept " + r.naam);
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = r.naam + (mijn ? "" : " · van " + (r.van || "de groep"));
       const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = recTxt(r);
       left.append(nm, mt);
+      { const g = r._g || (mijn ? eg.get("recept:" + groep.apparaat + ":" + r.ts) : null); if (g) left.append(gemeldMeta(g)); if (r._g) left.disabled = true; }
       // armed() vervangt de tekst van de knop: daarom het tweede tikje op een eigen tekstknop
       left.addEventListener("click", () => laadRecept(r, nm));
       const w = document.createElement("div"); w.className = "w num"; w.style.fontSize = "17px";
@@ -1459,7 +1519,7 @@ h2 .sum.warn { color: var(--warn); }
         del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder recept " + r.naam);
         del.addEventListener("click", () => { if (armed(del, "Wis?")) { recepten = recepten.filter(x => x !== r); store.set("mengRecepten", recepten); renderRec(); } });
         li.append(del);
-      } else li.append(document.createElement("span"));
+      } else li.append(klopKnop(r._r, r._g));
       ul.appendChild(li);
     });
   }
@@ -1763,7 +1823,8 @@ h2 .sum.warn { color: var(--warn); }
   let kCustom = store.get("kopegTab", []);
   if (!Array.isArray(kCustom)) kCustom = [];
   // Regels uit de groep erbij, behalve als je zelf dezelfde (soort, kg/ha, stand) al hebt
-  const kGroep = () => groepVan("kop").map(r => ({ zaad: String(r.data.zaad || ""), kg: +r.data.kg, st: +r.data.st, ts: r.data.ts, groep: true, van: r.van }))
+  const kGroepRij = r => ({ zaad: String(r.data.zaad || ""), kg: +r.data.kg, st: +r.data.st, ts: r.data.ts, groep: true, van: r.van, _r: r, _g: r.gemeld });
+  const kGroep = () => groepVan("kop").map(kGroepRij)
     .filter(e => e.zaad && e.kg > 0 && e.st > 0 && !kCustom.some(x => x.zaad.toLowerCase() === e.zaad.toLowerCase() && x.kg === e.kg && x.st === e.st));
   const kAll = () => [...KTAB, ...kCustom, ...kGroep()];
   const kMatch = () => { const zz = String(k.zaad || "").trim().toLowerCase(); return zz ? kAll().filter(e => e.zaad.toLowerCase() === zz) : []; };
@@ -1778,9 +1839,10 @@ h2 .sum.warn { color: var(--warn); }
   }
   function renderKTab() {
     const ul = $("kTabList"); ul.innerHTML = "";
-    const zz = String(k.zaad || "").trim().toLowerCase();
-    kAll().forEach(e => {
-      const li = document.createElement("li"); if (zz && e.zaad.toLowerCase() === zz) li.className = "match";
+    const zz = String(k.zaad || "").trim().toLowerCase(), eg = eigenGemeld();
+    const kWeg = groepAfgekeurd("kop").map(kGroepRij).filter(e => e.zaad && e.kg > 0 && e.st > 0);
+    [...kAll(), ...kWeg].forEach(e => {
+      const li = document.createElement("li"); if (e._g) li.className = "gemeld"; else if (zz && e.zaad.toLowerCase() === zz) li.className = "match";
       const left = document.createElement("button"); left.type = "button";
       left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
       const nm = document.createElement("div"); nm.className = "name"; nm.textContent = e.zaad + ", " + String(e.kg).replace(".", ",") + " kg/ha";
@@ -1788,13 +1850,14 @@ h2 .sum.warn { color: var(--warn); }
       const dt = ts => new Date(ts).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
       mt.textContent = e.own ? "eigen proef, " + dt(e.ts) : e.groep ? "groep" + (e.van ? " (" + e.van + ")" : "") + (e.ts ? ", " + dt(e.ts) : "") : (e.note || "praktijkwaarde");
       left.append(nm, mt);
+      { const g = e._g || (e.own ? eg.get("kop:" + groep.apparaat + ":" + e.ts) : null); if (g) left.append(gemeldMeta(g)); if (e._g) left.disabled = true; }
       left.addEventListener("click", () => {
         k.zaad = e.zaad; k.norm = String(e.kg).replace(".", ","); $("kNorm").value = k.norm;
         k.stand = ""; k.kg = ""; $("kPStand").value = ""; $("kGram").value = "";
         saveK(); refreshAllPickers(); updateK(); try { window.scrollTo(0, 0); } catch (er) {}
       });
       const w = document.createElement("div"); w.className = "w num tabw"; w.textContent = "stand " + String(e.st).replace(".", ",");
-      let third = document.createElement("span");
+      let third = e.groep ? klopKnop(e._r, e._g) : document.createElement("span");
       if (e.own) {
         third = document.createElement("button"); third.type = "button"; third.className = "del"; third.textContent = "×"; third.setAttribute("aria-label", "Verwijder uit tabel");
         third.addEventListener("click", () => { if (armed(third, "Wis?")) { kCustom = kCustom.filter(x => x !== e); store.set("kopegTab", kCustom); updateK(); } });
@@ -2131,6 +2194,7 @@ h2 .sum.warn { color: var(--warn); }
     const ul = $("aLog"); ul.innerHTML = "";
     const zz = normK(ap.zaad);
     if (!apLog.length) { const li = document.createElement("li"); li.className = "empty"; li.textContent = "Nog niks genoteerd."; ul.appendChild(li); }
+    const eg = eigenGemeld();
     apLog.slice().sort((a, b) => b.ts - a.ts).forEach(e => {
       const li = document.createElement("li");
       if (apEdit === e.ts) li.className = "sel"; else if (zz && normK(e.zaad) === zz) li.className = "match";
@@ -2145,7 +2209,7 @@ h2 .sum.warn { color: var(--warn); }
         (pf ? ", zaai-as " + e.pct + " %, " + e.gram + " g in " + (e.sec || 60) + " s (" + kpm.toLocaleString("nl-NL", { maximumFractionDigits: 2 }) + " kg/min)"
           : (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : ", zaai-as % nog invullen")) + (e.pct && !pctOk(e.pct) ? " (kan niet, telt niet mee)" : "") + ", " + dateTxt(e.ts) +
         (+e.uitg && +e.uitg !== 6 ? ", " + e.uitg + " uitgangen" : "") + (e.comp ? "\n" + e.comp : "") + (e.note ? "\n" + e.note : "");
-      left.append(nm, mt);
+      left.append(nm, mt); { const g = eg.get("apv:" + groep.apparaat + ":" + e.ts); if (g) left.append(gemeldMeta(g)); }
       left.addEventListener("click", () => { setLogForm(e); $("lHint").textContent = "Je bewerkt de regel van " + dateTxt(e.ts) + "."; try { $("aAsSeg").scrollIntoView({ block: "center" }); } catch (er) {} });
       const w = document.createElement("span");
       const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "×"; del.setAttribute("aria-label", "Verwijder regel");
@@ -2153,15 +2217,17 @@ h2 .sum.warn { color: var(--warn); }
       li.append(left, w, del); ul.appendChild(li);
     });
     // Van de groep: regels van anderen, alleen bekijken
-    const gr = groepVan("apv").map(r => Object.assign({}, r.data, { van: r.van })).filter(e => e.zaad).sort((a, b) => (b.ts || 0) - (a.ts || 0));
-    $("aGrSec").hidden = !gr.length;
-    $("aGrToggle").textContent = "Van de groep (" + gr.length + ")";
+    const grRij = r => Object.assign({}, r.data, { van: r.van, _r: r, _g: r.gemeld });
+    const gr = groepVan("apv").map(grRij).filter(e => e.zaad).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const grWeg = groepAfgekeurd("apv").map(grRij).filter(e => e.zaad).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    $("aGrSec").hidden = !gr.length && !grWeg.length;
+    $("aGrToggle").textContent = "Van de groep (" + gr.length + (grWeg.length ? ", " + grWeg.length + " klopt niet" : "") + ")";
     $("aGrToggle").setAttribute("aria-pressed", !!ap.grOpen); $("aGrToggle").setAttribute("aria-expanded", !!ap.grOpen);
     $("aGrBody").hidden = !ap.grOpen;
     const ug = $("aGrList"); ug.innerHTML = "";
-    gr.forEach(e => {
+    [...gr, ...grWeg].forEach(e => {
       const li = document.createElement("li");
-      if (zz && normK(e.zaad) === zz) li.className = "match";
+      if (e._g) li.className = "gemeld"; else if (zz && normK(e.zaad) === zz) li.className = "match";
       const left = document.createElement("button"); left.type = "button";
       left.style.cssText = "border:0;background:none;color:inherit;text-align:left;padding:0;font:inherit;";
       left.setAttribute("aria-label", "Neem over: " + e.zaad);
@@ -2171,14 +2237,14 @@ h2 .sum.warn { color: var(--warn); }
       mt.textContent = asName(e.as) + (pf ? ", zaai-as " + e.pct + " %, " + e.gram + " g in " + (e.sec || 60) + " s" : (e.speed ? ", " + e.speed + " km/h" : "") + (e.pct ? ", zaai-as " + e.pct + " %" : "")) + (e.pct && !pctOk(e.pct) ? " (kan niet, telt niet mee)" : "") +
         (+e.uitg && +e.uitg !== 6 ? ", " + e.uitg + " uitgangen" : "") + (e.comp ? "\n" + e.comp : "") + (e.note ? "\n" + e.note : "");
       const wie = document.createElement("div"); wie.className = "meta"; wie.textContent = (e.van || "?") + (e.ts ? ", " + dateTxt(e.ts) : "");
-      left.append(nm, mt, wie);
+      left.append(nm, mt, wie); if (e._g) { left.append(gemeldMeta(e._g)); left.disabled = true; }
       left.addEventListener("click", () => {
         ap.zaad = e.zaad; if (asAll().some(a => a.id === e.as)) ap.as = e.as;
         if (!pf && e.kgha) { ap.norm = String(e.kgha); $("aNorm").value = ap.norm; }
         if (!pf && e.speed) { ap.speed = String(e.speed); $("aSpeed").value = ap.speed; }
         saveAp(); refreshAllPickers(); updateAp(); try { window.scrollTo(0, 0); } catch (er) {}
       });
-      li.append(left, document.createElement("span"), document.createElement("span")); ug.appendChild(li);
+      li.append(left, document.createElement("span"), klopKnop(e._r, e._g)); ug.appendChild(li);
     });
     // Standaard zaaiassen: icoon of eigen foto
     const us = $("aStd"); us.innerHTML = "";
@@ -2843,7 +2909,7 @@ h2 .sum.warn { color: var(--warn); }
 
   // ---------- Groep: synchroniseren met de Google Sheet ----------
   // Wat dit toestel deelt, als rijen met een vaste id. Alleen regels waar de groep iets aan heeft.
-  const vasteAs = id => AS_STD.some(a => a.id === id) || ROL_VAST.some(r => r.id === id || r.id + "d" === id);
+  function vasteAs(id) { return AS_STD.some(a => a.id === id) || ROL_VAST.some(r => r.id === id || r.id + "d" === id); }
   function mijnRijen() {
     const rij = [], app = groep.apparaat, van = String(groep.naam || "").trim();
     apLog.filter(e => e.pct && vasteAs(e.as)).forEach(e => {
@@ -2860,6 +2926,7 @@ h2 .sum.warn { color: var(--warn); }
     recepten.forEach(r => { const d = { naam: r.naam, mode: r.mode || "pct", comps: r.comps || [], ts: r.ts };
       rij.push({ id: "recept:" + app + ":" + r.ts, soort: "recept", van, omschrijving: "Recept · " + r.naam + " · " + recTxt(r), data: d }); });
     zaadCustom.forEach(n => rij.push({ id: "soort:" + app + ":" + n.toLowerCase(), soort: "soort", van, omschrijving: "Soort · " + n, data: { naam: n } }));
+    meldingen.forEach(x => rij.push({ id: "melding:" + app + ":" + x.over, soort: "melding", van, omschrijving: "Klopt niet: " + (x.wat || x.over) + (x.van ? " (van " + x.van + ")" : ""), data: { over: x.over, hash: x.hash, ts: x.ts } }));
     return rij;
   }
   const groepOk = () => !!(groepUrl() && groepActief() && String(groep.code || "").trim());
@@ -2884,9 +2951,11 @@ h2 .sum.warn { color: var(--warn); }
         const nm = String(d.naam), lw = nm.toLowerCase();
         zaadHidden = zaadHidden.filter(h => h !== lw); store.set("zaadVerborgen", zaadHidden);
         zaadCustom.push(nm); n++;
+      } else if (r.soort === "melding" && d.over && d.hash && !meldingen.some(x => x.over === d.over)) {
+        meldingen.push({ over: String(d.over), hash: String(d.hash), ts: d.ts || Date.now() }); n++;
       }
     });
-    if (n) { store.set("apvLog", apLog); store.set("zoconProf", zProf); store.set("kopegTab", kCustom); store.set("zaadsoorten", zaadCustom); store.set("mengRecepten", recepten); renderProfList(); renderSoortList(); }
+    if (n) { store.set("apvLog", apLog); store.set("zoconProf", zProf); store.set("kopegTab", kCustom); store.set("zaadsoorten", zaadCustom); store.set("mengRecepten", recepten); store.set("groepMeldingen", meldingen); renderProfList(); renderSoortList(); }
     return n;
   }
   async function groepVraag(opts) {
@@ -2920,6 +2989,9 @@ h2 .sum.warn { color: var(--warn); }
       const nuHier = new Set(mijnRijen().map(r => r.id));
       const terug = groepRijen.filter(r => r.apparaat === groep.apparaat && !hierBijStart.has(r.id) && !nuHier.has(r.id));
       groepTerug = zetTerugUitGroep(terug);
+      // Meldingen over regels die er niet meer zijn of intussen zijn aangepast: opruimen (gaan bij het volgende bijwerken als verwijderd naar de sheet)
+      const nogGeldig = meldingen.filter(x => groepRijen.some(r => r.id === x.over && dHash(r.data) === x.hash));
+      if (nogGeldig.length !== meldingen.length) { meldingen = nogGeldig; store.set("groepMeldingen", meldingen); }
       // Teruggezette regels staan al in de sheet: meteen als verstuurd onthouden. Haal je er een direct weer weg
       // (vóór het volgende bijwerken), dan gaat dat ook naar de sheet en komt hij niet opnieuw terug.
       if (groepTerug) {
@@ -2935,6 +3007,7 @@ h2 .sum.warn { color: var(--warn); }
   }
   groepPlan = () => { clearTimeout(groepTimer); groepTimer = setTimeout(groepSync, 3000); };
   function renderGroep() {
+    renderGrLijst();
     const ingesteld = !!groepUrl();
     $("grNiet").hidden = ingesteld; $("grBlok").hidden = !ingesteld;
     $("grAan").checked = !!groep.aan; $("grVelden").hidden = !groep.aan;
@@ -2945,7 +3018,7 @@ h2 .sum.warn { color: var(--warn); }
     $("grApp").textContent = groep.aan ? "Dit apparaat: " + groep.apparaat + " (kolom apparaat in de sheet)." +
       (anderApp.length ? " Let op: " + zelfde.length + (zelfde.length === 1 ? " regel" : " regels") + " op jouw naam " + (zelfde.length === 1 ? "komt" : "komen") + " van " + (anderApp.length === 1 ? "een ander apparaat (" + anderApp[0] + ")" : anderApp.length + " andere apparaten (" + anderApp.join(", ") + ")") + ". Die tellen hier als groep, niet als je eigen lijst." : "") : "";
     // Per soort: hoeveel, en waar in de app
-    const WAAR = { apv: ["APV-logboek", "APV → Zaaias → Van de groep (onder je logboek)"], zoc: ["Zocon-proef", "Zocon → startstand"], kop: ["kopeg-regel", "Kopeg → tabel"], soort: ["soort", "de soortenlijst"], recept: ["recept", "Mengen → Recepten"] };
+    const WAAR = { apv: ["APV-logboek", "APV → Zaaias → Van de groep (onder je logboek)"], zoc: ["Zocon-proef", "Zocon → startstand"], kop: ["kopeg-regel", "Kopeg → tabel"], soort: ["soort", "de soortenlijst"], recept: ["recept", "Mengen → Recepten"], melding: ["melding klopt niet", "hieronder bij Regels van anderen"] };
     const waar = rijen => Object.keys(WAAR).map(k => { const n = rijen.filter(r => r.soort === k).length; return n ? n + "× " + WAAR[k][0] + " (" + WAAR[k][1] + ")" : ""; }).filter(x => x).join(", ");
     const st = $("grStatus");
     if (!groep.aan) { st.textContent = "Je doet niet mee: je proeven blijven alleen op deze telefoon."; st.className = "hint"; return; }
@@ -2957,6 +3030,33 @@ h2 .sum.warn { color: var(--warn); }
     st.textContent = groepBezig ? "Bezig met bijwerken…" : (groepFout ? groepFout + " " : "") +
       (groepTerug ? groepTerug + (groepTerug === 1 ? " regel" : " regels") + " uit de groep teruggezet. " : "") + (groepLaatst ? "Bijgewerkt " + tijd + ": " + (anderen.length ? anderen.length + (anderen.length === 1 ? " regel" : " regels") + " van " + wie.size + (wie.size === 1 ? " ander" : " anderen") + " in de groep. Waar je ze vindt: " + waar(anderen) + "." : "nog niks van anderen in de groep.") : "Nog niet bijgewerkt.");
   }
+  function renderGrLijst() {
+    const sec = $("grLijstSec"), eg = $("grGemeld");
+    if (!groepActief()) { sec.hidden = true; eg.hidden = true; return; }
+    const m = gemeldMap();
+    // Eigen regels die een ander niet vindt kloppen
+    const mijn = mijnRijen().filter(r => KLOPT_SOORT.includes(r.soort)).map(r => [r, gemeldOp(m, r)]).filter(x => x[1]);
+    eg.hidden = !mijn.length;
+    eg.textContent = mijn.length ? (mijn.length === 1 ? "Let op: een regel van jou klopt niet volgens een ander. Die telt in de groep niet mee. Pas hem aan of haal hem weg, dan vervalt de melding.\n" : "Let op: " + mijn.length + " regels van jou kloppen niet volgens een ander. Die tellen in de groep niet mee. Pas ze aan of haal ze weg, dan vervalt de melding.\n") +
+      mijn.slice(0, 8).map(([r, g]) => "• " + rijTxt(r) + " (" + g.wie.join(", ") + ")").join("\n") + (mijn.length > 8 ? "\n…" : "") : "";
+    const rijen = KLOPT_SOORT.flatMap(groepAlle).sort((a, b) => (b.bijgewerkt || 0) - (a.bijgewerkt || 0));
+    sec.hidden = !rijen.length;
+    const nG = rijen.filter(r => gemeldOp(m, r)).length, open = !!groep.lijstOpen;
+    $("grLijstToggle").textContent = "Regels van anderen (" + rijen.length + (nG ? ", " + nG + " klopt niet" : "") + ")";
+    $("grLijstToggle").setAttribute("aria-pressed", open); $("grLijstToggle").setAttribute("aria-expanded", open);
+    $("grLijstBody").hidden = !open;
+    const ul = $("grLijst"); ul.innerHTML = "";
+    if (!open) return;
+    rijen.forEach(r => {
+      const g = gemeldOp(m, r), li = document.createElement("li"); if (g) li.className = "gemeld";
+      const left = document.createElement("div");
+      const nm = document.createElement("div"); nm.className = "name"; nm.style.fontSize = "16px"; nm.textContent = rijTxt(r);
+      const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = (r.van || "?") + (r.bijgewerkt ? ", " + dateTxt(r.bijgewerkt) : "");
+      left.append(nm, mt); if (g) left.append(gemeldMeta(g));
+      li.append(left, document.createElement("span"), klopKnop(r, g)); ul.appendChild(li);
+    });
+  }
+  $("grLijstToggle").addEventListener("click", () => { groep.lijstOpen = !groep.lijstOpen; store.set("groep", groep); renderGrLijst(); });
   const bewaarGroep = () => { store.set("groep", groep); renderGroep(); };
   $("grAan").addEventListener("change", e => { groep.aan = e.target.checked; bewaarGroep(); if (groep.aan) groepSync(); else { updateZ(); updateK(); updateAp(); refreshAllPickers(); renderRec(); } });
   $("grNaam").addEventListener("input", e => {

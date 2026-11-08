@@ -32,6 +32,12 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
 - **Klopt een regel niet?** Zet in kolom **weg** bijvoorbeeld `ja`. Bij het volgende bijwerken is hij bij iedereen weg,
   ook als die telefoon hem later opnieuw stuurt. (Zo'n regel liever niet helemaal verwijderen: staat hij nog op
   die telefoon, dan kan hij terugkomen zodra hij daar verandert.)
+- **Klopt niet vanuit de app:** iedereen kan bij een regel van een ander op **Klopt niet** tikken (Instellingen → Groep →
+  *Regels van anderen*, of in de lijsten bij APV, kopeg en recepten). Dan komt er in de sheet een regel met soort
+  `melding` bij, met in *omschrijving* welke regel en in *van* wie hem meldde. Bij iedereen wordt die regel grijs en telt
+  hij niet meer mee; de eigenaar ziet bij Instellingen → Groep welke regels van hem gemeld zijn. Past de eigenaar de regel
+  aan of haalt hij hem weg, dan vervalt de melding vanzelf (die komt op `verwijderd`). Vergist? *Toch goed* in de app,
+  of zet bij de melding iets in kolom **weg**. Het script hoeft hiervoor niet aangepast.
 - Haalt iemand op zijn telefoon iets weg, dan zet de app zelf `verwijderd` in kolom *weg*.
 - **Definitief opruimen:** een regel met `verwijderd` mag je helemaal weghalen (rechtsklik op het rijnummer → *Rij
   verwijderen*). Hij staat op die telefoon al niet meer, dus hij komt niet terug. Alleen een oude back-up terugzetten
