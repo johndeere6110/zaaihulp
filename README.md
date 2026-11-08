@@ -26,7 +26,7 @@ Voor alle machines:
 
 Op een **tablet** is de kolom breder en staan de machines op het startscherm naast elkaar.
 
-Getallen met een komma (`2,5`), zoals je gewend bent.
+Getallen met een komma (`2,5`), zoals je gewend bent. Vul je een vreemd getal in (kg/ha buiten 0,5–400, rijsnelheid buiten 0,5–20 km/h of werkbreedte buiten 0,5–30 m), dan vraagt de app "Klopt dit?". Bewaren mag gewoon, het is alleen een waarschuwing tegen tikfouten.
 
 ## Je gegevens
 

@@ -2988,7 +2988,28 @@ h2 .sum.warn { color: var(--warn); }
 
   vraagPersist(true);
 
+  // Zachte waarschuwing bij een getal dat waarschijnlijk een tikfout is. Bewaren mag gewoon, het is alleen een "klopt dit?"
+  const ZGRENS = { kgha: [0.5, 400, "kg/ha"], km: [0.5, 20, "km/h"], m: [0.5, 30, "m"] };
+  const ZACHT = [["norm", "kgha"], ["kNorm", "kgha"], ["aNorm", "kgha"], ["lKgha", "kgha"], ["zNorm", "kgha"],
+    ["aSpeed", "km"], ["lSpeed", "km"], ["zSpeed", "km"], ["width", "m"], ["aWidth", "m"], ["zWidth", "m"]]
+    .map(([id, g]) => {
+      const inp = $(id); if (!inp) return null;
+      const d = document.createElement("div"); d.className = "hint bkwarn"; d.hidden = true;
+      inp.closest(".field").appendChild(d);
+      return { inp, d, g: ZGRENS[g] };
+    }).filter(Boolean);
+  const zachtCheck = () => ZACHT.forEach(({ inp, d, g }) => {
+    const n = parse(inp.value), raar = n !== null && (n < g[0] || n > g[1]);
+    const t = raar ? "Klopt dit? Normaal tussen " + kg(g[0]) + " en " + kg(g[1]) + " " + g[2] : "";
+    if (d.textContent !== t) d.textContent = t;
+    d.hidden = !raar;
+  });
+  document.addEventListener("input", zachtCheck);
+  document.addEventListener("change", zachtCheck);
+  document.addEventListener("click", () => setTimeout(zachtCheck, 0)); // ook als een tik op een regel de velden invult
+
   setMachine(machine);
+  zachtCheck();
   if (viaGroepslink) { openMeer("groep"); if (!String(groep.naam || "").trim()) setTimeout(() => { try { $("grNaam").focus(); } catch (e) {} }, 300); }
 })();
 </script>
