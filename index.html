@@ -69,6 +69,14 @@ body.m-zoc #tabZoc, body.m-kop #tabKop { order: -1; }
 .mach { text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 16px; padding: 22px 20px; min-height: 130px; font-family: inherit; }
 .mach .mn { display: block; font: 700 38px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; line-height: 1.05; }
 .mach .md { display: block; font-size: 16px; color: var(--muted); margin-top: 6px; }
+.mach { position: relative; }
+.tel { position: absolute; top: 10px; right: 12px; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 14px; background: var(--warn); color: #111; font: 700 17px "Barlow", system-ui, sans-serif; display: inline-flex; align-items: center; justify-content: center; }
+.tel.klein { position: static; min-width: 22px; height: 22px; padding: 0 6px; font-size: 14px; margin-left: 6px; vertical-align: middle; }
+#meldBalk { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom)); max-width: 560px; margin: 0 auto; z-index: 50; display: flex; gap: 10px; align-items: center;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--warn); border-radius: 14px; padding: 10px 8px 10px 14px; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+#meldBalk[hidden] { display: none; }
+#meldBalkTxt { flex: 1; font-size: 15px; }
+#meldBalk .btn { margin: 0; min-height: 44px; padding: 0 12px; white-space: nowrap; }
 .mach.ander { display: block; text-decoration: none; min-height: 0; padding: 14px 18px; }
 .mach.ander .mn { font-size: 24px; }
 .mach:active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
@@ -275,7 +283,7 @@ h2 .sum.warn { color: var(--warn); }
       <button type="button" class="mach" id="mApv"><span class="mn">APV 5.2</span><span class="md">Afdraaien met emmer, mengen, vakken en bijstellen in stappen van 5 %</span></button>
       <button type="button" class="mach" id="mZoc"><span class="mn">Zocon Z300</span><span class="md">BASIC-kastje: afdraaiproef met timer, zaaistand 1–24 op rijsnelheid, mengen</span></button>
       <button type="button" class="mach" id="mKop"><span class="mn">Kopeg-zaaier</span><span class="md">Mechanisch: afdraaien met de slinger en variatorstand bijstellen</span></button>
-      <button type="button" class="mach" id="meerOpen"><span class="mn">Instellingen</span><span class="md">Groep, back-up, delen en de soortenlijst</span></button>
+      <button type="button" class="mach" id="meerOpen"><span class="tel" id="meerTel" hidden></span><span class="mn">Instellingen</span><span class="md">Groep, back-up, delen en de soortenlijst</span></button>
       <a class="mach ander" href="../perceelkaart/"><span class="mn">Perceelkaart →</span><span class="md">Aparte app: percelen en ha, bufferstroken, spuitsporen, zaaiplan mais en AB-lijnen</span></a>
     </div>
   </section>
@@ -284,7 +292,7 @@ h2 .sum.warn { color: var(--warn); }
   <section id="pMeer" hidden>
     <div class="apphead"><span class="mname">Instellingen</span><button type="button" id="meerTerug">Terug</button></div>
     <div class="tabs" role="tablist">
-      <button type="button" role="tab" id="tMeerGroep" aria-selected="true" aria-controls="mGroep">Groep</button>
+      <button type="button" role="tab" id="tMeerGroep" aria-selected="true" aria-controls="mGroep">Groep<span class="tel klein" id="groepTel" hidden></span></button>
       <button type="button" role="tab" id="tMeerBk" aria-selected="false" aria-controls="mBk">Back-up</button>
       <button type="button" role="tab" id="tMeerSoort" aria-selected="false" aria-controls="mSoort">Soorten</button>
     </div>
@@ -808,6 +816,7 @@ h2 .sum.warn { color: var(--warn); }
   <datalist id="zaadDL"></datalist>
 </main>
 
+<div id="meldBalk" hidden role="status"><span id="meldBalkTxt">Gemeld.</span><button type="button" class="btn primary" id="meldBalkKnop">Laat het weten</button><button type="button" class="del" id="meldBalkDicht" aria-label="Sluiten">×</button></div>
 <script>
 (function () {
   const $ = id => document.getElementById(id);
@@ -874,8 +883,30 @@ h2 .sum.warn { color: var(--warn); }
   function meldKloptNiet(r) {
     meldingen = meldingen.filter(x => x.over !== r.id);
     meldingen.push({ over: r.id, hash: dHash(r.data), wat: rijTxt(r).slice(0, 200), van: String(r.van || ""), ts: Date.now() });
-    store.set("groepMeldingen", meldingen); naMelding();
+    store.set("groepMeldingen", meldingen); naMelding(); toonMeldBalk(r);
   }
+  // Na "Klopt niet": balkje onderaan om de eigenaar een berichtje te sturen (deelmenu: WhatsApp e.d.; op de pc gekopieerd)
+  let meldBalkT = null, meldBalkR = null;
+  const verbergMeldBalk = () => { clearTimeout(meldBalkT); $("meldBalk").hidden = true; meldBalkR = null; };
+  function toonMeldBalk(r) {
+    meldBalkR = r; const wie = String(r.van || "").trim();
+    $("meldBalkTxt").textContent = "Gemeld.";
+    $("meldBalkKnop").textContent = wie ? "Laat " + wie + " het weten" : "Laat het weten";
+    $("meldBalk").hidden = false;
+    clearTimeout(meldBalkT); meldBalkT = setTimeout(verbergMeldBalk, 12000);
+  }
+  $("meldBalkDicht").addEventListener("click", verbergMeldBalk);
+  $("meldBalkKnop").addEventListener("click", async e => {
+    const r = meldBalkR, btn = e.currentTarget; if (!r) return;
+    clearTimeout(meldBalkT);
+    const wie = String(r.van || "").trim(), ik = String(groep.naam || "").trim();
+    const tekst = "Hoi" + (wie ? " " + wie : "") + ", je regel in Zaaihulp klopt volgens mij niet: " + rijTxt(r) + ". Kun je even kijken?" + (ik ? " (" + ik + ")" : "");
+    try { if (navigator.share) { await navigator.share({ text: tekst }); verbergMeldBalk(); return; } }
+    catch (er) { if (er && er.name === "AbortError") { meldBalkT = setTimeout(verbergMeldBalk, 8000); return; } }
+    try { await navigator.clipboard.writeText(tekst); $("meldBalkTxt").textContent = "Tekst gekopieerd: plak hem in WhatsApp of een mail."; }
+    catch (er) { $("meldBalkTxt").textContent = tekst; }
+    meldBalkT = setTimeout(verbergMeldBalk, 10000);
+  });
   // Eigenaar: "klopt wel" bij zijn eigen gemelde regel
   function meldKloptWel(r) {
     kloptWel = kloptWel.filter(x => x.over !== r.id);
@@ -3063,10 +3094,12 @@ h2 .sum.warn { color: var(--warn); }
   }
   function renderGrLijst() {
     const sec = $("grLijstSec"), eg = $("grGemeld");
-    if (!groepActief()) { sec.hidden = true; eg.hidden = true; return; }
+    const tel = n => ["meerTel", "groepTel"].forEach(id => { $(id).hidden = !n; $(id).textContent = n ? String(n) : ""; });
+    if (!groepActief()) { sec.hidden = true; eg.hidden = true; tel(0); return; }
     const m = gemeldMap();
     // Eigen regels die een ander niet vindt kloppen
     const mijn = mijnRijen().filter(r => KLOPT_SOORT.includes(r.soort)).map(r => [r, gemeldOp(m, r)]).filter(x => x[1]);
+    tel(mijn.length); $("meerOpen").setAttribute("aria-label", "Instellingen" + (mijn.length ? ", " + mijn.length + (mijn.length === 1 ? " regel van jou klopt niet volgens een ander" : " regels van jou kloppen niet volgens een ander") : ""));
     eg.hidden = !mijn.length;
     $("grGemeldTxt").textContent = mijn.length === 1 ? "Let op: een regel van jou klopt niet volgens een ander. Die telt in de groep niet mee. Pas hem aan of haal hem weg, dan vervalt de melding. Klopt hij toch? Tik op Klopt wel."
       : "Let op: " + mijn.length + " regels van jou kloppen niet volgens een ander. Die tellen in de groep niet mee. Pas ze aan of haal ze weg, dan vervalt de melding. Klopt er een toch? Tik op Klopt wel.";
