@@ -29,6 +29,12 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
 
 ## Beheer
 - Alles staat in het blad **data**. Kolom *omschrijving* is leesbaar, kolom *data* is voor de app.
+- **Overzicht: bladen `goed` en `twijfel`.** Het script maakt die na elke keer bijwerken opnieuw. In **goed** staan alle
+  actieve regels (zonder `verwijderd`/`ja` en zonder open melding), op soort en naam. In **twijfel** staan de regels die
+  iemand als *Klopt niet* meldde, met wie dat deed. Keurt de eigenaar hem goed (*Klopt wel*), past hij hem aan of tikt de
+  melder *Toch goed*, dan staat hij bij het volgende bijwerken weer in **goed**. Deze twee bladen zijn alleen om te lezen:
+  wat je erin verandert wordt overschreven. Beheren (kolom *weg*) doe je in **data**. Ze verschijnen zodra iemand iets
+  verstuurt; meteen zien kan in de Apps Script-editor: kies bovenaan de functie `overzichtNu` en klik op *Uitvoeren*.
 - **Klopt een regel niet?** Zet in kolom **weg** bijvoorbeeld `ja`. Bij het volgende bijwerken is hij bij iedereen weg,
   ook als die telefoon hem later opnieuw stuurt. (Zo'n regel liever niet helemaal verwijderen: staat hij nog op
   die telefoon, dan kan hij terugkomen zodra hij daar verandert.)
@@ -39,8 +45,7 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
   aan of haalt hij hem weg, dan vervalt de melding vanzelf (die komt op `verwijderd`). Vergist? *Toch goed* in de app,
   of zet bij de melding iets in kolom **weg**. Klopt de regel volgens de eigenaar wél, dan tikt hij op **Klopt wel**
   (Instellingen → Groep): er komt een regel met soort `klopt` bij en de melding telt niet meer. Alleen het apparaat van
-  de eigenaar kan dat. Meldt iemand hem daarna opnieuw, dan geldt die nieuwe melding weer. Het script hoeft hiervoor
-  niet aangepast.
+  de eigenaar kan dat. Meldt iemand hem daarna opnieuw, dan geldt die nieuwe melding weer.
 - Haalt iemand op zijn telefoon iets weg, dan zet de app zelf `verwijderd` in kolom *weg*.
 - **Definitief opruimen:** een regel met `verwijderd` mag je helemaal weghalen (rechtsklik op het rijnummer → *Rij
   verwijderen*). Hij staat op die telefoon al niet meer, dus hij komt niet terug. Alleen een oude back-up terugzetten
