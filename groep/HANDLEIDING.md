@@ -37,7 +37,10 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
   `melding` bij, met in *omschrijving* welke regel en in *van* wie hem meldde. Bij iedereen wordt die regel grijs en telt
   hij niet meer mee; de eigenaar ziet bij Instellingen → Groep welke regels van hem gemeld zijn. Past de eigenaar de regel
   aan of haalt hij hem weg, dan vervalt de melding vanzelf (die komt op `verwijderd`). Vergist? *Toch goed* in de app,
-  of zet bij de melding iets in kolom **weg**. Het script hoeft hiervoor niet aangepast.
+  of zet bij de melding iets in kolom **weg**. Klopt de regel volgens de eigenaar wél, dan tikt hij op **Klopt wel**
+  (Instellingen → Groep): er komt een regel met soort `klopt` bij en de melding telt niet meer. Alleen het apparaat van
+  de eigenaar kan dat. Meldt iemand hem daarna opnieuw, dan geldt die nieuwe melding weer. Het script hoeft hiervoor
+  niet aangepast.
 - Haalt iemand op zijn telefoon iets weg, dan zet de app zelf `verwijderd` in kolom *weg*.
 - **Definitief opruimen:** een regel met `verwijderd` mag je helemaal weghalen (rechtsklik op het rijnummer → *Rij
   verwijderen*). Hij staat op die telefoon al niet meer, dus hij komt niet terug. Alleen een oude back-up terugzetten
