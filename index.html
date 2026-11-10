@@ -85,7 +85,7 @@ body.m-zoc #tabZoc, body.m-kop #tabKop { order: -1; }
 #meldBalk[hidden] { display: none; }
 #meldBalkTxt { flex: 1; font-size: 15px; }
 #meldBalk .btn { margin: 0; min-height: 44px; padding: 0 12px; white-space: nowrap; }
-.mach.ander { display: block; text-decoration: none; min-height: 0; padding: 14px 18px; }
+.mach.ander { display: block; text-decoration: none; min-height: 0; padding: 14px 18px; line-height: inherit; }
 .mach.ander .mn { font-size: 24px; }
 .mach:active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .apphead { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
@@ -292,6 +292,7 @@ h2 .sum.warn { color: var(--warn); }
       <button type="button" class="mach" id="mZoc"><span class="mn">Zocon Z300</span><span class="md">BASIC-kastje: afdraaiproef met timer, zaaistand 1–24 op rijsnelheid, mengen</span></button>
       <button type="button" class="mach" id="mKop"><span class="mn">Kopeg-zaaier</span><span class="md">Mechanisch: afdraaien met de slinger en variatorstand bijstellen</span></button>
       <button type="button" class="mach" id="meerOpen"><span class="tel" id="meerTel" hidden></span><span class="mn">Instellingen</span><span class="md">Groep, back-up, delen en de soortenlijst</span></button>
+      <button type="button" class="mach ander" id="homeInstall"><span class="mn">Installatielink</span><span class="md" id="homeInstallTxt">Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren</span></button>
       <a class="mach ander" href="../perceelkaart/"><span class="mn">Perceelkaart →</span><span class="md">Aparte app: percelen en ha, bufferstroken, spuitsporen, zaaiplan mais en AB-lijnen</span></a>
     </div>
   </section>
@@ -2769,16 +2770,21 @@ h2 .sum.warn { color: var(--warn); }
     $("shIn").value = "";
   });
 
-  $("shLink").addEventListener("click", async () => {
-    const url = new URL("installeren.html", location.href).href, hint = $("shLinkHint");
-    let how = "";
+  // Installatielink delen (deelmenu), anders kopiëren; geeft terug wat er gebeurde
+  async function deelInstallatie() {
+    const url = new URL("installeren.html", location.href).href;
     try {
-      if (navigator.share) { await navigator.share({ title: "Zaaihulp", text: "Zaaihulp (en de Perceelkaart) installeren op je telefoon:", url }); how = "Gedeeld."; }
-    } catch (e) { if (e && e.name === "AbortError") { hint.textContent = "Delen geannuleerd."; return; } }
-    if (!how) {
-      try { await navigator.clipboard.writeText(url); how = "Link gekopieerd: " + url; }
-      catch (e) { how = "Stuur deze link: " + url; }
-    }
+      if (navigator.share) { await navigator.share({ title: "Zaaihulp", text: "Zaaihulp (en de Perceelkaart) installeren op je telefoon:", url }); return "Gedeeld."; }
+    } catch (e) { if (e && e.name === "AbortError") return "Delen geannuleerd."; }
+    try { await navigator.clipboard.writeText(url); return "Link gekopieerd: " + url; }
+    catch (e) { return "Stuur deze link: " + url; }
+  }
+  $("homeInstall").addEventListener("click", async () => {
+    const t = $("homeInstallTxt"), oud = "Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren";
+    t.textContent = await deelInstallatie(); clearTimeout(t._t); t._t = setTimeout(() => { t.textContent = oud; }, 6000);
+  });
+  $("shLink").addEventListener("click", async () => {
+    const hint = $("shLinkHint"), how = await deelInstallatie();
     hint.textContent = how;
   });
 
