@@ -311,6 +311,7 @@ h2 .sum.warn { color: var(--warn); }
     <div class="hint" id="grNiet" hidden>De groep is nog niet ingesteld in deze versie van de app.</div>
     <div id="grBlok">
       <label class="chk"><input type="checkbox" id="grAan"> <span>Meedoen met de groep</span></label>
+      <div class="hint bkwarn" id="grUitnodiging" hidden style="font-size:17px;margin-top:6px">Je bent uitgenodigd voor de groep. Vul je naam in.</div>
       <div class="fields" id="grVelden" style="margin-top:4px">
         <div class="field">
           <label for="grNaam">Je naam</label>
@@ -2771,17 +2772,23 @@ h2 .sum.warn { color: var(--warn); }
   });
 
   // Installatielink delen (deelmenu), anders kopiëren; geeft terug wat er gebeurde
+  // Zit je in een groep, dan gaat de groepscode mee (zelfde formaat als de groepslink: ?groep=…):
+  // de installatiepagina bewaart hem alvast, en de app vraagt daarna alleen nog de naam
+  const installGroep = () => groep.aan && String(groep.code || "").trim() ? String(groep.code).trim() : "";
+  const homeInstallTekst = () => installGroep() ? "Collega's installeren de app en zitten meteen in je groep" : "Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren";
   async function deelInstallatie() {
-    const url = new URL("installeren.html", location.href).href;
+    const u = new URL("installeren.html", location.href), code = installGroep();
+    if (code) u.searchParams.set("groep", code);
+    const url = u.href, tekst = code ? "Installeer Zaaihulp en doe meteen mee met onze groep" : "Zaaihulp (en de Perceelkaart) installeren op je telefoon:";
     try {
-      if (navigator.share) { await navigator.share({ title: "Zaaihulp", text: "Zaaihulp (en de Perceelkaart) installeren op je telefoon:", url }); return "Gedeeld."; }
+      if (navigator.share) { await navigator.share({ title: "Zaaihulp", text: tekst, url }); return "Gedeeld."; }
     } catch (e) { if (e && e.name === "AbortError") return "Delen geannuleerd."; }
     try { await navigator.clipboard.writeText(url); return "Link gekopieerd: " + url; }
     catch (e) { return "Stuur deze link: " + url; }
   }
   $("homeInstall").addEventListener("click", async () => {
-    const t = $("homeInstallTxt"), oud = "Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren";
-    t.textContent = await deelInstallatie(); clearTimeout(t._t); t._t = setTimeout(() => { t.textContent = oud; }, 6000);
+    const t = $("homeInstallTxt");
+    t.textContent = await deelInstallatie(); clearTimeout(t._t); t._t = setTimeout(() => { t._t = null; t.textContent = homeInstallTekst(); }, 6000);
   });
   $("shLink").addEventListener("click", async () => {
     const hint = $("shLinkHint"), how = await deelInstallatie();
@@ -3135,6 +3142,8 @@ h2 .sum.warn { color: var(--warn); }
   groepPlan = () => { clearTimeout(groepTimer); groepTimer = setTimeout(groepSync, 3000); };
   function renderGroep() {
     renderGrLijst();
+    { const t = $("homeInstallTxt"); if (!t._t) t.textContent = homeInstallTekst(); }
+    if (String(groep.naam || "").trim() || !groep.aan) $("grUitnodiging").hidden = true;
     const ingesteld = !!groepUrl();
     $("grNiet").hidden = ingesteld; $("grBlok").hidden = !ingesteld;
     $("grAan").checked = !!groep.aan; $("grVelden").hidden = !groep.aan;
@@ -3318,7 +3327,12 @@ h2 .sum.warn { color: var(--warn); }
 
   setMachine(machine);
   zachtCheck();
-  if (viaGroepslink) { openMeer("groep"); if (!String(groep.naam || "").trim()) setTimeout(() => { try { $("grNaam").focus(); } catch (e) {} }, 300); }
+  // Uitgenodigd (groepslink, of de installatielink met groep): zolang er nog geen naam is, meteen het naamveld
+  const zonderNaam = !!(groep.aan && String(groep.code || "").trim() && !String(groep.naam || "").trim());
+  if (viaGroepslink || zonderNaam) {
+    openMeer("groep");
+    if (zonderNaam) { $("grUitnodiging").hidden = false; setTimeout(() => { try { $("grNaam").focus(); } catch (e) {} }, 300); }
+  }
 })();
 </script>
 <script>

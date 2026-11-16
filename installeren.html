@@ -70,6 +70,8 @@ body.metpijl main { padding-bottom: 90px; }
   .arrow { animation: hop 1.2s ease-in-out infinite; }
   @keyframes hop { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 8px); } }
 }
+.card.groep { border: 2px solid var(--warn); }
+.code { font: 700 28px "Barlow Semi Condensed", "Barlow", system-ui, sans-serif; letter-spacing: .02em; text-align: center; background: var(--bg); border-radius: 10px; padding: 10px; margin-top: 10px; word-break: break-all; user-select: all; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -80,11 +82,22 @@ body.metpijl main { padding-bottom: 90px; }
     <div><h1>Zaaihulp</h1><div class="sub">Afdraaien, wegen en mengen bij de zaaimachine</div></div>
   </div>
 
+  <!-- Uitnodiging voor een groep (link met ?groep=…) -->
+  <section class="card groep" id="vGroep" hidden>
+    <h2>Je bent uitgenodigd voor een groep</h2>
+    <p style="margin:0">Installeer de app, daarna vraagt hij alleen je naam.</p>
+    <div id="vGroepIos" hidden>
+      <p style="margin:12px 0 0">Op een iPhone onthoudt de app op je beginscherm dit niet vanzelf. Open daarom na het installeren de app, ga naar <strong>Instellingen → Groep</strong>, zet <strong>Meedoen met de groep</strong> aan en vul je naam en deze <strong>groepscode</strong> in:</p>
+      <div class="code" id="groepCode"></div>
+      <button type="button" class="btn" id="bCode">Kopieer de code</button>
+    </div>
+  </section>
+
   <!-- Al geïnstalleerd -->
   <section class="card main" id="vAl" hidden>
     <div class="ok">✓</div>
     <h2 style="margin-top:8px">Je hebt de app al</h2>
-    <a class="btn primary" href="./">Open Zaaihulp</a>
+    <a class="btn primary" href="./" id="aOpen">Open Zaaihulp</a>
     <a class="btn" href="../perceelkaart/installeren.html">Ook de Perceelkaart installeren</a>
   </section>
 
@@ -139,7 +152,7 @@ body.metpijl main { padding-bottom: 90px; }
     <ul class="know">
       <li>Open de app altijd via het icoon, dan blijven je gegevens bewaard.</li>
       <li>Werkt ook zonder internet, als je hem één keer met internet hebt geopend.</li>
-      <li>Alles wat je invult blijft op je eigen telefoon.</li>
+      <li id="liPrive">Alles wat je invult blijft op je eigen telefoon.</li>
       <li>Gegevens van iemand anders overnemen? Plak de code in de app bij <strong>Delen en overzetten → Importeren</strong>.</li>
     </ul>
   </section>
@@ -179,6 +192,32 @@ body.metpijl main { padding-bottom: 90px; }
   // In-app browsers op Android (WhatsApp, Facebook enz. gebruiken een WebView: "; wv)")
   const androidInApp = android && (/; wv\)/.test(ua) || /FBAN|FBAV|Instagram/.test(ua));
   const show = id => { $(id).hidden = false; };
+
+  // Uitnodiging voor een groep: ?groep=<code>, hetzelfde formaat als de groepslink van de app.
+  // Alvast bewaren onder dezelfde sleutel als de app ("groep"); een naam die er al staat blijft staan.
+  // De ?groep= blijft in de adresbalk: stuur je deze pagina door (of scan je de QR-code), dan gaat de uitnodiging mee.
+  let code = "";
+  try { code = String(new URLSearchParams(location.search).get("groep") || "").trim().slice(0, 100); } catch (e) {}
+  if (code) {
+    try {
+      let g = null; try { g = JSON.parse(localStorage.getItem("groep")); } catch (e) {}
+      if (!g || typeof g !== "object") g = {};
+      g.code = code; g.aan = true;
+      localStorage.setItem("groep", JSON.stringify(g));
+    } catch (e) {}
+    show("vGroep");
+    $("liPrive").textContent = "Je proeven deel je met de groep; wegingen en de lopende menging blijven op je eigen telefoon.";
+    $("aOpen").href = "./?groep=" + encodeURIComponent(code);
+    // iPhone/iPad: de app op het beginscherm heeft eigen opslag, los van Safari. Dan de code zelf invullen.
+    if (ios && !standalone) {
+      $("groepCode").textContent = code; show("vGroepIos");
+      $("bCode").addEventListener("click", async e => {
+        const b = e.currentTarget;
+        try { await navigator.clipboard.writeText(code); b.textContent = "Gekopieerd"; } catch (er) { b.textContent = "Kopiëren lukte niet: neem de code over"; }
+        setTimeout(() => { b.textContent = "Kopieer de code"; }, 2500);
+      });
+    }
+  }
 
   if (standalone) { show("vAl"); return; }
 
