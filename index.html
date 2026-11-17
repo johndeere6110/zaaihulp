@@ -358,8 +358,8 @@ h2 .sum.warn { color: var(--warn); }
     <div class="row"><button type="button" class="btn" id="shImport">Importeren</button></div>
     <div class="hint" id="shInHint" style="margin-top:6px"></div>
 
-    <p class="small">Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit.</p>
-    <div class="row" style="margin-top:8px"><button type="button" class="btn" id="shLink">Stuur installatielink</button></div>
+    <p class="small" id="shLinkUitleg">Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit.</p>
+    <div class="row" style="margin-top:8px"><button type="button" class="btn" id="shLink">Stuur installatielink</button><button type="button" class="btn" id="shLinkZonder" hidden>Zonder groep</button></div>
     <div class="hint" id="shLinkHint"></div>
     </div>
     <div id="mBk" role="tabpanel" aria-labelledby="tMeerBk" hidden>
@@ -2776,8 +2776,8 @@ h2 .sum.warn { color: var(--warn); }
   // de installatiepagina bewaart hem alvast, en de app vraagt daarna alleen nog de naam
   const installGroep = () => groep.aan && String(groep.code || "").trim() ? String(groep.code).trim() : "";
   const homeInstallTekst = () => installGroep() ? "Collega's installeren de app en zitten meteen in je groep" : "Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren";
-  async function deelInstallatie() {
-    const u = new URL("installeren.html", location.href), code = installGroep();
+  async function deelInstallatie(zonderGroep) {
+    const u = new URL("installeren.html", location.href), code = zonderGroep ? "" : installGroep();
     if (code) u.searchParams.set("groep", code);
     const url = u.href, tekst = code ? "Installeer Zaaihulp en doe meteen mee met onze groep" : "Zaaihulp (en de Perceelkaart) installeren op je telefoon:";
     try {
@@ -2794,6 +2794,7 @@ h2 .sum.warn { color: var(--warn); }
     const hint = $("shLinkHint"), how = await deelInstallatie();
     hint.textContent = how;
   });
+  $("shLinkZonder").addEventListener("click", async () => { $("shLinkHint").textContent = await deelInstallatie(true); });
 
   // ---------- Back-up: alle Zaaihulp-gegevens als één JSON-bestand, terug te zetten op elke telefoon ----------
   const BK_APP = "zaaihulp", BK_SCHEMA = 2;
@@ -3143,6 +3144,8 @@ h2 .sum.warn { color: var(--warn); }
   function renderGroep() {
     renderGrLijst();
     { const t = $("homeInstallTxt"); if (!t._t) t.textContent = homeInstallTekst(); }
+    { const mg = !!installGroep(); $("shLinkZonder").hidden = !mg; $("shLink").textContent = mg ? "Met groep" : "Stuur installatielink";
+      $("shLinkUitleg").textContent = mg ? "Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit. Met groep zit hij na het installeren meteen in je groep; zonder groep is het alleen de app." : "Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit."; }
     if (String(groep.naam || "").trim() || !groep.aan) $("grUitnodiging").hidden = true;
     const ingesteld = !!groepUrl();
     $("grNiet").hidden = ingesteld; $("grBlok").hidden = !ingesteld;
