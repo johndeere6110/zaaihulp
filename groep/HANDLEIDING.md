@@ -26,8 +26,8 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
 ## 4. Meedoen
 - In de app, startscherm → **Groep** → *Meedoen met de groep*, naam en groepscode invullen.
 - Of: één persoon tikt op **Stuur groepslink** en stuurt die naar de rest. Wie de link opent, doet meteen mee.
-- **Nieuwe collega zonder de app?** Tik op **Installatielink** (startscherm) of **Stuur installatielink** (Instellingen). Zit je
-  in de groep, dan gaat de groepscode mee in de link (in Instellingen: **Met groep**; **Zonder groep** stuurt alleen de app). De installatiepagina zegt dat je bent uitgenodigd; na het installeren
+- **Nieuwe collega zonder de app?** Gebruik de tegel **Installatielink** op het startscherm. Zit je in de groep, dan kies je
+  **Met groep** (de groepscode gaat mee in de link) of **Zonder groep** (alleen de app). De installatiepagina zegt dat je bent uitgenodigd; na het installeren
   vraagt de app alleen nog de naam. Op een **iPhone** heeft de app op het beginscherm eigen opslag, los van Safari: daar
   toont de installatiepagina de groepscode, die vul je in de app zelf in (Instellingen → Groep).
 

@@ -85,6 +85,7 @@ body.m-zoc #tabZoc, body.m-kop #tabKop { order: -1; }
 #meldBalk[hidden] { display: none; }
 #meldBalkTxt { flex: 1; font-size: 15px; }
 #meldBalk .btn { margin: 0; min-height: 44px; padding: 0 12px; white-space: nowrap; }
+#homeInstall:active { border-color: var(--line); box-shadow: none; }
 .mach.ander { display: block; text-decoration: none; min-height: 0; padding: 14px 18px; line-height: inherit; }
 .mach.ander .mn { font-size: 24px; }
 .mach:active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
@@ -292,7 +293,8 @@ h2 .sum.warn { color: var(--warn); }
       <button type="button" class="mach" id="mZoc"><span class="mn">Zocon Z300</span><span class="md">BASIC-kastje: afdraaiproef met timer, zaaistand 1–24 op rijsnelheid, mengen</span></button>
       <button type="button" class="mach" id="mKop"><span class="mn">Kopeg-zaaier</span><span class="md">Mechanisch: afdraaien met de slinger en variatorstand bijstellen</span></button>
       <button type="button" class="mach" id="meerOpen"><span class="tel" id="meerTel" hidden></span><span class="mn">Instellingen</span><span class="md">Groep, back-up, delen en de soortenlijst</span></button>
-      <button type="button" class="mach ander" id="homeInstall"><span class="mn">Installatielink</span><span class="md" id="homeInstallTxt">Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren</span></button>
+      <div class="mach ander" id="homeInstall"><span class="mn">Installatielink</span><span class="md" id="homeInstallTxt">Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren</span>
+        <div class="row" style="margin-top:10px"><button type="button" class="btn" id="instMet">Stuur installatielink</button><button type="button" class="btn" id="instZonder" hidden>Zonder groep</button></div></div>
       <a class="mach ander" href="../perceelkaart/"><span class="mn">Perceelkaart →</span><span class="md">Aparte app: percelen en ha, bufferstroken, spuitsporen, zaaiplan mais en AB-lijnen</span></a>
     </div>
   </section>
@@ -358,9 +360,6 @@ h2 .sum.warn { color: var(--warn); }
     <div class="row"><button type="button" class="btn" id="shImport">Importeren</button></div>
     <div class="hint" id="shInHint" style="margin-top:6px"></div>
 
-    <p class="small" id="shLinkUitleg">Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit.</p>
-    <div class="row" style="margin-top:8px"><button type="button" class="btn" id="shLink">Stuur installatielink</button><button type="button" class="btn" id="shLinkZonder" hidden>Zonder groep</button></div>
-    <div class="hint" id="shLinkHint"></div>
     </div>
     <div id="mBk" role="tabpanel" aria-labelledby="tMeerBk" hidden>
     <h2 id="bkKop">Back-up</h2>
@@ -2775,7 +2774,7 @@ h2 .sum.warn { color: var(--warn); }
   // Zit je in een groep, dan gaat de groepscode mee (zelfde formaat als de groepslink: ?groep=…):
   // de installatiepagina bewaart hem alvast, en de app vraagt daarna alleen nog de naam
   const installGroep = () => groep.aan && String(groep.code || "").trim() ? String(groep.code).trim() : "";
-  const homeInstallTekst = () => installGroep() ? "Collega's installeren de app en zitten meteen in je groep" : "Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren";
+  const homeInstallTekst = () => installGroep() ? "Met groep: een collega installeert de app en zit meteen in je groep. Zonder groep: alleen de app." : "Stuur iemand de link om Zaaihulp en de Perceelkaart te installeren";
   async function deelInstallatie(zonderGroep) {
     const u = new URL("installeren.html", location.href), code = zonderGroep ? "" : installGroep();
     if (code) u.searchParams.set("groep", code);
@@ -2786,15 +2785,13 @@ h2 .sum.warn { color: var(--warn); }
     try { await navigator.clipboard.writeText(url); return "Link gekopieerd: " + url; }
     catch (e) { return "Stuur deze link: " + url; }
   }
-  $("homeInstall").addEventListener("click", async () => {
+  // Tegel op het startscherm: in een groep twee knoppen (met / zonder groep), anders één; daarna kort wat er gebeurde
+  const instKlik = zonder => async () => {
     const t = $("homeInstallTxt");
-    t.textContent = await deelInstallatie(); clearTimeout(t._t); t._t = setTimeout(() => { t._t = null; t.textContent = homeInstallTekst(); }, 6000);
-  });
-  $("shLink").addEventListener("click", async () => {
-    const hint = $("shLinkHint"), how = await deelInstallatie();
-    hint.textContent = how;
-  });
-  $("shLinkZonder").addEventListener("click", async () => { $("shLinkHint").textContent = await deelInstallatie(true); });
+    t.textContent = await deelInstallatie(zonder); clearTimeout(t._t); t._t = setTimeout(() => { t._t = null; t.textContent = homeInstallTekst(); }, 6000);
+  };
+  $("instMet").addEventListener("click", instKlik(false));
+  $("instZonder").addEventListener("click", instKlik(true));
 
   // ---------- Back-up: alle Zaaihulp-gegevens als één JSON-bestand, terug te zetten op elke telefoon ----------
   const BK_APP = "zaaihulp", BK_SCHEMA = 2;
@@ -3144,8 +3141,7 @@ h2 .sum.warn { color: var(--warn); }
   function renderGroep() {
     renderGrLijst();
     { const t = $("homeInstallTxt"); if (!t._t) t.textContent = homeInstallTekst(); }
-    { const mg = !!installGroep(); $("shLinkZonder").hidden = !mg; $("shLink").textContent = mg ? "Met groep" : "Stuur installatielink";
-      $("shLinkUitleg").textContent = mg ? "Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit. Met groep zit hij na het installeren meteen in je groep; zonder groep is het alleen de app." : "Heeft iemand de app nog niet? Stuur de installatielink, die pagina legt het stap voor stap uit."; }
+    { const mg = !!installGroep(); $("instZonder").hidden = !mg; $("instMet").textContent = mg ? "Met groep" : "Stuur installatielink"; }
     if (String(groep.naam || "").trim() || !groep.aan) $("grUitnodiging").hidden = true;
     const ingesteld = !!groepUrl();
     $("grNiet").hidden = ingesteld; $("grBlok").hidden = !ingesteld;
