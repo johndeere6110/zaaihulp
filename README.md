@@ -40,7 +40,7 @@ Getallen met een komma (`2,5`), zoals je gewend bent. Vul je een vreemd getal in
 - **Bescherming:** de app vraagt de browser om de gegevens niet op te ruimen als de telefoon weinig ruimte heeft (onderaan bij Opslag zie je of dat gelukt is).
 
 **Let op:** het icoon van je beginscherm verwijderen (vooral op iPhone) of de browsergegevens wissen, wist ook alles van de Zaaihulp. Maak na belangrijke wijzigingen (nieuwe proeven, logboekregels, rollen) even een back-up.
-- **Opslag** (Instellingen → Back-up, onderaan): hoeveel van de ± 5 MB browseropslag in gebruik is. Die delen alle apps op dit adres, ook de Perceelkaart. Boven 80 % kleurt de meter rood.
+- **Opslag** (Instellingen → Back-up, onderaan): hoeveel van de ± 5 MB browseropslag in gebruik is. Die delen alle apps op dit adres, ook de Perceelkaart. Boven 80 % kleurt de meter rood. Daaronder staat **waar de ruimte heen gaat** (bijv. de onthouden percelen van de Perceelkaart), en een knop **Perceelcache leegmaken**: die haalt alleen de onthouden percelen weg, je bedrijven en percelen in de Perceelkaart blijven staan.
 
 ## Offline en updates
 
@@ -57,7 +57,7 @@ Gebruik op een iPhone altijd het icoon op het beginscherm, niet los Safari: dan 
 ## Voor wie eraan werkt
 
 - **Alles in `index.html`:** HTML, CSS en JavaScript in één bestand. Geen build-stap, geen frameworks.
-- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v87` → `v88`), anders krijgen telefoons de update niet.
+- **`sw.js`:** de service worker voor offline gebruik. **Verhoog bij elke wijziging het versienummer** (`zaaihulp-v88` → `v89`), anders krijgen telefoons de update niet.
 - **`installeren.html`:** de installatiepagina. Herkent Android, iPhone of computer.
 - **`groep/`:** het Apps Script voor de groeps-sheet en de handleiding. De web-app-URL staat in `GROEP_URL_VAST` in `index.html`.
 - **`img/`:** plaatjes van de zaaiwielen en vaste rollen (Flex 20 foto, de rest nagetekend) (480 px, ook offline in `sw.js`). Nieuwe vaste rol: foto in `img/`, regel in `ROL_VAST` in `index.html`, bestand in `SHELL` van `sw.js`.

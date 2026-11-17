@@ -386,6 +386,14 @@ h2 .sum.warn { color: var(--warn); }
     <h2>Opslag</h2>
     <div class="meter" aria-hidden="true"><div class="meter-zh" id="opZh"></div><div class="meter-and" id="opAnd"></div></div>
     <div class="hint" id="opTxt"></div>
+    <div id="opWaar" hidden>
+      <div class="small" style="margin-top:10px;font-weight:600">Waar de ruimte heen gaat</div>
+      <ul class="log" id="opWaarList"></ul>
+    </div>
+    <div id="opCacheBlok" hidden>
+      <div class="row" style="margin-top:8px"><button type="button" class="btn" id="opCacheWeg">Perceelcache leegmaken</button></div>
+      <div class="hint" id="opCacheHint">Dat zijn percelen die de Perceelkaart heeft onthouden voor zonder internet. Je eigen bedrijven en percelen blijven staan; de rest haalt de Perceelkaart vanzelf opnieuw op zodra je met internet een perceel opzoekt.</div>
+    </div>
     <p class="small">De browser geeft ± 5 MB voor alle apps op dit adres samen, ook de Perceelkaart. Groen is de Zaaihulp, grijs de andere apps.</p>
     <div class="hint" id="opPersist" style="margin-top:8px"></div>
     <div class="row" id="opPersistRow" hidden><button type="button" class="btn" id="opPersistBtn">Bescherming aanvragen</button></div>
@@ -2891,6 +2899,7 @@ h2 .sum.warn { color: var(--warn); }
   $("bkHerinner").addEventListener("click", () => openMeer("bk"));
   // Opslagmeter: localStorage telt in tekens (sleutel + waarde), de browser geeft ± 5 × 1024 × 1024 voor dit hele adres
   const OPSLAG_MAX = 5 * 1048576;
+  let cacheNetLeeg = false; // net op "Perceelcache leegmaken" getikt: knop blijft even staan met "leeggemaakt"
   function renderOpslag() {
     let zh = 0, foto = 0, veilig = 0, ander = 0;
     try {
@@ -2908,9 +2917,43 @@ h2 .sum.warn { color: var(--warn); }
     $("opZh").parentElement.classList.toggle("vol", vol);
     $("opTxt").className = "hint" + (vol ? " bkwarn" : "");
     const waarvan = [foto ? "foto's " + mb(foto) : "", veilig ? "veiligheidskopie " + mb(veilig) : ""].filter(Boolean).join(", ");
+    // Waar de ruimte heen gaat: per onderdeel, in gewone woorden, grootste eerst (vanaf 10 kB)
+    const per = new Map(), tel = (naam, n) => per.set(naam, (per.get(naam) || 0) + n);
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i), n = key.length + (localStorage.getItem(key) || "").length;
+        tel(key === "apvRolFoto" ? "Zaaihulp: eigen foto's van rollen" : key === VEILIG_KEY ? "Zaaihulp: veiligheidskopie (van vóór terugzetten)"
+          : isZaaiKey(key) || /^(laatsteBackup|groepData|groepUrl)$/.test(key) ? (key === "groepData" ? "Zaaihulp: regels van de groep" : "Zaaihulp: je eigen gegevens")
+          : /^perceelCache/.test(key) ? "Perceelkaart: onthouden percelen (cache)"
+          : /^kaart(Namen|Kavels|TestSelectie|NaamActief|VrijAB)$/.test(key) ? "Perceelkaart: je bedrijven en percelen"
+          : key === "kaartMetingen" ? "Perceelkaart: metingen"
+          : /^kaartGroep/.test(key) ? "Perceelkaart: groep"
+          : /^kaartMet/.test(key) ? "Perceelkaart: mengsels en concept"
+          : /^kaart/.test(key) ? "Perceelkaart: instellingen" : "Overig (andere app op dit adres)", n);
+      }
+    } catch (e) {}
+    const groot = [...per.entries()].filter(([, n]) => n >= 10240).sort((a, b) => b[1] - a[1]);
+    $("opWaar").hidden = !groot.length;
+    const ul = $("opWaarList"); ul.innerHTML = "";
+    groot.forEach(([naam, n]) => {
+      const li = document.createElement("li"), l = document.createElement("div"), w = document.createElement("div");
+      l.className = "name"; l.style.fontSize = "16px"; l.textContent = naam;
+      w.className = "w num"; w.style.fontSize = "17px"; w.textContent = mb(n) + " · " + Math.round(n / OPSLAG_MAX * 100) + " %";
+      li.append(l, w, document.createElement("span")); ul.appendChild(li);
+    });
+    const cache = per.get("Perceelkaart: onthouden percelen (cache)") || 0;
+    $("opCacheBlok").hidden = !cache && !cacheNetLeeg;
+    $("opCacheWeg").disabled = !cache;
+    if ($("opCacheWeg").dataset.armed !== "1") $("opCacheWeg").textContent = cache ? "Perceelcache leegmaken (" + mb(cache) + ")" : "Perceelcache leeggemaakt";
     $("opTxt").textContent = mb(tot) + " van ± 5 MB gebruikt (" + Math.round(pct) + " %). Zaaihulp " + mb(eigen) + (waarvan ? ", waarvan " + waarvan : "") +
-      "; andere apps op dit adres (bijv. de Perceelkaart) " + mb(ander) + "." + (vol ? " Bijna vol: maak een back-up en haal foto's of de veiligheidskopie weg, of ruim op in de Perceelkaart." : "");
+      "; andere apps op dit adres (bijv. de Perceelkaart) " + mb(ander) + "." + (vol ? " Bijna vol: maak een back-up en haal foto's of de veiligheidskopie weg, of maak hieronder de perceelcache leeg." : "");
   }
+  // Noodknop: de perceelcache van de Perceelkaart (zelfde adres) weghalen; die bouwt de Perceelkaart vanzelf weer op
+  $("opCacheWeg").addEventListener("click", e => {
+    if (!armed(e.currentTarget, "Zeker? Tik nog eens")) return;
+    try { Object.keys(localStorage).filter(k => /^perceelCache/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (er) {}
+    cacheNetLeeg = true; renderOpslag();
+  });
   // Persistent storage: vraag de browser de gegevens niet op te ruimen bij weinig opslagruimte
   let persistStand = "onbekend";
   async function vraagPersist(vraag) {
