@@ -392,9 +392,10 @@ h2 .sum.warn { color: var(--warn); }
     </div>
     <div id="opCacheBlok" hidden>
       <div class="row" style="margin-top:8px"><button type="button" class="btn" id="opCacheWeg">Perceelcache leegmaken</button></div>
-      <div class="hint" id="opCacheHint">Dat zijn percelen die de Perceelkaart heeft onthouden voor zonder internet. Je eigen bedrijven en percelen blijven staan; de rest haalt de Perceelkaart vanzelf opnieuw op zodra je met internet een perceel opzoekt.</div>
+      <div class="hint" id="opCacheHint">Dat zijn percelen die een oudere Perceelkaart in deze 5 MB onthield voor zonder internet. Je eigen bedrijven en percelen blijven staan; de rest haalt de Perceelkaart vanzelf opnieuw op. Een bijgewerkte Perceelkaart zet dit in zijn eigen database.</div>
     </div>
-    <p class="small">De browser geeft ± 5 MB voor alle apps op dit adres samen, ook de Perceelkaart. Groen is de Zaaihulp, grijs de andere apps.</p>
+    <p class="small">De browser geeft ± 5 MB voor alle apps op dit adres samen. Groen is de Zaaihulp, grijs de andere apps. De bedrijven en percelen van de Perceelkaart staan (vanaf Perceelkaart versie 123) in een eigen database en tellen hier niet mee.</p>
+    <div class="hint" id="opKaartDb" hidden></div>
     <div class="hint" id="opPersist" style="margin-top:8px"></div>
     <div class="row" id="opPersistRow" hidden><button type="button" class="btn" id="opPersistBtn">Bescherming aanvragen</button></div>
     </div>
@@ -2947,6 +2948,48 @@ h2 .sum.warn { color: var(--warn); }
     if ($("opCacheWeg").dataset.armed !== "1") $("opCacheWeg").textContent = cache ? "Perceelcache leegmaken (" + mb(cache) + ")" : "Perceelcache leeggemaakt";
     $("opTxt").textContent = mb(tot) + " van ± 5 MB gebruikt (" + Math.round(pct) + " %). Zaaihulp " + mb(eigen) + (waarvan ? ", waarvan " + waarvan : "") +
       "; andere apps op dit adres (bijv. de Perceelkaart) " + mb(ander) + "." + (vol ? " Bijna vol: maak een back-up en haal foto's of de veiligheidskopie weg, of maak hieronder de perceelcache leeg." : "");
+    toonKaartDb(per.get("Perceelkaart: je bedrijven en percelen") || 0, mb);
+  }
+  // De Perceelkaart bewaart zijn grote gegevens in een eigen IndexedDB-database ("perceelkaart"), buiten de 5 MB.
+  // Alleen lezen: nooit zelf aanmaken (een lege database zonder opslagplek zou de Perceelkaart in de weg zitten).
+  async function kaartDbGrootte() {
+    try {
+      if (!window.indexedDB || !indexedDB.databases) return null;
+      const lijst = await indexedDB.databases();
+      if (!lijst.some(d => d.name === "perceelkaart")) return 0;
+      return await new Promise(res => {
+        let rq;
+        try { rq = indexedDB.open("perceelkaart"); } catch (e) { return res(null); }
+        rq.onupgradeneeded = () => { try { rq.transaction.abort(); } catch (e) {} };
+        rq.onerror = () => res(null); rq.onblocked = () => res(null);
+        rq.onsuccess = () => {
+          const db = rq.result;
+          db.onversionchange = () => { try { db.close(); } catch (e) {} };
+          try {
+            if (!db.objectStoreNames.contains("kv")) { db.close(); return res(0); }
+            let n = 0;
+            const tx = db.transaction("kv", "readonly"), c = tx.objectStore("kv").openCursor();
+            c.onsuccess = () => { const cur = c.result; if (!cur) return; if (!/^reserve:/.test(String(cur.key))) n += String(cur.key).length + String(cur.value).length; cur.continue(); };
+            tx.oncomplete = () => { db.close(); res(n); };
+            tx.onerror = tx.onabort = () => { try { db.close(); } catch (e) {} res(null); };
+          } catch (e) { try { db.close(); } catch (er) {} res(null); }
+        };
+      });
+    } catch (e) { return null; }
+  }
+  let kaartDbBezig = false;
+  async function toonKaartDb(inLs, mb) {
+    const el = $("opKaartDb");
+    // Nog in localStorage: een oudere Perceelkaart, die verhuist zodra hij bijgewerkt is
+    const oud = inLs >= 10240 ? "De bedrijven en percelen van de Perceelkaart (" + mb(inLs) + ") staan nog in deze 5 MB. Open de Perceelkaart één keer met internet: dan werkt hij zich bij en verhuist hij ze naar zijn eigen database." : "";
+    el.textContent = oud; el.className = "hint" + (oud ? " bkwarn" : ""); el.hidden = !oud;
+    if (kaartDbBezig) return;
+    kaartDbBezig = true;
+    const n = await kaartDbGrootte();
+    kaartDbBezig = false;
+    if (!n) return;
+    el.textContent = (oud ? oud + " " : "") + "Database van de Perceelkaart: " + mb(n) + " (bedrijven, percelen en cache). Daar is ruimte genoeg; telt niet mee voor de 5 MB.";
+    el.hidden = false;
   }
   // Noodknop: de perceelcache van de Perceelkaart (zelfde adres) weghalen; die bouwt de Perceelkaart vanzelf weer op
   $("opCacheWeg").addEventListener("click", e => {
