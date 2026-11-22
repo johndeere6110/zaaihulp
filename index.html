@@ -3044,6 +3044,16 @@ h2 .sum.warn { color: var(--warn); }
   // Terugzetten in twee stappen: eerst controleren en laten zien wat erin zit, dan pas na "Ja" vervangen
   let bkKlaar = null;
   const bkFout = t => { const h = $("bkInHint"); h.textContent = t; h.style.color = "var(--warn)"; };
+  // Back-up met groep van een ánder apparaat: na terugzetten doet deze telefoon zich in de groep voor als dat apparaat
+  // (zelfde apparaatcode). Prima om over te stappen, maar beide toestellen naast elkaar gebruiken geeft verwarring.
+  function bkGroepWaarschuwing(ruw) {
+    let g = null; try { g = JSON.parse(ruw.groep); } catch (e) {}
+    if (!g || !g.aan || !String(g.code || "").trim() || !g.apparaat || g.apparaat === groep.apparaat) return "";
+    const wie = String(g.naam || "").trim();
+    return '<div style="color:var(--warn)"><strong>Groep:</strong> deze back-up zit in de groep' + (wie ? ' als ' + esc(wie) : '') +
+      ' (apparaat ' + esc(g.apparaat) + '). Na het terugzetten is deze telefoon in de groep hetzelfde apparaat. ' +
+      '<strong>Gebruik daarna niet allebei:</strong> werk verder op deze telefoon, of op het oude toestel, maar niet naast elkaar.</div>';
+  }
   function toonVoorbeeld() {
     $("bkPreview").hidden = true; $("bkConfirmRow").hidden = true; bkKlaar = null;
     const r = leesBackup($("bkIn").value);
@@ -3054,7 +3064,8 @@ h2 .sum.warn { color: var(--warn); }
       '<div>Hierin: ' + esc(nieuw.tekst) + '.</div><div class="steps"><div>Nu op deze telefoon: ' + esc(nu.tekst) + '.</div>' +
       '<div><strong>Alles van de Zaaihulp op deze telefoon wordt vervangen door de back-up.</strong> Vlak ervoor bewaart de app een veiligheidskopie, zodat je het ongedaan kunt maken. Gegevens van de Perceelkaart blijven staan.</div>' +
       (r.mis.length ? '<div style="color:var(--warn)">' + r.mis.length + (r.mis.length === 1 ? " onderdeel is beschadigd en wordt" : " onderdelen zijn beschadigd en worden") + ' overgeslagen (' + esc(r.mis.join(", ")) + ').</div>' : "") +
-      (r.vreemd ? '<div>' + r.vreemd + ' onbekend' + (r.vreemd === 1 ? " onderdeel wordt" : "e onderdelen worden") + ' genegeerd.</div>' : "") + '</div>';
+      (r.vreemd ? '<div>' + r.vreemd + ' onbekend' + (r.vreemd === 1 ? " onderdeel wordt" : "e onderdelen worden") + ' genegeerd.</div>' : "") +
+      bkGroepWaarschuwing(r.ruw) + '</div>';
     $("bkPreview").hidden = false; $("bkConfirmRow").hidden = false; bkKlaar = r;
     try { $("bkPreview").scrollIntoView({ block: "center" }); } catch (e) {}
   }
