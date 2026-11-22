@@ -394,7 +394,7 @@ h2 .sum.warn { color: var(--warn); }
       <div class="row" style="margin-top:8px"><button type="button" class="btn" id="opCacheWeg">Perceelcache leegmaken</button></div>
       <div class="hint" id="opCacheHint">Dat zijn percelen die een oudere Perceelkaart in deze 5 MB onthield voor zonder internet. Je eigen bedrijven en percelen blijven staan; de rest haalt de Perceelkaart vanzelf opnieuw op. Een bijgewerkte Perceelkaart zet dit in zijn eigen database.</div>
     </div>
-    <p class="small">De browser geeft ± 5 MB voor alle apps op dit adres samen. Groen is de Zaaihulp, grijs de andere apps. De bedrijven en percelen van de Perceelkaart staan (vanaf Perceelkaart versie 123) in een eigen database en tellen hier niet mee.</p>
+    <p class="small" id="opUitleg">De browser geeft ± 5 MB voor alle apps op dit adres samen. Groen is de Zaaihulp, grijs de andere apps. De bedrijven en percelen van de Perceelkaart staan (vanaf Perceelkaart versie 123) in een eigen database en tellen hier niet mee.</p>
     <div class="hint" id="opKaartDb" hidden></div>
     <div class="hint" id="opPersist" style="margin-top:8px"></div>
     <div class="row" id="opPersistRow" hidden><button type="button" class="btn" id="opPersistBtn">Bescherming aanvragen</button></div>
@@ -2900,6 +2900,10 @@ h2 .sum.warn { color: var(--warn); }
   $("bkHerinner").addEventListener("click", () => openMeer("bk"));
   // Opslagmeter: localStorage telt in tekens (sleutel + waarde), de browser geeft ± 5 × 1024 × 1024 voor dit hele adres
   const OPSLAG_MAX = 5 * 1048576;
+  // Draait de site in de Android-app (Capacitor-schil, app-android/)? Die zet androidBridge (en meestal window.Capacitor) klaar.
+  // De app heeft eigen opslag: geen gedeelde 5 MB met de Perceelkaart, en Android ruimt hem niet zomaar op.
+  const inAndroidApp = (() => { try { return !!((window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) || typeof window.androidBridge !== "undefined"); } catch (e) { return false; } })();
+  if (inAndroidApp) $("opUitleg").textContent = "Deze app heeft zijn eigen opslag (± 5 MB), los van Chrome en van de Perceelkaart. De Zaaihulp gebruikt maar weinig: ruimte genoeg.";
   let cacheNetLeeg = false; // net op "Perceelcache leegmaken" getikt: knop blijft even staan met "leeggemaakt"
   function renderOpslag() {
     let zh = 0, foto = 0, veilig = 0, ander = 0;
@@ -2947,7 +2951,7 @@ h2 .sum.warn { color: var(--warn); }
     $("opCacheWeg").disabled = !cache;
     if ($("opCacheWeg").dataset.armed !== "1") $("opCacheWeg").textContent = cache ? "Perceelcache leegmaken (" + mb(cache) + ")" : "Perceelcache leeggemaakt";
     $("opTxt").textContent = mb(tot) + " van ± 5 MB gebruikt (" + Math.round(pct) + " %). Zaaihulp " + mb(eigen) + (waarvan ? ", waarvan " + waarvan : "") +
-      "; andere apps op dit adres (bijv. de Perceelkaart) " + mb(ander) + "." + (vol ? " Bijna vol: maak een back-up en haal foto's of de veiligheidskopie weg, of maak hieronder de perceelcache leeg." : "");
+      (inAndroidApp && !ander ? "" : "; andere apps op dit adres (bijv. de Perceelkaart) " + mb(ander)) + "." + (vol ? " Bijna vol: maak een back-up en haal foto's of de veiligheidskopie weg, of maak hieronder de perceelcache leeg." : "");
     toonKaartDb(per.get("Perceelkaart: je bedrijven en percelen") || 0, mb);
   }
   // De Perceelkaart bewaart zijn grote gegevens in een eigen IndexedDB-database ("perceelkaart"), buiten de 5 MB.
@@ -3013,6 +3017,10 @@ h2 .sum.warn { color: var(--warn); }
       niet: "Deze browser laat niet zien of de gegevens beschermd zijn tegen opruimen. Maak regelmatig een back-up.", onbekend: "" }[persistStand];
     $("opPersist").className = "hint" + (persistStand === "nee" ? " bkwarn" : "");
     $("opPersistRow").hidden = persistStand !== "nee";
+    if (inAndroidApp) {
+      $("opPersist").textContent = "Android-app: je gegevens staan in de app zelf. Ze gaan alleen weg als je de app verwijdert of bij Android de gegevens van de app wist. Maak daarom een back-up vóór je een nieuwe versie van de app installeert.";
+      $("opPersist").className = "hint"; $("opPersistRow").hidden = true;
+    }
   }
   $("opPersistBtn").addEventListener("click", () => vraagPersist(true));
   const bkGemaakt = () => { store.set("laatsteBackup", Date.now()); renderBackup(); };
