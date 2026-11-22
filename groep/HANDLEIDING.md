@@ -29,7 +29,9 @@ op via een klein script in die sheet. Eenmalig instellen, daarna gaat het vanzel
 - **Nieuwe collega zonder de app?** Gebruik de tegel **Installatielink** op het startscherm. Zit je in de groep, dan kies je
   **Met groep** (de groepscode gaat mee in de link) of **Zonder groep** (alleen de app). De installatiepagina zegt dat je bent uitgenodigd; na het installeren
   vraagt de app alleen nog de naam. Op een **iPhone** heeft de app op het beginscherm eigen opslag, los van Safari: daar
-  toont de installatiepagina de groepscode, die vul je in de app zelf in (Instellingen → Groep).
+  toont de installatiepagina de groepscode met een knop **Kopieer de code**. Open daarna de app: bovenaan staat
+  "Uitgenodigd voor een groep? Plak de code"; één tik op **Plakken** en de app vraagt alleen nog de naam.
+  Lukt plakken niet, dan kan de code ook in Instellingen → Groep.
 
 ## Beheer
 - Alles staat in het blad **data**. Kolom *omschrijving* is leesbaar, kolom *data* is voor de app.

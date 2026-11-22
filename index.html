@@ -171,6 +171,10 @@ h2 .sum.warn { color: var(--warn); }
 .shitems .chk input { width: 20px; height: 20px; }
 .sharetext { width: 100%; min-height: 90px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px; font: 13px ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
 .hint.bkwarn { color: var(--warn); font-weight: 600; }
+.plakgroep { border: 2px solid var(--warn); border-radius: 12px; padding: 12px 14px; margin: -2px 0 14px; background: var(--surface); }
+.plakgroep .kop { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; }
+.plakgroep .kop span { flex: 1; }
+.plakgroep .row { margin-top: 10px; }
 .herinner { display: block; width: 100%; text-align: left; margin: -2px 0 14px; padding: 10px 12px; border: 1px solid var(--warn); border-radius: 10px;
   background: transparent; color: var(--warn); font: 500 15px "Barlow", system-ui, sans-serif; }
 .meter { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); margin-top: 4px; }
@@ -287,6 +291,14 @@ h2 .sum.warn { color: var(--warn); }
   </div>
   <section id="pHome" hidden>
     <h1>Welke zaaimachine?</h1>
+    <div class="plakgroep" id="plakGroep" hidden>
+      <div class="kop"><span>Uitgenodigd voor een groep? Plak de code</span><button type="button" class="del" id="plakWeg" aria-label="Niet nu">×</button></div>
+      <div class="row"><button type="button" class="btn primary" id="plakKnop">Plakken</button></div>
+      <div id="plakHand" hidden>
+        <div class="hint" id="plakHint" style="margin-top:8px">Plakken lukte niet. Houd het vakje ingedrukt en kies Plakken, of typ de code over.</div>
+        <div class="newsoort" style="margin-top:6px"><input id="plakIn" class="text" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="groepscode"><button type="button" class="btn" id="plakOk" style="flex:none">OK</button></div>
+      </div>
+    </div>
     <button type="button" class="herinner" id="bkHerinner" hidden></button>
     <div class="home">
       <button type="button" class="mach" id="mApv"><span class="mn">APV 5.2</span><span class="md">Afdraaien met emmer, mengen, vakken en bijstellen in stappen van 5 %</span></button>
@@ -3244,7 +3256,7 @@ h2 .sum.warn { color: var(--warn); }
   }
   groepPlan = () => { clearTimeout(groepTimer); groepTimer = setTimeout(groepSync, 3000); };
   function renderGroep() {
-    renderGrLijst();
+    renderGrLijst(); toonPlak();
     { const t = $("homeInstallTxt"); if (!t._t) t.textContent = homeInstallTekst(); }
     { const mg = !!installGroep(); $("instZonder").hidden = !mg; $("instMet").textContent = mg ? "Met groep" : "Stuur installatielink"; }
     if (String(groep.naam || "").trim() || !groep.aan) $("grUitnodiging").hidden = true;
@@ -3437,6 +3449,37 @@ h2 .sum.warn { color: var(--warn); }
     openMeer("groep");
     if (zonderNaam) { $("grUitnodiging").hidden = false; setTimeout(() => { try { $("grNaam").focus(); } catch (e) {} }, 300); }
   }
+
+  // iPhone-app op het beginscherm: die heeft eigen opslag, dus de uitnodiging uit Safari komt er niet vanzelf in.
+  // De installatiepagina kopieert de code; hier plak je hem met één tik (de iPhone vraagt "Plakken toestaan?").
+  function isIosApp() { const ua = navigator.userAgent || "";
+    return (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) &&
+      (navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches); }
+  function toonPlak() { $("plakGroep").hidden = !(isIosApp() && !String(groep.code || "").trim() && !store.get("groepPlakWeg", false)); }
+  // Code uit wat er geplakt is: de code zelf, of een hele uitnodigingslink (…?groep=code)
+  const codeUit = t => {
+    t = String(t || "").trim();
+    const m = t.match(/[?&#]groep=([^&\s#]+)/); if (m) { try { return decodeURIComponent(m[1]).trim(); } catch (e) { return m[1]; } }
+    return /^\S{3,100}$/.test(t) && !/^https?:/i.test(t) ? t : "";
+  };
+  function plakCode(t) {
+    const code = codeUit(t);
+    if (!code) { $("plakHand").hidden = false; $("plakHint").textContent = "Er stond geen groepscode op het klembord. Kopieer hem op de installatiepagina, of plak of typ hem hier."; return; }
+    groep.code = code; groep.aan = true; store.set("groep", groep);
+    $("grCode").value = groep.code; $("plakGroep").hidden = true;
+    renderGroep(); openMeer("groep"); $("grUitnodiging").hidden = false;
+    setTimeout(() => { try { $("grNaam").focus(); } catch (e) {} }, 300);
+    groepSync();
+  }
+  $("plakKnop").addEventListener("click", async () => {
+    let t = "";
+    try { t = await navigator.clipboard.readText(); } catch (e) { $("plakHand").hidden = false; $("plakIn").focus(); return; }
+    plakCode(t);
+  });
+  $("plakOk").addEventListener("click", () => plakCode($("plakIn").value));
+  $("plakIn").addEventListener("keydown", e => { if (e.key === "Enter") plakCode($("plakIn").value); });
+  $("plakWeg").addEventListener("click", () => { store.set("groepPlakWeg", true); $("plakGroep").hidden = true; });
+  toonPlak();
 })();
 </script>
 <script>
