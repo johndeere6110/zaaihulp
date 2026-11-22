@@ -6,3 +6,4 @@ Web-app (PWA) voor afdraaien, wegen en mengen bij zaaimachines: APV 5.2, Zocon Z
 - Gebruik geen alert() of confirm(); die worden in sommige weergaven geblokkeerd. Gebruik de bestaande armed()- en flash()-functies.
 - Bij elke wijziging: verhoog het versienummer in sw.js (zaaihulp-v3 -> v4 enz.).
 - Push direct naar main, zonder pull request.
+- app-android/: Android-app (Capacitor) die de site laadt (server.url), gebouwd door .github/workflows/android.yml (android/ wordt in de workflow gemaakt, niet in de repo); APK op de release "android-test". De app heeft eigen opslag: proeven gaan over met de back-up.

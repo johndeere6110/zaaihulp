@@ -1,0 +1,12 @@
+{
+  "appId": "io.github.johndeere6110.zaaihulp",
+  "appName": "Zaaihulp",
+  "webDir": "www",
+  "server": {
+    "url": "https://johndeere6110.github.io/zaaihulp/",
+    "cleartext": false
+  },
+  "android": {
+    "backgroundColor": "#141912"
+  }
+}
